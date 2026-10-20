@@ -135,32 +135,34 @@ items:
     level: evaluate
     time_s: 110
     stem: |
-      A platform team exposes a public GraphQL API so partners can fetch runs, steps and tool calls in whatever shape
-      they like. Last week one partner's deeply nested query (runs, steps, tool calls, then runs again) saturated the
-      database. The API already limits each partner to 600 requests per minute. Which measures address this risk?
+      A platform team exposes a public GraphQL API so that partners can fetch runs, steps and tool calls in whatever
+      shape they like, and partners must stay free to write their own queries. Last week one partner's deeply nested
+      query (runs, steps, tool calls, then runs again) saturated the database. The API already limits each partner
+      to 600 requests per minute. Which measures address this risk?
     options:
       - text: Reject queries beyond a maximum depth and a computed complexity score
         correct: true
         why: Cost is a property of the query shape, and a static analysis of depth and breadth stops the nested pattern before execution.
-      - text: Allow only pre-registered (persisted) queries for production partners
+      - text: Require a page-size argument on every list field and cap it at a fixed maximum
         correct: true
-        why: Known queries can be load-tested and costed in advance, so unexpected shapes never reach the database.
+        why: Nested lists multiply, so a hard cap on items per level bounds how many rows one query can fan out to.
       - text: Charge each request against the partner's quota in proportion to its computed cost
         correct: true
         why: One expensive query then consumes much more of the allowance than a cheap one, which the flat request limit ignores.
+      - text: Allow only pre-registered (persisted) queries for production partners
+        why: It would bound load, but it removes the freedom partners were promised; allow-listing suits first-party clients whose queries are known in advance.
+        misconception: Persisted queries are the standard defence for any public GraphQL API
       - text: Lower the request limit from 600 to 60 per minute for every partner
         why: One heavy query can still do the damage within a single request, and well-behaved partners are throttled for no reason.
         misconception: Request count is a good proxy for load in GraphQL
       - text: Disable schema introspection so that partners cannot see how to nest types
         why: Partners know their data model from documentation, and hiding the schema does not constrain the queries they can write.
         misconception: Obscuring the schema is access control
-      - text: Add a CDN cache in front of the endpoint to absorb repeated requests
-        why: Heavy queries arrive as POST bodies that vary per partner, so they bypass shared caches and still reach the database.
-        misconception: HTTP caching works for GraphQL traffic the way it does for REST
     explanation: |
       GraphQL moves query-shape control to the client, so cost has to be bounded on the server: depth and complexity
-      limits, persisted queries for known clients, and cost-based rate limiting. Per-request limits alone cannot
-      distinguish a cheap lookup from a fan-out query.
+      limits, bounded list sizes, and cost-based rate limiting. Persisted queries are a strong control when the client
+      is yours; for open partner access they trade away the flexibility the API exists to give. Per-request limits
+      alone cannot distinguish a cheap lookup from a fan-out query.
     refs: [https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html]
 
   - id: D9-006
@@ -314,24 +316,25 @@ items:
     version: 1
     type: multi
     subtopic: int.async
-    tags: [int.resilience, obs.cost]
+    tags: [int.resilience, int.enterprise-devex]
     difficulty: 2
     level: evaluate
     time_s: 110
     stem: |
-      An ingestion service enqueues thousands of document-summarisation jobs per hour. Workers call an LLM API with a
-      shared tokens-per-minute limit that interactive users also depend on. During bulk loads the queue grows, 429
-      errors rise, and workers autoscaled by queue depth make it worse. Which measures help?
+      An ingestion service enqueues thousands of document-parsing jobs per hour. Workers call a third-party parsing
+      API under a shared quota of 300 requests per minute that the customer-facing search feature also depends on.
+      During bulk loads the queue grows, 429 errors rise, and workers autoscaled by queue depth make it worse. Which
+      measures help?
     options:
-      - text: Cap worker concurrency with a limiter shared by all workers and sized from the token budget
+      - text: Cap worker concurrency with a limiter shared by all workers and sized from the request quota
         correct: true
-        why: Total call rate is held under the provider limit regardless of how many workers exist, so 429s fall.
-      - text: Reserve part of the budget for interactive traffic and run bulk jobs at lower priority
+        why: Total call rate is held under the vendor's limit regardless of how many workers exist, so 429s fall.
+      - text: Reserve part of the quota for search traffic and run bulk jobs at lower priority
         correct: true
-        why: Users stay responsive during loads, and bulk work uses whatever capacity remains.
-      - text: Let the queue absorb bursts, and alert on the age of the oldest message rather than on depth
+        why: Search stays responsive during loads, and bulk work uses whatever capacity remains.
+      - text: On a 429, honour Retry-After by pausing the shared limiter for all workers, not only the one that failed
         correct: true
-        why: Age reflects the delay customers actually see, and the queue is designed to buffer a backlog safely.
+        why: Every worker backs off together, so the quota recovers instead of being hit again by the other workers' calls.
       - text: "Autoscale workers on queue depth so that the backlog clears sooner than it does now"
         why: More workers send more requests into the same rate limit, which multiplies the 429s and retries.
         misconception: More consumers drain a queue faster whatever the downstream limit is
@@ -343,8 +346,8 @@ items:
         misconception: Turning off retries is the right response to rate limiting
     explanation: |
       Backpressure should hold the system under the scarcest downstream limit. Control concurrency with that limit
-      in mind, protect latency-sensitive traffic with reserved capacity and priorities, and use the queue as a buffer
-      while monitoring how long work waits.
+      in mind, make rate-limit signals slow every worker and not just the one that was rejected, protect
+      latency-sensitive traffic with reserved capacity and priorities, and use the queue as a buffer.
 
   - id: D9-012
     version: 1
@@ -455,12 +458,12 @@ items:
       - text: "A circuit breaker that fails fast after repeated errors, with a fallback path"
         correct: true
         why: Threads are freed immediately, and the fallback (backup model, cached answer, or handoff to a human) keeps serving users.
-      - text: "Raise the timeout from 60 to 120 seconds so that slow provider responses can complete"
-        why: Requests that would fail anyway hold their threads twice as long, deepening the exhaustion.
-        misconception: Longer waits make an unhealthy dependency usable
-      - text: "Retry each failed call up to five times before returning an error to the customer"
-        why: Retries multiply the load and the time each request ties up a thread during the outage.
-        misconception: More retries improve availability during an outage
+      - text: "Cut the timeout to 5 seconds and give the LLM calls their own bounded thread pool"
+        why: Health checks and FAQ pages stay up, but every customer request still waits five seconds and then fails, so no help is given during the outage.
+        misconception: Isolation and shorter timeouts alone make a service resilient
+      - text: "After each 60-second timeout, send that request to a second provider instead"
+        why: Every request still waits the full minute on the failing provider first, so threads stay exhausted; a fallback without fail-fast only moves the delay.
+        misconception: A fallback alone protects the service from a hanging dependency
       - text: "Add more instances of the service behind the load balancer to get more request threads"
         why: Each new thread is consumed by the same hanging calls, so capacity is exhausted a little later at more cost.
         misconception: Scaling out compensates for a failing dependency
@@ -494,9 +497,9 @@ items:
       - text: Raise each layer's backoff delay so that its retries are spread more thinly
         why: Delays spread retries over time but the total number of attempts remains multiplicative.
         misconception: Slower retries are fewer retries
-      - text: Remove the timeouts so that slow calls complete rather than being retried
-        why: Calls then hang indefinitely and exhaust connection pools, so the failure moves rather than disappearing.
-        misconception: Removing timeouts removes the cause of retries
+      - text: Add random jitter to the backoff in every layer so that retries do not arrive together
+        why: Jitter spreads attempts over time, but each layer still retries three times, so the multiplied attempt count is unchanged.
+        misconception: Jitter reduces the number of retries
     explanation: |
       Layered retries multiply: three layers with three retries each can issue up to 4 x 4 x 4 = 64 attempts per
       user call. Keep retries at one layer, propagate deadlines, and cap retry volume with a budget.
@@ -834,7 +837,8 @@ items:
         The request is valid if any `v1=` entry matches.
       - `timestamp` is a string of integer seconds. Return `False` if it is not an integer or if it differs from `now`
         by more than `tolerance_s` seconds (in either direction).
-      - Compare signatures in constant time. Return a `bool`; never raise for malformed input.
+      - A matching entry must equal the expected digest exactly (case-sensitive). Compare in constant time.
+        Return a `bool`; never raise for malformed input.
     code:
       function: verify_webhook
       starter: |
@@ -921,7 +925,8 @@ items:
         this batch (the first occurrence wins, even if a later duplicate carries a different `delta`).
       - Return a dict `{"balances": {...}, "processed_ids": [...]}`. `balances` maps each account that had at least
         one applied event to the sum of its applied deltas (these are changes for this batch, not totals).
-        `processed_ids` is the sorted list of all ids from `processed_ids` and the events newly applied.
+        `processed_ids` is the sorted list of all ids from `processed_ids` and the events newly applied, each id
+        listed once (even if the input list repeats it).
     code:
       function: apply_events
       starter: |

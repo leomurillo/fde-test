@@ -22,9 +22,9 @@ items:
       - text: Keep 200-token chunks but use 50% overlap so every boundary also sits inside the middle of another chunk
         why: Overlap hides some cuts but doubles the index, retrieves near-duplicates, and still ignores where clauses really begin and end.
         misconception: Overlap is a substitute for structure-aware splitting
-      - text: Switch to single-sentence chunks so that each embedding matches one precise statement
-        why: Sentences strip away the clause context and the definitions the reviewers need, making the wrong-obligation problem worse.
-        misconception: Finer granularity gives more precise retrieval with no downside
+      - text: Use semantic chunking, starting a new chunk wherever similarity between adjacent sentences drops
+        why: Boundaries are guessed statistically and can cut or merge clauses, although the contracts already mark exactly where each clause begins and ends.
+        misconception: Embedding-based splitting beats explicit document structure
     explanation: |
       Fixed-size splitting ignores document structure. When the source has reliable structure (numbered clauses),
       split on it and keep the heading path with each chunk so it is self-describing. Overlap and size tuning
@@ -34,31 +34,33 @@ items:
     version: 1
     type: single
     subtopic: rag.retrieval
-    difficulty: 1
-    level: apply
-    time_s: 75
+    tags: [rag.ingestion]
+    difficulty: 2
+    level: analyze
+    time_s: 90
     stem: |
-      A field-service assistant for an industrial-equipment maker searches 30,000 repair-manual chunks with dense
-      embeddings only. Technicians type queries like "E-4471 after firmware 3.2" or a part number, and the
-      correct chunk is often missing from the top 20 results; semantically similar but different error codes
-      show up instead. What is the best fix?
+      A field-service assistant for an equipment maker searches 30,000 chunks from the manuals of 40 product models.
+      Manuals for neighbouring models share most of their wording, and a model name appears only on each manual's
+      cover page, never in the chunk text. A technician asks "How do I reset the pump controller on the X200?" and
+      the top results are correct procedures, but for the X150 or the X300. What is the best fix?
     options:
-      - text: "Add a BM25 retriever alongside the dense one and fuse the two ranked lists of results"
+      - text: "Tag chunks with their product model at ingestion and filter on the model named in the query"
         correct: true
-        why: Exact tokens such as codes and part numbers are what lexical matching is good at, and fusion keeps the dense strengths for natural-language questions.
-      - text: "Add a cross-encoder reranker that rescores the top 20 dense results before they go to the LLM"
-        why: A reranker only reorders candidates; if the right chunk never reached the top 20, it cannot be promoted.
-        misconception: Reranking repairs recall problems in the candidate set
-      - text: "Move to a larger embedding model with more dimensions, trained on more technical text"
-        why: Larger models improve general semantics but still blur near-identical identifiers like E-4471 and E-4417.
-        misconception: Bigger embeddings learn exact-token matching
-      - text: "Use an LLM to rewrite each query into a descriptive sentence before embedding it"
-        why: Rewriting an exact code into prose throws away the very token that identifies the right chunk.
-        misconception: Natural-language expansion always helps retrieval
+        why: The distinguishing fact is missing from the text, so it must be added as metadata and used as a filter before similarity ranking.
+      - text: "Add a BM25 retriever next to the dense one and fuse the two ranked lists of results"
+        why: Lexical matching needs the term to occur in the chunk, and no chunk contains "X200", so BM25 cannot separate the models either.
+        misconception: Keyword search fixes any identifier problem
+      - text: "Add a cross-encoder reranker that rescores the top 20 results against the full query"
+        why: A reranker compares query and chunk text, and the chunks for different models read almost identically, so it cannot tell them apart.
+        misconception: Reranking can separate passages whose text is the same
+      - text: "Move to a larger embedding model that separates near-identical passages more sharply"
+        why: Chunks with the same wording get near-identical vectors from any model, because the fact that tells them apart is not in the text.
+        misconception: A better embedding model recovers information that the chunk text does not contain
     explanation: |
-      Dense retrieval captures meaning, not exact strings. Identifiers, SKUs and error codes need lexical matching,
-      so hybrid search (BM25 plus dense) is the standard answer. Fix candidate generation first; reranking only
-      helps once the right document is in the candidate list.
+      When documents differ only in context that the chunk text does not carry (product, version, tenant, jurisdiction),
+      no retrieval or ranking method can recover it. Capture that context at ingestion as metadata (or a header
+      prepended to the chunk), then filter on it at query time using the model named in the question or selected in
+      the UI. Hybrid search and reranking help with other failures but not this one.
 
   - id: D5-003
     version: 1
@@ -70,14 +72,15 @@ items:
     stem: |
       A team fuses BM25 and dense retrieval for an internal knowledge assistant by adding raw scores with equal
       weights. BM25 scores range from 0 to about 30 while cosine similarities sit between 0.2 and 0.9, so
-      lexical hits dominate every result list. The team has no labelled relevance data yet and expects to add
+      lexical hits dominate every result list. Within one query the BM25 scores are heavy-tailed: one or two
+      documents score far above the rest. The team has no labelled relevance data yet and expects to add
       a third retriever (over Jira tickets) next quarter. What should they use as the default fusion?
     options:
       - text: "Reciprocal rank fusion: score each document by summing 1/(k + rank) over the lists"
         correct: true
         why: It uses only ranks, so the incompatible score scales never need calibrating, and a third list can simply be added.
-      - text: "Min-max normalise each retriever's scores per query, then keep the equal-weight sum of the two"
-        why: Workable, but one outlier hit stretches the scale for that query and the weights still need tuning when a retriever is added.
+      - text: "Min-max normalise each retriever's scores per query, then sum them with equal weights"
+        why: One outlier hit stretches the scale and squashes the rest of that list towards zero, and the weights still need tuning, without labels, when a retriever is added.
         misconception: Per-query normalisation makes raw scores comparable and stable
       - text: Take the higher of the two raw scores for each document to keep the strongest evidence
         why: This still compares BM25 magnitudes with cosine magnitudes, so lexical scores win every time.
@@ -316,8 +319,9 @@ items:
     time_s: 110
     stem: |
       A nightly job re-indexes only the policy documents that the source system lists as modified since the last
-      run. Users now report answers quoting a policy that was withdrawn two months ago, and others that mix
-      clauses from an old and a new version of the same policy. Which changes address the root causes?
+      run: it chunks each changed document and adds the new chunks to the index. Users now report answers quoting
+      a policy that was withdrawn (deleted) two months ago, and others that mix clauses from an old and a new
+      version of the same policy. Which changes address the root causes?
     options:
       - text: "Delete a document's chunks when the source reports a deletion or a reconcile finds its id missing"
         correct: true
@@ -325,52 +329,54 @@ items:
       - text: "Replace all of a changed document's chunks in one operation instead of appending new ones"
         correct: true
         why: Appending leaves old-version chunks in the index next to the new ones, which produces the mixed-version answers.
-      - text: "Index status and effective date as metadata and filter retrieval to currently valid documents"
-        correct: true
-        why: It adds a second line of defence for superseded or withdrawn content even when an index update lags.
       - text: "Run the same incremental job twice a day instead of once, so changes are picked up sooner"
         why: The job still never sees deletions, and it leaves old chunks in place; it only runs more often.
         misconception: More frequent syncs cure missing-deletion bugs
-      - text: "Expire all vectors after 30 days and force a full re-ingest of the whole corpus on a schedule"
-        why: It blindly drops valid, unchanged content and still leaves stale chunks for up to a month.
+      - text: "Give every chunk a 30-day time-to-live so that stale content eventually ages out of the index"
+        why: Unchanged documents would vanish unless re-ingested, and withdrawn or superseded chunks still stay searchable for up to a month.
         misconception: Time-based expiry is a substitute for tracking change
+      - text: "Index status and effective date as metadata and filter by it at query time, leaving the nightly job as it is"
+        why: A deleted document is never listed as modified, so its metadata never changes and the filter still passes it; old-version chunks also remain marked valid.
+        misconception: A query-time filter can compensate for an index that never learns about changes
       - text: Tell the model in the prompt to prefer the most recent document when passages conflict
         why: Chunks carry no reliable dates unless metadata is indexed, and a withdrawn policy has no newer version to prefer.
         misconception: Prompt instructions can resolve staleness in the data layer
     explanation: |
       Freshness has two parts: detecting every kind of change (including deletes) and applying each change
-      atomically per document. Metadata for validity gives a safety net at query time, but the index itself must
-      mirror the source's lifecycle.
+      atomically per document. Validity metadata can add a safety net at query time, but only if the pipeline keeps
+      it current; the index itself must mirror the source's lifecycle.
 
   - id: D5-012
     version: 1
     type: single
     subtopic: rag.ingestion
-    tags: [eval.rag-agent, gov.responsible-ai]
+    tags: [gov.audit-compliance, eval.rag-agent]
     difficulty: 2
     level: evaluate
     time_s: 95
     stem: |
-      A compliance team requires every claim in an assistant's answer to cite its source. The current system
-      prints a "Sources" list of the top three retrieved files below each answer. An internal audit found
-      sentences whose listed sources do not actually support them. Which change addresses this most directly?
+      A compliance team requires that a reviewer can check any cited claim in under a minute. The assistant
+      currently cites the source file name. For a 300-page policy PDF the reviewer lands on page one, and for
+      documents revised since indexing the file they open is a newer revision than the text the assistant saw.
+      Which ingestion change addresses this most directly?
     options:
-      - text: "Attach chunk ids and a supporting quote to each claim, and check each quote in its chunk"
+      - text: "Store document id, revision, page and section anchor with each chunk, and cite those"
         correct: true
-        why: Attribution becomes claim-level and verifiable, and unsupported or fabricated citations can be caught before display.
-      - text: "Tell the model to cite only sources it is highly confident about and omit the weaker ones"
-        why: Model confidence is poorly calibrated, so this gives no way to detect a citation that does not support its claim.
-        misconception: Self-reported confidence is a reliable filter
-      - text: "Keep the list of top retrieved files but raise it from three to five so more support is shown"
-        why: A longer list makes support more likely by chance yet leaves the claim-to-source link unverified.
-        misconception: Listing retrieved documents counts as attribution
-      - text: "Move to the largest available model for generating the cited answers"
-        why: Stronger models cite better on average but still need verification when an audit requires evidence.
-        misconception: Model scale removes the need for verification
+        why: The citation then points to the exact passage in the revision that was actually indexed, so the reviewer sees what the model saw.
+      - text: "Link each citation to the latest version of the file so that reviewers always see current policy"
+        why: The model answered from the indexed revision, so the latest file may no longer contain the passage, and the check proves nothing about the answer.
+        misconception: Pointing at the newest document is always the safest citation
+      - text: "Ask the model to add the page numbers it remembers from the sources it used"
+        why: Page numbers produced by the model are generated text, not recorded data, and can be wrong with full confidence.
+        misconception: The model can reliably recall locations from its context
+      - text: "Split every PDF into one file per page so that a file name identifies the page"
+        why: It multiplies files and still says nothing about section or revision, and a clause that spans pages is cut apart.
+        misconception: Smaller files are a substitute for provenance metadata
     explanation: |
-      Retrieved is not the same as supporting. Claim-level citations (chunk id plus quoted span) can be verified
-      mechanically, and an unsupported claim can be blocked or flagged. Measuring citation precision on a sample
-      is the matching evaluation step.
+      Provenance is captured at ingestion: each chunk carries a stable document id, the revision indexed, and a locator
+      (page, section, offset). Citations built from recorded metadata are verifiable and survive later document
+      changes; locations the model generates are not. Claim-level checks of quotes against chunks are a separate,
+      complementary control.
 
   - id: D5-013
     version: 1
@@ -442,61 +448,71 @@ items:
     level: evaluate
     time_s: 110
     stem: |
-      A legal team uploads one acquisition agreement at a time (about 250,000 tokens including schedules) and
-      asks 5 to 10 questions about it, many of which require combining definitions, carve-outs and cross-references
-      from far-apart sections. Uploads differ every time, and the provider's model supports 1 million tokens and
-      prompt caching. Which design is the best fit?
+      A legal team uploads one acquisition agreement at a time, about 180,000 tokens including schedules, and asks 5
+      to 10 questions about it within roughly 20 minutes. Many questions need definitions, carve-outs and
+      cross-references from far-apart sections. Each upload is read by one person only and differs every time, and
+      no access rules apply inside a document. The model has a 1-million-token window, cached input tokens cost a
+      small fraction of normal input tokens, and the cache stays warm while follow-up questions arrive within a few
+      minutes of each other. A pilot on the firm's own agreements showed accurate answers to these cross-section
+      questions at this length, and a few seconds per answer is acceptable. Which design is the best fit?
     options:
       - text: "Keep the full document in context and use prompt caching so follow-up questions reuse it"
         correct: true
-        why: No indexing step is needed, cross-references stay intact, and cached input makes repeated questions much cheaper.
-      - text: "Chunk and index each upload on arrival, then answer every question from the top 5 retrieved chunks"
-        why: Questions needing several far-apart clauses are the weak spot of top-k retrieval, and per-upload indexing adds delay.
+        why: The document fits with room to spare, cross-references stay intact, nothing needs indexing, and cached input makes repeated questions cheap.
+      - text: "Chunk and index each upload on arrival, then answer each question from the top 20 reranked chunks"
+        why: Questions that need several far-apart clauses are where top-k retrieval is weakest, and no scale, sharing or access-control reason calls for an index here.
         misconception: RAG is the default for any question over documents
-      - text: Replace the document with a 3,000-token summary and ask all questions against that
+      - text: "Split the agreement by section, ask every question of each section separately, and merge the answers"
+        why: Cross-references and carve-outs span sections, so each separate call lacks the clause it depends on, and the number of calls multiplies.
+        misconception: Divide-and-merge keeps long-document reasoning intact
+      - text: "Replace the document with a 3,000-token summary and ask all questions against that"
         why: Summaries drop exactly the carve-outs and defined terms that the legal questions depend on.
         misconception: Compressing the source loses nothing important
-      - text: Fine-tune the model on each uploaded agreement before the session starts
-        why: Training per upload is slow and costly, and gives no guarantee of faithful recall or citations.
-        misconception: Per-document fine-tuning is a way to give a model new documents
     explanation: |
-      When a single document fits in context, the questions are cross-cutting, and the document is reused across
-      several turns, long context with caching is simple and strong. RAG becomes the right choice as the corpus grows
-      beyond the window, is shared across many users, or must be permission-filtered. Check quality on your own
-      questions, since accuracy can still drop on very long inputs.
+      Choose by the deciding constraints. Here one document fits comfortably in the window, the questions are
+      cross-cutting, the same text is reused over several turns (so caching cuts cost and latency), nothing is shared
+      across users or needs permission filtering, and accuracy at this length was checked. Under those conditions long
+      context with caching is simple and strong. RAG becomes the better choice when the corpus outgrows the window,
+      is shared across many users, must be permission-filtered, or when queries are single-fact lookups.
+      Always verify quality on your own questions.
 
   - id: D5-016
     version: 1
     type: multi
     subtopic: rag.architecture
-    tags: [llm.model-selection]
+    tags: [agents.tools-mcp, int.enterprise-devex]
     difficulty: 2
     level: evaluate
     time_s: 100
     stem: |
-      A manufacturer wants an HR assistant with three requirements: answers must reflect policy changes made on
-      the first of each month within a day, every answer must cite the policy section, and replies must follow a
-      fixed formal template. The policy corpus is about 2 million tokens. Which choices fit these requirements?
+      A client wants a coding assistant that answers questions such as "where do we retry failed payment webhooks,
+      and what calls that code?" across a 4-million-line monorepo that changes every hour. The prototype splits
+      every file into 500-token chunks, embeds them nightly and returns the top 8. Engineers report that answers
+      miss callers of a function and sometimes cite code that was deleted that afternoon. Which changes fit?
     options:
-      - text: Index the policies and retrieve relevant sections at query time, citing them in the answer
+      - text: Give the assistant exact-search and find-references tools over the live checkout
         correct: true
-        why: A re-index picks up monthly changes quickly, and retrieved sections give a concrete thing to cite.
-      - text: "Put the template in the prompt with examples; consider fine-tuning only if evals show a gap"
+        why: Callers are found by exact symbol references, not by similarity, and the model can follow a call chain across files step by step.
+      - text: Update the index on every merge, or read the live checkout, instead of rebuilding nightly
         correct: true
-        why: Format and tone are behaviours that prompting usually handles, and fine-tuning adds cost and retraining only if needed.
-      - text: Fine-tune on the policy documents each month so the knowledge sits in the model weights
-        why: Retraining monthly is slow and costly, and the weights cannot point to the section that supports an answer.
-        misconception: Fine-tuning is the right way to teach a model changing facts
-      - text: "Paste the entire policy corpus into the system prompt of every request to avoid building any index"
-        why: Two million tokens exceed many context windows and make every call slow and expensive for a few relevant sections.
-        misconception: Long context makes retrieval unnecessary at any corpus size
-      - text: "Fine-tune the model to recall section numbers and cite them without any retrieval"
-        why: Recalled section numbers are generated text and can be fabricated, so the citations are unverifiable.
-        misconception: A model can memorise a reliable citation index
+        why: Deleted and renamed code stops being returned within minutes of the change instead of up to a day later.
+      - text: Switch to an embedding model trained on code, so callers rank near the functions they call
+        why: A caller rarely resembles the function it calls, so similarity cannot reliably list callers; exact references can.
+        misconception: A code-specific embedding model can find call relationships
+      - text: Add a reranker that rescores the top 8 chunks against the question
+        why: A reranker only reorders what was retrieved, so callers that never reached the top 8 stay missing.
+        misconception: Reranking repairs recall problems in the candidate set
+      - text: Fine-tune a model on the repository every weekend so that it knows the code
+        why: Weights are a week old at best, cannot track hourly changes, and give no pointer to the file that supports an answer.
+        misconception: Fine-tuning is a way to store a changing codebase
+      - text: Return each hit together with its neighbouring chunks, so every function appears complete
+        why: Neighbouring text helps readability but finds no additional callers and does nothing about deleted code.
+        misconception: More surrounding text fixes retrieval misses
     explanation: |
-      Match the technique to the problem. Knowledge that changes and must be cited belongs in retrieval; style and
-      format are behaviours that prompts (or, if needed, fine-tuning) address. Fine-tuning is poor at storing
-      facts that change and cannot provide verifiable provenance.
+      Code is structured and exact: definitions, references and call graphs are better answered by search tools
+      over the live repository than by similarity over stale text chunks. Let the model drive those tools
+      iteratively, keep the index (if any) in step with merges, and avoid fine-tuning for knowledge that changes
+      hourly.
 
   - id: D5-017
     version: 1
@@ -652,9 +668,9 @@ items:
       - text: "Profile the columns and check each hypothesis against policies the business can confirm"
         correct: true
         why: Value distributions plus known records quickly show what a code means, and the checks are cheap, read-only and verifiable.
-      - text: Infer each column's meaning from its name and build the active filter on the likeliest reading
-        why: Legacy abbreviations are ambiguous, and an unverified guess produces a confidently wrong list of active policies.
-        misconception: Column names in legacy schemas are self-explanatory
+      - text: Ask the policy administrators what active means and encode their description as the filter
+        why: People's accounts of old rules omit edge cases such as reinstated or grace-period policies, and without checks against the data the filter is unverified.
+        misconception: A stakeholder's verbal definition is enough without checking it against the data
       - text: Paste sample rows into an LLM and adopt the field meanings that it proposes
         why: A model can suggest hypotheses, but without checks against real records its explanation is unverified speculation.
         misconception: An LLM's reading of the data is a substitute for validating it
@@ -708,37 +724,39 @@ items:
     version: 1
     type: multi
     subtopic: data.sql
-    tags: [gov.guardrails]
+    tags: [eval.rag-agent, llm.failure-modes]
     competencies: [x.sql]
     difficulty: 2
     level: evaluate
     time_s: 110
     stem: |
-      A client wants business users to ask questions in plain English, with an LLM generating SQL that runs
-      against their Postgres reporting database. The security reviewer asks how misuse and accidents will be
-      limited. Which controls should be in the design?
+      A client's analysts ask a text-to-SQL assistant questions over a warehouse with 300 tables. It runs safely
+      under a read-only role, but finance finds that "net revenue by region" differs from their dashboard, and
+      joins to the wrong fact table are common. Which changes will most improve the correctness of the answers?
     options:
-      - text: Execute with a dedicated database role that has read-only access to an approved set of views
+      - text: Expose curated views with business terms such as net revenue defined once, and point the model at them
         correct: true
-        why: Privileges enforced by the database hold even if the generated SQL is wrong or manipulated.
-      - text: Apply a statement timeout and a row limit, and reject anything that is not a single SELECT after parsing
+        why: The model no longer has to guess a definition from raw tables, and the number matches the one finance already trusts.
+      - text: Retrieve only the relevant table and column descriptions, plus verified question-and-SQL examples, per request
         correct: true
-        why: It bounds accidental heavy scans and blocks multi-statement or write attempts before execution.
-      - text: Show users the generated SQL and the filters used alongside each answer
+        why: A small, relevant context with proven examples cuts wrong-table joins and shows how this company's terms map to SQL.
+      - text: Keep a golden set of questions with reference answers and compare result sets after each schema or prompt change
         correct: true
-        why: Transparency lets analysts catch a wrong join or filter, which is the commonest failure of text-to-SQL.
-      - text: Tell the model in the system prompt never to write DELETE, UPDATE or DROP
-        why: A prompt is guidance and not enforcement; injected or confused outputs can ignore it.
-        misconception: Instructions to the model are a security control
-      - text: Run the queries under the application's shared service account, since it already has the access it needs
-        why: That account can usually write and reads tables beyond what any one user should see, defeating least privilege.
-        misconception: Reusing an existing credential is the simplest safe option
-      - text: Block the words DROP and DELETE with a regular expression on the generated text
-        why: A keyword blocklist misses other harmful statements and still allows expensive or sensitive reads.
-        misconception: A text filter is equivalent to authorisation
+        why: Execution results expose a plausible-looking but wrong query, and the comparison catches regressions when schemas or prompts change.
+      - text: Paste the full DDL of all 300 tables into every prompt so the model can choose the right ones itself
+        why: A huge schema invites wrong joins and spends tokens, and DDL still says nothing about what net revenue means.
+        misconception: More schema context always improves generated SQL
+      - text: Set temperature to 0 so the model produces the same query for a given question every time
+        why: A deterministic query can be consistently wrong; the cause here is missing business definitions, not randomness.
+        misconception: Determinism is the same as correctness
+      - text: Replace result comparisons with a second model call that reads each query and judges whether it looks right
+        why: A reader of SQL text lacks the same business knowledge and approves plausible joins; only running queries against known answers catches this.
+        misconception: An LLM review of query text is as good as testing results
     explanation: |
-      Treat generated SQL as untrusted input. Enforce limits where they cannot be talked around: database
-      privileges, query validation, timeouts and row caps. Showing the SQL helps users and reviewers verify the answer.
+      Text-to-SQL fails mostly on meaning, not syntax: which table, which join, what a business term denotes. Give the
+      model a semantic layer (curated views or metric definitions), a focused context with verified examples, and
+      evaluate by executing queries against reference answers. Safety controls such as read-only roles, timeouts and
+      row limits are necessary, but they do not make answers correct.
 
   - id: D5-024
     version: 1
@@ -989,8 +1007,8 @@ items:
 
       A user can read a document if at least one `allow` entry applies to them and no `deny` entry applies to them.
       An entry applies to a user when its principal is `'public'`, is `'user:'` followed by their id, or is
-      `'group:'` followed by a group they belong to. Return `doc_id` and `title` of every document that user
-      `alice` can read, ordered by `doc_id`.
+      `'group:'` followed by a group they belong to. Return two columns in this order, `doc_id` and `title`, for
+      every document that user `alice` can read, ordered by `doc_id`.
     sql:
       setup: |
         CREATE TABLE documents(doc_id TEXT, title TEXT);
@@ -1053,9 +1071,9 @@ items:
       when the field was empty. A ticket's current state is its latest snapshot (latest `synced_at`; if two share a
       timestamp, the higher `snapshot_id`).
 
-      Return, for tickets whose current `status` is not `'Done'`, the number of tickets per priority as
-      `priority` and `tickets`, where a NULL priority is shown as `'unset'`. Order by `tickets` descending, then
-      `priority` ascending.
+      Return, for tickets whose current `status` is not `'Done'`, the number of tickets per priority as two
+      columns in this order: `priority` and `tickets`, where a NULL priority is shown as the text `'unset'` (its own
+      group). Order by `tickets` descending, then by the displayed `priority` text ascending.
     sql:
       setup: |
         CREATE TABLE ticket_snapshots(snapshot_id INT, ticket_key TEXT, status TEXT, priority TEXT, synced_at TEXT);
@@ -1106,9 +1124,9 @@ items:
       (higher is later). A ticket is *reopened* whenever an event with status `'open'` immediately follows (in time
       order, for the same ticket) an event with status `'closed'`.
 
-      Return, for each ticket that was reopened at least once, `ticket_id`, `reopen_count`, and `max_gap_hours`:
-      the longest time in hours (rounded to 1 decimal) between a closure and the reopening that followed it.
-      Order by `ticket_id`.
+      Return, for each ticket that was reopened at least once, three columns in this order: `ticket_id`,
+      `reopen_count` (number of reopenings), and `max_gap_hours`: the longest time in hours (rounded to 1 decimal)
+      between a closure and the reopening that immediately followed it. Order by `ticket_id`.
     sql:
       setup: |
         CREATE TABLE ticket_events(event_id INT, ticket_id TEXT, status TEXT, changed_at TEXT);
@@ -1166,7 +1184,7 @@ items:
       - `documents(doc_id, updated_at, is_deleted)`: `updated_at` is ISO-8601 text; `is_deleted` is 0 or 1.
       - `chunks(chunk_id, doc_id, indexed_at)`: one row per indexed chunk; `indexed_at` is ISO-8601 text.
 
-      Report each document with a problem, as `doc_id` and `problem`:
+      Report each document with a problem, as two columns in this order, `doc_id` and `problem`:
 
       - `'never_indexed'`: not deleted and has no chunks;
       - `'stale'`: not deleted, has chunks, and `updated_at` is later than the latest `indexed_at` of its chunks;
@@ -1234,7 +1252,8 @@ items:
       - `CUR` is the currency code. Only `'USD'` orders are wanted.
       - `VOID_FLG` is `'Y'` for voided orders; it is `'N'` or NULL otherwise. Exclude voided orders.
 
-      Return `month` (formatted `'YYYY-MM'`) and `revenue_usd` (the sum of amounts in whole USD), ordered by month.
+      Return two columns in this order: `month` (formatted `'YYYY-MM'`) and `revenue_usd` (the sum of the amounts in
+      US dollars, not cents, keeping the cents as decimals, rounded to 2 decimals). Order by month.
     sql:
       setup: |
         CREATE TABLE ORD_HDR(ORD_NO INT, CUST_NO INT, ORD_DT TEXT, AMT INT, CUR TEXT, SRC TEXT, VOID_FLG TEXT);
@@ -1280,10 +1299,10 @@ items:
       is NULL for articles published in the last few days (treat NULL as 0).
 
       For each category, return the articles in the top two by `views_30d`, counting all articles tied with the
-      second-highest view count (so a category can return more than two). Return `category`, `article_id`,
-      `views_30d` (NULL shown as 0) and `share` — the article's views divided by the category's total views,
-      rounded to 3 decimals (0 if the category total is 0). Order by `category`, then `views_30d` descending, then
-      `article_id`.
+      second-highest view count (so a category can return more than two). Return four columns in this
+      order: `category`, `article_id`, `views_30d` (NULL shown as 0) and `share` — the article's views divided by the
+      category's total views (NULL counted as 0), rounded to 3 decimals (0 if the category total is 0). Order by
+      `category`, then `views_30d` descending, then `article_id`.
     sql:
       setup: |
         CREATE TABLE kb_articles(article_id INT, category TEXT, title TEXT, views_30d INT);
