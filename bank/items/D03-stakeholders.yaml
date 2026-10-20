@@ -18,14 +18,14 @@ items:
       - text: "Launch moves from 3 November to 24 November. To hold that date, we need your approval of read access to the claims warehouse by Friday."
         correct: true
         why: "Leads with the decision-relevant fact and the specific ask, which is what a busy executive needs from the first lines."
-      - text: "Since kickoff the data team has hit three delays: the access request, a VPN change and a security questionnaire, which together push launch back about three weeks."
-        why: "Accurate but chronological. The reader has to work through the history to find the consequence and what is wanted of them."
+      - text: "The access request went in on 2 September, the VPN change took until 30 September and the security questionnaire is still open, which together move launch from 3 November to 24 November."
+        why: "Accurate and complete but chronological. The reader has to work through the history to reach the consequence, and the ask for approval is missing."
         misconception: "Explaining the sequence of events builds credibility"
-      - text: "The team is making great progress on the build and the project is tracking well overall; the one item to flag is a small risk to the launch date from data access."
-        why: "Buries a three-week slip under reassurance and calls it a small risk, which will damage trust when the date moves."
+      - text: "The build is tracking well and testing is on schedule; the one item to flag is data access, which could move the 3 November launch by around three weeks if approval is not completed."
+        why: "Buries a three-week slip under reassurance and hedges it as a possibility, which will damage trust when the date moves."
         misconception: "Soften bad news by leading with positives"
-      - text: "First, I want to apologise for the delay and reassure you of our full commitment to making this a success; the details of what happened follow."
-        why: "Expresses goodwill but the executive still does not know the new date or what is needed from them."
+      - text: "I want to apologise for the delay to the 3 November launch and assure you of our full commitment to making it a success; the new date and what we need from you follow below."
+        why: "Expresses goodwill but the executive still does not know the new date or what is needed from them in the part they will read."
         misconception: "Acknowledging feelings must come before the facts"
     explanation: |
       For executives, lead with the bottom line: the decision, the impact, and the ask. Background goes underneath for those
@@ -45,18 +45,21 @@ items:
       need it to be right every time." Pilot testing shows it answers about 94% of test policy questions correctly. Which
       response is most useful to her decision?
     options:
-      - text: "Report the measured accuracy on a representative test set with the types of error found, then describe the review step that catches the costly ones"
+      - text: "Give the measured rate and the kinds of errors found, then show how a review step catches the costly ones"
         correct: true
         why: "Gives her a calibrated picture, with evidence and controls she can take to her own risk process."
-      - text: "Commit to full correctness on policy questions by restricting answers to quoted passages and tightening the prompt, since instructions can enforce that"
-        why: "Instructions reduce errors but do not guarantee them, and an unmet promise to a compliance head is costly."
+      - text: "Say the goal is full correctness, restrict answers to quoted passages, and commit to correcting any wrong answer within a day"
+        why: "Restricting to quotes reduces errors but does not guarantee them, and an unmet promise to a compliance head is costly."
         misconception: "Prompting and guardrails can make a model deterministic"
       - text: "Explain that outputs are sampled from a probability distribution and that lowering temperature reduces variation, so she can judge the residual risk"
         why: "Technically sound but not decision-relevant; it explains mechanism instead of telling her how often, how badly, and with what safeguards."
         misconception: "Explaining the mechanism is what makes uncertainty understandable"
-      - text: "Point out that human reviewers also make mistakes on policy questions and that the assistant probably matches their error rate, so the risk is acceptable"
-        why: "A fair comparison needs a measured human baseline. Asserting parity without data dismisses her concern."
+      - text: "Say that 94% is above what human reviewers typically achieve on policy questions, so the risk is already lower than today's"
+        why: "A fair comparison needs a measured human baseline. Asserting parity or better without data dismisses her concern."
         misconception: "Humans are imperfect, so the AI's imperfection needs no further treatment"
+      - text: "Add a notice to every answer saying it may contain mistakes and must be checked, and present the notice as the control"
+        why: "A disclaimer shifts the checking to the reader without measuring or reducing the errors. She cannot take it to a risk process as evidence."
+        misconception: "A warning label is a control"
     explanation: |
       Communicate probabilistic behaviour with measured rates, the kinds of errors, and the controls around them. Neither
       promising perfection nor lecturing on sampling gives a risk owner what she needs.
@@ -87,9 +90,9 @@ items:
       - text: "Transcripts of every prompt variant tried during the evaluation, kept so that nothing is lost"
         why: "Belongs, if anywhere, in an appendix or repository. In the record it buries the argument."
         misconception: "More detail makes a decision record more rigorous"
-      - text: "Only the benefits of the chosen option, to keep the board's attention on the recommendation"
-        why: "Omits the trade-offs, which is the main thing a reviewer needs to challenge."
-        misconception: "A persuasive document should not show the downsides"
+      - text: "A sprint-level implementation plan for building the chosen option, so the board sees it is deliverable"
+        why: "A plan is a separate document with a different audience and lifespan. In the record it dilutes the reasoning and dates quickly."
+        misconception: "A decision record should also say how the work will be done"
       - text: "The vendors' published benchmark results as the primary evidence for the quality comparison"
         why: "Generic benchmarks do not show how either option performs on this customer's contracts."
         misconception: "Public benchmarks substitute for customer-specific evaluation"
@@ -113,15 +116,15 @@ items:
       - text: "Start with failure modes and error rates measured on their own documents, the controls around them, and the limits of the claims"
         correct: true
         why: "Engineers test claims; showing measured limits on their data invites scrutiny and builds trust."
+      - text: "Walk through the architecture and security design in detail first, so the board can see that the system is soundly engineered before any results"
+        why: "Engineers will want the design, but design quality does not answer their doubt, which is whether the model is reliable enough for payments."
+        misconception: "A sound architecture is what makes a probabilistic component trustworthy"
       - text: "Open with the business case and projected savings, so that the board understands why the payments flow is worth taking some risk on"
         why: "That framing suits executives. This audience will read it as avoiding the technical questions."
         misconception: "One message works for every audience"
-      - text: "Run a live demo on well-chosen documents to show extraction quality at its best, then take questions from the board"
-        why: "A curated demo shows the best case, which a sceptical board will discount."
-        misconception: "Showing it working is more persuasive than showing where it fails"
-      - text: "Compare the approach with two competing vendor products in a feature matrix, to show the choice was considered"
-        why: "Answers a procurement question, not the board's concern about reliability in a payments flow."
-        misconception: "Comparison with alternatives answers a reliability question"
+      - text: "Present reference deployments at two other payment processors and the results they reported after go-live"
+        why: "Social proof from other environments does not answer how it behaves on this board's documents, and engineers discount it."
+        misconception: "Other customers' success answers this customer's reliability question"
     explanation: |
       For technical reviewers, lead with evidence and limits: measured behaviour, failure modes, controls. Depth and
       candour about weaknesses do more for credibility than breadth or polish.
@@ -140,12 +143,12 @@ items:
       from her own boss, wants to go live next week. Most remaining errors come from low-quality scans. How should the FDE
       communicate this?
     options:
-      - text: "Report 87% against the 95% target with the error breakdown, and recommend a limited launch with human review of uncertain cases"
+      - text: "State 87% against the agreed 95% with the error breakdown, and recommend a limited launch with human review of uncertain cases"
         correct: true
         why: "Honest about the gap, offers a path that respects her deadline, and gives her something to decide, not just a problem."
-      - text: "Describe the accuracy as roughly 90% and still improving, which is accurate to the nearest ten and avoids a distracting debate about the agreed target"
-        why: "Rounding that hides a miss against an agreed target damages credibility the moment anyone checks."
-        misconception: "Round favourably to keep momentum"
+      - text: "Open with the improvement since the last evaluation, 71% to 87%, then state the gap to 95% and how it could be closed"
+        why: "The trend is true and worth including, but leading with it softens the miss, and without a recommendation she cannot brief her boss."
+        misconception: "Lead with progress to keep momentum"
       - text: "Present the shortfall and the possible paths, then ask the sponsor to choose between them, since the launch decision is hers to make"
         why: "The decision is hers but she needs a recommendation. Handing back options leaves her to decide on technical grounds."
         misconception: "Neutrality is the safest stance for an advisor"
@@ -154,7 +157,7 @@ items:
         misconception: "Do not raise a problem until it is fixed"
     explanation: |
       Communicating uncertainty means stating the measured result against the agreed bar, explaining the cause, and
-      recommending a course with a date. Rounding, withholding and neutrality each fail the sponsor in a different way.
+      recommending a course with a date. Softening, withholding and neutrality each fail the sponsor in a different way.
 
   - id: D3-006
     version: 1
@@ -172,15 +175,15 @@ items:
       - text: "Express the gap in business terms: extra corrections per thousand cases, their cost, against the monthly saving, with a recommendation"
         correct: true
         why: "Translates the technical difference into units the sponsor can weigh, and offers a view."
-      - text: "Share benchmark scores for both models and let the sponsor pick, since numbers are the neutral way to present it"
-        why: "Benchmark scores do not tell her what four extra errors per hundred cost her operation."
+      - text: "Show cost per case and error rate for both models side by side and let the sponsor pick, since that keeps engineering neutral"
+        why: "Gives her the numbers but not what four extra errors per hundred cost her operation, so she must do the conversion and has no recommendation."
         misconception: "Presenting raw metrics is neutral and therefore sufficient"
       - text: "Recommend the larger model, since a quality loss that users can see will cost more credibility than any saving it brings"
         why: "May be right, but stated as an assertion. Without numbers, the sponsor cannot test it against her own priorities."
         misconception: "Quality always beats cost"
-      - text: "Keep the decision in engineering and report the result, since model choice is an implementation detail the sponsor need not weigh"
-        why: "The choice moves cost and error exposure that belong to the sponsor's budget and risk, so it is not merely technical."
-        misconception: "Anything involving a model is a technical decision"
+      - text: "Recommend the smaller model, since a 60% cost cut is large and the existing review step will catch most of the extra errors"
+        why: "May also be right, but it relies on an unmeasured claim about the review step and gives her no numbers to check it against."
+        misconception: "Cost savings are certain while quality loss is manageable"
     explanation: |
       Trade-offs are communicated in the decision-maker's units: money, risk and operational effort. Give a recommendation
       and the numbers behind it, so the sponsor can agree or disagree for stated reasons.
@@ -199,13 +202,16 @@ items:
       leakage". The sponsor is frustrated and wants the FDE to join an escalation to the CIO. The project has two weeks
       of slack. What should the FDE do first?
     options:
-      - text: "Meet the security lead, ask what evidence they need, and propose a scoped read-only role with logging; escalate if that stalls"
+      - text: "Meet the security lead, ask which leakage scenarios worry them, and propose scoped read-only access with logging; escalate if that stalls"
         correct: true
         why: "Treats the objection as a requirement to be met, and leaves escalation as a fallback with slack still available."
       - text: "Join the escalation to the CIO now, since delay is costing the project weeks and security's risk appetite is a leadership decision"
         why: "Speed is tempting, but escalating before understanding the concern hardens opposition, and slack remains."
         misconception: "Escalate early to protect the schedule"
-      - text: "Continue on synthetic data and bring real data to security once the prototype impresses them"
+      - text: "Send the security lead the vendor's SOC 2 report and data-processing terms, and ask for approval on that basis"
+        why: "Answers a generic question about the vendor, not this lead's specific fear about what the LLM can reach, and it asks for a decision without a conversation."
+        misconception: "Compliance paperwork resolves a security objection"
+      - text: "Continue on synthetic data until the security review concludes, then request real data; two weeks of slack covers the wait"
         why: "Defers the problem and risks a prototype that cannot meet the real data's quality or constraints."
         misconception: "Showing results will dissolve a security objection"
       - text: "Ask the sponsor to sign a time-limited exception so access can start while the security review continues"
@@ -220,26 +226,27 @@ items:
     type: single
     subtopic: comms.stakeholders
     tags: [discovery.framing, gov.audit-compliance]
-    difficulty: 1
+    difficulty: 2
     level: analyze
     time_s: 90
     stem: |
       A legal-document assistant is nearly built for the General Counsel's team when the records-management group
-      objects: retention policy bars derived copies of certain documents, and that includes the search index. Which
-      discovery practice would most likely have caught this earlier?
+      objects: retention policy bars derived copies of certain documents, and that includes the search index. The
+      privacy and security reviews had both passed. Which discovery practice would most likely have caught this
+      earlier?
     options:
       - text: "Mapping stakeholders by who controls data, policy and sign-off as well as who sponsors and uses the system"
         correct: true
         why: "Records management is neither sponsor nor user but controls a constraint; mapping by control surfaces them."
-      - text: "Holding weekly demos with the sponsor, so any objection comes out as soon as features become visible"
-        why: "Demos to the sponsor reveal what the sponsor sees. A group that was never invited would not appear."
-        misconception: "More frequent demos solve a missing-stakeholder problem"
+      - text: "Starting the privacy impact assessment and security review earlier and making them deeper"
+        why: "Those reviewers own privacy and security. Retention of derived copies sits with a group that neither review involves, so a deeper review by the same people misses it."
+        misconception: "More thorough standard reviews cover every compliance constraint"
       - text: "Asking the sponsor to list every constraint at kickoff, and treating the list as complete"
         why: "The sponsor can only name constraints they know about, and they may not know about retention rules."
         misconception: "The sponsor knows all the constraints"
-      - text: "Running the privacy and records review after the prototype exists, so that reviewers have a concrete system to assess"
-        why: "A later review is the cause of the surprise; a concrete system was already built against the objection."
-        misconception: "Reviewers need working software before they can engage"
+      - text: "Interviewing a larger sample of the General Counsel's lawyers about how they would use the system"
+        why: "User research shows how people would work, not which policies bind the system. Lawyers using the tool would not necessarily know the retention rule either."
+        misconception: "Talking to more end users uncovers every constraint"
     explanation: |
       Stakeholder mapping should cover everyone who can block or constrain the work: legal, records, privacy, security and
       IT, not only sponsor and users. Early conversations with them are cheaper than late surprises.
@@ -254,21 +261,21 @@ items:
     time_s: 100
     stem: |
       In a steering meeting, the customer's CEO, impressed by a demo of invoice triage, says: "Great, have it handling
-      all customer email by month end." The team estimates that is five months of work. The sponsor looks at the FDE.
-      What should the FDE do in the room?
+      all customer email by month end." The team estimates that is five months of work, and he will repeat the
+      month-end date to the board on Thursday. The sponsor looks at the FDE. What should the FDE do in the room?
     options:
       - text: "Affirm the goal, show the first slice that can land by month end, and ask what should give way for the rest"
         correct: true
-        why: "Keeps the CEO's ambition, makes the trade-off visible, and puts the choice with the person entitled to make it."
-      - text: "Say you will look into it, then reset expectations with the sponsor privately so nobody is contradicted publicly"
-        why: "Avoids friction now, but leaves the CEO believing the date is feasible and the sponsor with an awkward correction to make."
+        why: "Keeps the CEO's ambition, makes the trade-off visible before he repeats the date, and puts the choice with the person entitled to make it."
+      - text: "Say you will look into it and report back by Wednesday, then reset expectations with the sponsor privately so nobody is contradicted publicly"
+        why: "Avoids friction now, but leaves the CEO believing the date is feasible when he speaks to the board on Thursday."
         misconception: "Never disagree with a senior person in public"
       - text: "Explain that the request is not feasible in that time, listing the data, integration and evaluation steps that are involved"
         why: "May be accurate, but a list of obstacles reads as a refusal and lands badly. It offers the CEO no route to progress."
         misconception: "Detailing the constraints is the same as saying a useful no"
-      - text: "Accept the date and renegotiate scope as the work proceeds, since pushing back on a CEO in the meeting would cost goodwill"
-        why: "Commits the team to a date it will miss and moves the difficult conversation to a worse moment."
-        misconception: "Agree now, fix later"
+      - text: "Propose to reach month end by adding two engineers and asking the customer's IT team for dedicated integration staff"
+        why: "Adding people late to a five-month plan does not compress it to weeks, and it commits the customer's staff on the FDE's behalf."
+        misconception: "Adding people compresses a schedule"
     explanation: |
       Saying no to a senior executive works best as a yes to the goal with an explicit trade-off: what can be done by the
       date, what the rest costs, and what would have to give. It keeps authority and information together.
@@ -291,12 +298,12 @@ items:
       - text: "Correct the figure in the meeting with the pilot data, since a wrong target left standing will become the FDE's failure"
         why: "The risk is real, but a public correction of an ally damages the relationship when a private one achieves the same."
         misconception: "Transparency requires immediate public correction"
-      - text: "Leave it, since the claim is the sponsor's and forecasts are their responsibility to the steering group"
-        why: "The FDE will be judged against the figure, and the data to correct it is theirs."
-        misconception: "Other people's claims are not our concern"
-      - text: "Circulate a written status note with the real pilot figures to the whole steering group, so the data speaks for itself"
-        why: "Goes around the sponsor and undermines them, which looks like a political move."
-        misconception: "Going around the sponsor is acceptable when the facts are on your side"
+      - text: "Put the pilot range in the next written status report without comment on the sponsor's figure, so the data is on record"
+        why: "Gets the facts out, but the sponsor learns of the gap from a document her peers also read, which feels like an ambush."
+        misconception: "Letting the data speak is a gentler way to correct"
+      - text: "Hold off until full rollout data is in, since a pilot figure may improve at scale and the sponsor's number could still prove right"
+        why: "Possible, but today's evidence says 20 to 25%, the FDE will be judged against the figure, and waiting lets the expectation harden."
+        misconception: "Pilot data are too uncertain to challenge a claim"
     explanation: |
       Expectation management is mostly private and early: align the sponsor on facts before a public setting forces the
       issue. Silence lets the gap grow; a public correction or a bypass costs the relationship.
@@ -325,9 +332,9 @@ items:
       - text: "Ask for temporary administrator rights in the test environment so that integration issues can be fixed quickly"
         why: "Speeds the work but asks for more access than needed, which is what a sceptical team fears most."
         misconception: "Broad access in non-production is harmless to trust"
-      - text: "Open with a polished demonstration of the assistant's capabilities in the first meeting"
-        why: "A demo addresses what the product can do. IT's worries are about what it can reach and break."
-        misconception: "Capability wins over scepticism"
+      - text: "Lead with the vendor's security certifications and reference customers to show that IT's concerns are already solved elsewhere"
+        why: "Certifications describe the vendor's own estate. IT's worries are about what the system can reach and break in theirs."
+        misconception: "Credentials from other environments answer this team's concerns"
       - text: "Ask the executive sponsor to instruct IT to cooperate, so no time is spent winning agreement"
         why: "A mandate buys compliance but not cooperation, and IT retains many ways to slow the work."
         misconception: "Authority from above is a substitute for earned trust"
@@ -345,7 +352,8 @@ items:
     time_s: 75
     stem: |
       The customer's data owner has not delivered a promised extract for three weeks, and the build is blocked. The
-      relationship is friendly and no escalation path was agreed at kickoff. What is the best next step?
+      data owner sits in a different department from the sponsor. The relationship is friendly and no escalation path
+      was agreed at kickoff. What is the best next step?
     options:
       - text: "Tell the data owner you are raising it, then give the sponsor the dated impact and a request"
         correct: true
@@ -357,7 +365,7 @@ items:
         why: "Hides a risk and produces work that may not survive real data."
         misconception: "Keeping the plan on track matters more than surfacing the blocker"
       - text: "Contact the data owner's manager directly with the facts, so the sponsor is not troubled with a detail"
-        why: "Goes around both the data owner and the sponsor, and a three-week block is no longer a detail."
+        why: "Goes around both the data owner and the sponsor, who is the one with standing to raise it across departments, and a three-week block is no longer a detail."
         misconception: "Escalating sideways is more tactful than going up"
     explanation: |
       Good escalation is open and specific: tell the person you are raising it, quantify the impact in days, and ask the
@@ -373,18 +381,20 @@ items:
     time_s: 110
     stem: |
       A sales-operations VP wants AI-drafted customer emails sent automatically to keep response time under an hour.
-      Legal wants every message reviewed before it goes out. Both are senior and both have a legitimate point. What
-      should the FDE do?
+      Legal wants every message reviewed before it goes out. Both are senior and both have a legitimate point. Most
+      of the volume is routine order-status and scheduling replies; a minority involve pricing, contracts or
+      complaints. The COO, who is the project's executive sponsor, has authority over both functions. What should the
+      FDE do?
     options:
-      - text: "Bring both to the sponsor with a tiered option: auto-send low-risk categories, review high-risk ones"
+      - text: "Bring both to the COO with a tiered option: auto-send low-risk categories, review high-risk ones"
         correct: true
-        why: "Turns a binary conflict into a risk-based design that gives each side most of what it needs, with a decision from the right person."
+        why: "Turns a binary conflict into a risk-based design that gives each side most of what it needs, with a decision from the person who has authority over both."
+      - text: "Propose auto-sending everything for now, with Legal reviewing a daily sample afterwards and the rules tightened if problems appear"
+        why: "A real compromise, but it gives up Legal's pre-send review on exactly the messages where an error is costly, and the FDE is choosing that trade-off for the COO."
+        misconception: "Sampling after the fact is equivalent to review before sending"
       - text: "Side with Legal, since a wrongly sent message carries legal exposure while a slow reply costs only a little goodwill"
         why: "Plausible on risk, but a unilateral choice sacrifices the business goal and the FDE does not own that trade-off."
         misconception: "The more conservative side should win by default"
-      - text: "Build both flows and let each department use its own, to avoid forcing a compromise that either would resist"
-        why: "Doubles the build and maintenance, and leaves the underlying disagreement about risk unresolved."
-        misconception: "Accommodating everyone is the same as resolving the conflict"
       - text: "Ask the two leaders to settle it between themselves and report back, since they own their own functions"
         why: "Neither has authority over the other, so the conflict stalls and the project waits."
         misconception: "Peers can resolve a cross-functional conflict unaided"
@@ -406,15 +416,15 @@ items:
       Interviews show managers still ask for the weekly report from the legacy tool, and the assistant sits in a separate
       browser tab. What is the best next step?
     options:
-      - text: "Embed the assistant in the system people already work in, and have managers take their report from its output"
+      - text: "Put the assistant inside the system people already work in, and have managers take the weekly report from its output"
         correct: true
         why: "Removes the reason for the old path and puts the new one where the work happens."
-      - text: "Run more training sessions, since non-users may not yet know how the assistant helps them"
-        why: "The users who tried it are productive. The barrier is workflow position, not knowledge."
-        misconception: "Low usage means users need more training"
-      - text: "Add the features that survey respondents asked for, since a more complete tool will draw people from the old one"
-        why: "Features add value only if people reach the tool. The old report requirement keeps pulling them back."
-        misconception: "Adoption follows capability"
+      - text: "Recruit a respected user in each team as a champion and pair every non-user with one for a week"
+        why: "Peer support helps, but champions cannot remove the manager's report requirement or the extra tab that pull people back."
+        misconception: "Peer influence outweighs structural friction"
+      - text: "Run another round of interviews and a survey of non-users, since the cause of low usage is not yet established"
+        why: "The existing interviews already show the cause. More research delays the fix."
+        misconception: "More research is needed before acting"
       - text: "Have the sponsor email a mandate to use the assistant from next month, with usage reported to managers"
         why: "Mandates can lift numbers briefly, but do nothing about the competing report and tab friction that cause the behaviour."
         misconception: "Policy alone changes habits"
@@ -437,18 +447,18 @@ items:
       - text: "Share of agents with access who complete a real customer case with the assistant within two weeks"
         correct: true
         why: "Measures completion of the core task, which is what activation means, relative to the people who could use it."
-      - text: "Number of licences assigned to agents compared with the number purchased"
-        why: "Measures rollout, not use; a licence can be assigned and never opened."
-        misconception: "Access equals adoption"
-      - text: "Share of agents who attended the training session in the first week after rollout"
-        why: "Measures effort invested, not behaviour changed."
-        misconception: "Training completion indicates adoption"
-      - text: "Average number of logins per agent per working day over the first two weeks"
-        why: "Logins can be high when users open the tool and abandon it; they do not show real work done with it."
-        misconception: "Activity counts equal value"
+      - text: "Share of the 900 agents who opened the assistant at least once in the first two weeks"
+        why: "Counts a single visit as use. Agents can open it once, find nothing useful and leave, so it measures curiosity rather than adoption."
+        misconception: "Any activity counts as adoption"
+      - text: "Average handling time of agents who use the assistant compared with those who do not"
+        why: "An outcome comparison, not a usage measure. Early adopters are often the most capable agents, so it is confounded and says nothing about how many people use it."
+        misconception: "An outcome comparison shows whether adoption is happening"
+      - text: "Average satisfaction score agents give the assistant in a short in-app rating prompt"
+        why: "Only people who engaged answer, and a high score from a small group can sit alongside very low use."
+        misconception: "Sentiment from users measures how many people use it"
     explanation: |
       Activation is the share of users who reach the core value moment, such as completing a real task, within a window.
-      Licences, training attendance and logins are easier to count but are not measures of use.
+      Licences, training attendance, logins and ratings are easier to count but are not measures of use.
 
   - id: D3-016
     version: 1
@@ -466,15 +476,15 @@ items:
       - text: "Have the VP state in writing what changes for roles, and make adjusters reviewers whose corrections shape the tool"
         correct: true
         why: "Addresses the fear at its source with a credible commitment and gives adjusters ownership of the tool's quality."
+      - text: "Have the VP tell the claims team in a town hall that no layoffs are planned, and repeat the message in the team newsletter"
+        why: "Repeating a verbal assurance with no detail on roles or time frame is easy to discount, and rumours fill the gap."
+        misconception: "Reassurance in general terms is enough to settle a rumour"
       - text: "Present the productivity gains to the whole claims team in a town hall to show the tool makes their work better"
         why: "Productivity gains are what make staff fear that fewer of them will be needed."
         misconception: "Showing benefits to the company reassures employees"
-      - text: "Add usage targets to adjusters' performance goals so the incentive to use the tool is built into how they are measured"
-        why: "With fear present, targets produce compliance and gaming, and confirm the suspicion that the tool judges them."
+      - text: "Add a monthly bonus tied to how often each adjuster accepts the assistant's suggestions"
+        why: "With fear present, paying for acceptance produces compliance and gaming, and confirms the suspicion that the tool judges them."
         misconception: "Incentives alone overcome fear"
-      - text: "Measure usage from logs and keep adjusters out of design talks until the tool is stable, to avoid feeding the rumours"
-        why: "Exclusion leaves the rumour unanswered and sends adjusters the message that the tool is being done to them."
-        misconception: "Silence prevents rumours from spreading"
     explanation: |
       Resistance driven by fear of replacement is a trust problem. Credible written commitments from someone with authority,
       plus real involvement of the affected people, work better than selling benefits or imposing targets.
@@ -492,18 +502,18 @@ items:
       savings. It has not been tested at scale on real workloads, and several supervisors are lukewarm. What rollout
       do you recommend?
     options:
-      - text: "A cohort rollout from a representative group with willing supervisors, with exit criteria and rollback before each expansion"
+      - text: "Staged cohorts across several sites and agent profiles, each expansion gated by exit criteria and a rollback plan"
         correct: true
-        why: "Limits the cost of surprises, builds local advocates, and lets the team learn at scale gradually."
+        why: "Limits the cost of surprises, tests at growing scale on representative users, and lets the team learn gradually."
+      - text: "A pilot with the most enthusiastic supervisors' teams, then everyone at once if they report well"
+        why: "Enthusiasts give a flattering signal, and the jump from a small group to 2,000 agents is the untested-at-scale risk the sponsor is ignoring."
+        misconception: "A friendly pilot group gives a reliable signal"
+      - text: "All agents on Monday but only the safest feature first, adding the others over the following weeks"
+        why: "Limits the feature risk, but all 2,000 agents and the lukewarm supervisors hit the system together, so scale and local resistance are not tested gradually."
+        misconception: "Phasing features is equivalent to phasing users"
       - text: "Launch to everyone on Monday with extra floor support, since one training and communications push is far cheaper than staging a rollout"
         why: "Cheapest on paper, but any defect or confusion hits 2,000 agents at once with lukewarm supervisors."
         misconception: "Staging costs more than it saves"
-      - text: "Start with the top-performing agents, since they will give the cleanest feedback and the best results to show the others"
-        why: "Top performers are unrepresentative, so results overstate the benefit and miss problems that ordinary agents will hit."
-        misconception: "A flattering pilot group gives a reliable signal"
-      - text: "Make the assistant optional for everyone indefinitely and let word of mouth decide how quickly use spreads"
-        why: "Gives the sponsor no control, no learning and no timeline, and rarely overcomes habit on its own."
-        misconception: "Voluntary use always spreads organically"
     explanation: |
       A gradual rollout with representative cohorts, willing local leaders, explicit exit criteria and rollback limits
       risk and produces trustworthy evidence. It is the usual path for change that crosses many users.
@@ -529,15 +539,15 @@ items:
       - text: "Set up a regular cross-department review chaired by the sponsor, where blockers are escalated and decided"
         correct: true
         why: "Gives a place where blockers can be resolved with authority instead of lingering."
-      - text: "Add features requested by the Finance team, since the gap is probably due to missing capability"
-        why: "Finance cites priorities, not features. Building more does not change those priorities."
-        misconception: "Adoption problems are product gaps"
+      - text: "Offer Finance a dedicated analyst to enter and check intake records for the first two months"
+        why: "Lowers effort, but Finance cites priorities, not workload. A subsidy removes the symptom and leaves the incentive unchanged."
+        misconception: "Adoption stalls because the work is burdensome"
+      - text: "Run a communication campaign for Finance staff explaining the benefits the other two departments have seen"
+        why: "Finance is declining for reasons of priority and measurement, and benefits accruing to other departments do not change either."
+        misconception: "Adoption problems are awareness problems"
       - text: "Negotiate separately with each department head and keep the sponsor out until there is something to report"
         why: "Without the sponsor, the FDE lacks the authority to move priorities, and Finance learns it can wait."
         misconception: "Quiet diplomacy replaces executive sponsorship"
-      - text: "Wait for usage in the other two departments to persuade Finance, since peers are the strongest influence"
-        why: "Peer pressure across departments is weak when the targets differ, and the stall may last for quarters."
-        misconception: "Organic spread resolves structural misalignment"
     explanation: |
       Cross-department adoption stalls when no one owns the end-to-end result and local incentives conflict. Executive
       sponsorship, shared goals and a place to decide are the standard remedies.
@@ -559,6 +569,9 @@ items:
       - text: "Have the customer's team make a change, redeploy and re-run the evaluation with the FDE only watching, before sign-off"
         correct: true
         why: "Capability is shown by doing, so the sign-off rests on observed independence rather than on attendance."
+      - text: "Pair the FDE with one named customer engineer for the final two weeks and hand that person every operational task"
+        why: "Builds depth in one person and creates a new single point of knowledge. Nobody has shown the team can operate the system, and that engineer may leave or be unavailable."
+        misconception: "Training one successor transfers the capability"
       - text: "Hand over complete documentation and a recorded walkthrough, so the team can learn at its own pace after the contract ends"
         why: "Documentation is necessary but does not prove the team can operate the system, and the questions will arrive after the FDE has left."
         misconception: "Complete documentation equals successful handoff"
@@ -581,21 +594,22 @@ items:
     level: apply
     time_s: 75
     stem: |
-      The customer's IT operations team, who have never run an LLM application, will own it after handoff. Which
-      runbook content will help them most on their first incident?
+      The customer's IT operations team already runs deployments and rollbacks for other applications but has never run
+      an LLM application, and will own this one after handoff. Which runbook content will help them most on their
+      first incident, such as a sudden rise in wrong answers?
     options:
       - text: "Symptom-based playbooks for known failures such as stale index, provider outage and quality drop, with actions and contacts"
         correct: true
         why: "Operators under pressure need to go from a symptom to an action, not from theory to diagnosis."
-      - text: "An architecture overview of how embeddings and transformers work, so that operators understand the system they are being asked to support"
-        why: "Background knowledge helps over time but does not tell an operator what to do at 2 a.m."
-        misconception: "Understanding the theory is what enables operations"
+      - text: "Step-by-step procedures for redeploying and rolling back the application and its configuration"
+        why: "Useful, but this team already does deployments and rollbacks. A rollback does not tell them what is wrong or whether rolling back would help."
+        misconception: "Operational procedures cover the incident"
+      - text: "A guide to every dashboard panel and metric, explaining what each shows and its normal range"
+        why: "Helps them read the system but stops short of what to do when a number is off, which is what a runbook is for."
+        misconception: "Understanding the metrics is the same as knowing the response"
       - text: "The full text of every prompt, annotated with the intent behind each phrase, so operators can edit them safely"
         why: "Prompt edits without evaluation are a risk, and they are not the first thing an operator needs in an incident."
         misconception: "Operators should be able to tune the prompts"
-      - text: "The model provider's API documentation and rate-limit tables, since most incidents will originate there"
-        why: "Public documentation is available anyway, and it will not capture this deployment's failures and checks."
-        misconception: "Vendor documentation substitutes for a runbook"
     explanation: |
       Runbooks are for the person who is paged. Organise them by symptom, with checks, actions, escalation contacts and the
       known failure modes of this deployment.
@@ -615,8 +629,8 @@ items:
       - text: "Keep prompts, evaluation sets and configuration in the customer's repository, document the platform dependency, and agree an SLA"
         correct: true
         why: "The customer owns what differentiates its solution, while a bounded, explicit dependency on the platform is managed by contract."
-      - text: "Re-implement the solution on open-source components before handoff, so that no dependence on the vendor remains afterwards"
-        why: "Costly for a two-person team, and the customer would then have to maintain every component themselves."
+      - text: "Build a portability layer so the solution can be moved to a different platform within weeks, and hand over the layer with the solution"
+        why: "Reduces switching cost on paper, but two engineers would have to maintain the layer and test it against alternatives, and it is rarely exercised until it is needed."
         misconception: "Eliminating a dependency is better than managing it"
       - text: "Keep the vendor operating the solution day to day, and give the customer dashboards, since two engineers cannot run it alone and need time"
         why: "Entrenches the dependency leadership wants to reduce and does not transfer capability."
@@ -649,9 +663,9 @@ items:
       - text: "Route all issues to the vendor's ticket queue so there is a single place to look and the vendor's expertise applies from the first report"
         why: "Simple, but it leaves the customer unable to resolve routine issues and makes every question a vendor cost."
         misconception: "Centralised support avoids confusion"
-      - text: "Review support arrangements annually and handle issues ad hoc in between, so that cost follows actual need"
-        why: "Leaves users with no defined path when something fails and no accountability for response."
-        misconception: "Support planning can wait until problems appear"
+      - text: "The help desk logs every call and passes it to the customer's app team, who contact the vendor by email if they judge it a platform defect"
+        why: "A defined path, but with no triage or evidence capture at the first level, the app team receives every vague complaint without trace data and the vendor cannot reproduce defects."
+        misconception: "A single internal owner is enough without triage"
     explanation: |
       A post-handoff support model defines who triages, who fixes, who escalates and what evidence moves between levels.
       Trace identifiers and examples let a help desk pass useful detail rather than "it's wrong".
@@ -679,12 +693,12 @@ items:
       - text: "The system met its uptime target for the previous 30 days while the FDE was handling the incidents themselves"
         why: "Measures the FDE's operation of the system, not the customer's."
         misconception: "Good service levels show readiness to hand over"
-      - text: "The customer engineers attended the training sessions delivered during the last month of the engagement"
-        why: "Attendance shows exposure, not competence."
-        misconception: "Training attendance indicates competence"
+      - text: "Each customer engineer explained, in a review session, what every dashboard metric means and what the alerts are for"
+        why: "Shows understanding of the monitoring, but not that they can diagnose and fix a live problem, which is the capability in question."
+        misconception: "Being able to explain the system shows the ability to operate it"
     explanation: |
       Exit criteria should be demonstrable: the customer has done the work, owns the assets and has assigned responsibility.
-      Documents, attendance and the FDE's own track record say little about the customer's ability.
+      Documents, explanations and the FDE's own track record say little about the customer's ability.
 
   # ---------------------------------------------------------------- numeric
   - id: D3-024
@@ -701,7 +715,7 @@ items:
       420 of them actually do, and each active agent contributes equally. A handling hour costs $38 fully loaded, and the
       vendor fee is $20,000 per month. What is the monthly net benefit, in US dollars (negative if a loss)? Round to the
       nearest dollar.
-    answer: {value: -2267, tolerance: 150, tolerance_type: abs, unit: "USD"}
+    answer: {value: -2267, tolerance: 150, tolerance_type: abs, unit: "USD (negative = loss)"}
     work: |
       Hours saved = 1,000 × 420 / 900 = 466.67.
       Value = 466.67 × $38 = $17,733.

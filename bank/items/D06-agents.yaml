@@ -115,7 +115,7 @@ items:
       - text: Move every step of the chain to the largest available model, to raise accuracy across the whole pipeline
         why: It spends money on the three steps that already work; the failing step needs a targeted fix and its own measurement.
         misconception: A uniformly bigger model is the cheapest broad fix
-      - text: Improve and separately evaluate the extraction step (better OCR, handwriting examples) and keep the chain
+      - text: Improve and measure extraction on its own (better OCR, handwriting examples) and keep the chain
         correct: true
         why: The data says where the errors are; a targeted fix with a per-step metric keeps the predictable path and addresses 80% of failures.
       - text: Add a second reviewing agent after the chain that audits the drafted acknowledgment before it is sent
@@ -334,7 +334,7 @@ items:
       - text: Build an agent that issues several searches with rephrased queries until it finds the right chunk
         why: Retries may eventually surface the chunk, but ranking on exact tokens is the real defect, and a loop multiplies cost and latency to work around it.
         misconception: An agent loop compensates for a weak retriever
-      - text: Fix retrieval by adding lexical matching next to embeddings, and re-run the golden set before any loop
+      - text: Add lexical matching alongside embeddings and re-run the golden set before building any loop
         correct: true
         why: The data points at ranking of exact terms; a hybrid retriever repairs it inside a single call.
       - text: Move to a larger context window and pass the top fifty chunks to the model rather than the top five
@@ -488,7 +488,7 @@ items:
       it sometimes ends with a confident "all 40 receipts verified" after processing only 12. Which harness changes make the
       stopping condition reliable?
     options:
-      - text: "Before accepting a final answer, compare the receipt IDs with the results recorded in code, and send the agent back to work if any are missing"
+      - text: "Before accepting a final answer, compare receipt IDs with results recorded in code, and send the agent back if any are missing"
         correct: true
         why: The completion test runs outside the model against recorded state, so a premature claim of being done is caught and corrected.
       - text: "Require the final answer as structured output with one status per receipt ID, validated against the input list"
@@ -497,13 +497,13 @@ items:
       - text: "Cap iterations and tokens per run, ending in an escalation to a person when the cap is reached"
         why: A sound guard against runaway loops, but this failure is the loop stopping too early, so the cap would never fire.
         misconception: Budget limits are the stopping condition
-      - text: "Add a line to the system prompt telling the model not to finish until every receipt has been checked"
+      - text: "Add a line to the system prompt telling the model not to finish until every one of the receipts has been checked"
         why: The model already believes it is finished; an instruction is a hint, not a control.
         misconception: A prompt instruction is sufficient to bound behavior
       - text: "After the final answer, ask the model in the same conversation whether it is sure it processed all receipts"
         why: The check relies on the same recollection that produced the wrong claim, so it tends to confirm itself.
         misconception: Self-verification catches omissions
-      - text: "Raise the maximum output tokens and the per-call timeout so the model has room to finish the job"
+      - text: "Raise the maximum output tokens and the per-call timeout so that the model has room to finish the whole job"
         why: Nothing was truncated or timed out; the model chose to stop.
         misconception: Early stops are caused by resource limits
     explanation: |
@@ -620,7 +620,7 @@ items:
       A desktop AI assistant is connected to a GitHub MCP server and a Jira MCP server. A user asks it to open a Jira ticket for
       the newest GitHub issue. Which description of how the MCP roles handle this is accurate?
     options:
-      - text: "The model reads the GitHub result in the host's context and makes a Jira call, which the host sends through the client dedicated to the Jira server"
+      - text: "The model reads the GitHub result in the host's context; the host sends its Jira call through the client dedicated to Jira"
         correct: true
         why: Hosts create one client per server and coordinate between them; servers do not see each other or the conversation.
       - text: "The GitHub server forwards the issue directly to the Jira server, because MCP servers connect to each other to share results"
@@ -629,7 +629,7 @@ items:
       - text: "A single client holds both connections, so the Jira server can read the GitHub result from that shared connection"
         why: Each client talks to exactly one server, which keeps each server's access and permissions separate.
         misconception: A single client multiplexes any number of servers
-      - text: "Each server is sent the full conversation up front so it can judge which of its own tools apply"
+      - text: "Each server is sent the full conversation up front so that it can judge which of its own tools apply to the request"
         why: Full conversation context stays with the host; servers receive only what a given request needs.
         misconception: Servers need the whole conversation to be useful
     explanation: |
@@ -722,7 +722,7 @@ items:
       - text: Return only a generic failure message, so that internal implementation details aren't exposed to the model
         why: Hiding detail is reasonable for stack traces, but a generic message gives the model nothing to fix, so retries repeat.
         misconception: Less information in errors is always safer
-      - text: Make the tool treat any past departure date as today and book that flight
+      - text: Make the tool treat any past departure date as today and book that flight instead
         why: Silent coercion books a trip the customer did not ask for, and the model never learns that its date was wrong.
         misconception: Being lenient is more helpful than rejecting bad input
     explanation: |
@@ -744,7 +744,7 @@ items:
       calls, usually among tools named `search`, `find` and `lookup` from different servers, and the 85 definitions consume a
       large share of the context window. Which changes should reduce wrong-tool selection?
     options:
-      - text: "Give each task or route only the subset of tools it needs, rather than all 85 at once"
+      - text: "Give each task or route only the subset of tools it needs, rather than loading all 85 at once"
         correct: true
         why: Fewer candidates at decision time means fewer confusable choices and less context spent on tool definitions.
       - text: "Let the agent search a tool catalog on demand, so only the few definitions it asks for are loaded into context"
@@ -756,10 +756,10 @@ items:
       - text: "Add a long system-prompt table that maps each kind of request to the tool it should use"
         why: Duplicates tool metadata in a form that goes stale and still leaves all 85 definitions competing for attention.
         misconception: A selection table in the prompt fixes ambiguous tool design
-      - text: "Replace the 85 tools with one generic `call_api(service, endpoint, params)` tool"
+      - text: "Replace the 85 tools with one generic `call_api(service, endpoint, params)` tool that routes every request"
         why: Moves the ambiguity into free-form parameters and discards per-tool schemas, validation and permission scoping.
         misconception: Fewer tools is better however it is achieved
-      - text: "Move to the largest available model and keep the full tool list unchanged"
+      - text: "Move to the largest available model and keep the full list of 85 tool definitions unchanged"
         why: A stronger model may help somewhat, but near-identical names and descriptions remain ambiguous to any model.
         misconception: Model capability makes tool design unnecessary
     explanation: |
@@ -785,13 +785,13 @@ items:
       - text: "Add a sentence to the tool description telling the model to call it once per alert"
         why: Guidance may reduce model-initiated repeats, but does nothing for harness retries after a timeout.
         misconception: Documentation alone controls side effects
-      - text: "Disable retries for this tool in the harness, so that a timed-out call is never repeated"
+      - text: "Disable retries for this tool in the harness, so that a timed-out call is not repeated"
         why: Removes duplicates from retries but loses tickets after genuine transient failures, and the model's repeat calls continue.
         misconception: No retries means no duplicates and no downside
       - text: "Have the harness attach a fresh idempotency key to each tool call and reuse that key when it retries"
         why: Fixes timeout retries, but a model-initiated repeat is a new tool call with a new key, so a second ticket still gets created.
         misconception: One key per call covers every source of duplicates
-      - text: "Derive the idempotency key from the run and the alert ID, and have the ticketing call return the existing ticket for a repeat"
+      - text: "Derive the idempotency key from the run and alert ID, and return the existing ticket for any repeat"
         correct: true
         why: Retries and model repeats for the same alert carry the same key, so both return the original ticket.
       - text: "Check for an existing ticket with a similar summary first, and skip creation if one is found"
@@ -828,7 +828,7 @@ items:
       - text: Prefer registry servers with the most downloads and stars, since heavy use implies community review
         why: Popularity is not a security review, and a widely installed server is a more attractive supply-chain target.
         misconception: Popularity signals trustworthiness
-      - text: Skip confirmation for tools whose annotations declare them read-only
+      - text: Skip the confirmation prompt for any tool whose own annotations declare it read-only
         why: Annotations are self-declared by the server; a malicious one can claim read-only and still read sensitive data.
         misconception: Server-provided hints can be trusted
       - text: Approve each server once at install time so later tool calls need no further checks
@@ -854,16 +854,16 @@ items:
       deployment budget is small. The platform group urges building each API as a separate remote MCP server "because MCP is the
       standard". What is the best first step?
     options:
-      - text: "Implement the three integrations as tools inside the agent service behind a thin interface, and move them to MCP servers if a second consumer appears"
+      - text: "Implement them as tools inside the agent service behind a thin interface, and move to MCP servers once a second consumer appears"
         correct: true
         why: MCP pays off when several hosts share an integration; with one consumer it adds deployments and auth to operate for no present benefit, and the thin interface keeps the move cheap.
-      - text: "Build three remote MCP servers with OAuth now, so that future agents can reuse them without rework"
+      - text: "Build three remote MCP servers with OAuth now, so that future agents can reuse them without any rework"
         why: Defensible for a platform strategy, but it spends the small budget on infrastructure for a consumer that does not exist yet.
         misconception: Build for hypothetical reuse
       - text: "Build one MCP gateway that fronts these three APIs and any other internal API the company might want to expose"
         why: Scope balloons well beyond the three APIs the agent needs, and a gateway carries its own security and ownership burden.
         misconception: A central integration layer should come before the first use case
-      - text: "Give the model a generic HTTP tool and the three OpenAPI documents, so no integration code is needed"
+      - text: "Give the model a generic HTTP tool plus the three OpenAPI documents, so that no integration code is needed"
         why: Skips the narrow tools, argument validation and credential handling that make the actions safe; the model would be forming raw requests.
         misconception: Documentation substitutes for integration code
     explanation: |
@@ -916,16 +916,16 @@ items:
       summaries. After several compactions, final reports contain figures that differ slightly from the sources ('$4.2B' has become
       'about $4B') and some citations point to the wrong page. How should compaction change?
     options:
-      - text: "Write exact figures, quotes and source locations to a notes store when they are found; keep only reasoning in the running summary, with references to the notes"
+      - text: "Put exact figures, quotes and sources in a notes store as found; keep only reasoning in the summary, with pointers to the notes"
         correct: true
         why: Facts that must stay exact never pass through repeated paraphrase, and the summary stays small because it points to the notes.
-      - text: "Tell the summarizer to preserve every number and citation verbatim in each summary"
+      - text: "Tell the summarizer to preserve every number and citation verbatim each time it writes a new summary"
         why: Helps at first, but each pass still rewrites prose that includes earlier summaries, so drift accumulates and compliance is not guaranteed.
         misconception: An instruction to the summarizer prevents lossy compression
-      - text: "Use the strongest available model for the summarization step so that each summary is more faithful"
+      - text: "Use the strongest available model for the summarization step so that each summary is more faithful to its sources"
         why: A better summarizer loses less per pass, but summaries of summaries still degrade and nothing anchors the exact values.
         misconception: Summary quality is a model-capability problem
-      - text: "Switch to the longest-context model so that compaction happens far less often"
+      - text: "Switch to the longest-context model so that compaction is needed far less often during a typical run"
         why: Delays the first compaction rather than fixing it, and a long agent run will reach the limit again.
         misconception: Enough context makes memory management unnecessary
     explanation: |
@@ -977,13 +977,13 @@ items:
       the team deployed a changed prompt and extra branches, replays of in-flight runs failed or took different paths than the
       original. Which practices make replay safe?
     options:
-      - text: "Execute model and API calls as recorded steps whose results are saved in the history, so a replay reuses the stored result instead of calling again"
+      - text: "Run model and API calls as recorded steps, so a replay reuses the stored result instead of calling again"
         correct: true
         why: Replay then reproduces the original run exactly, and the ticket is not created twice.
       - text: "Keep the orchestration code deterministic, with no direct clock reads, random numbers or model calls inside it"
         correct: true
         why: Replay re-executes this code, so anything non-deterministic can send it down a different path from the recorded one.
-      - text: "Version the workflow definition so in-flight runs finish on the logic they started with and only new runs use the new prompt and branches"
+      - text: "Version the workflow definition so in-flight runs finish on the logic they started with"
         correct: true
         why: Replaying old history against changed code is what caused the divergence.
       - text: "Set the model temperature to zero so that a replayed call returns the same text as the original"
@@ -992,7 +992,7 @@ items:
       - text: "On recovery, restart every in-flight run from its first step so that it picks up the current prompt"
         why: Re-runs completed steps, including side effects such as the ticket, and discards the waiting human signal.
         misconception: Starting over is the safest recovery
-      - text: "Disable step retries so a replay can never repeat a call"
+      - text: "Disable all step retries so that a replay can never repeat a call that already happened"
         why: Replay and retry are different mechanisms; disabling retries removes resilience to transient errors and does nothing for divergent histories.
         misconception: Replay safety is a retry setting
     explanation: |
@@ -1013,9 +1013,9 @@ items:
       06:00, then runs. The process has been OOM-killed twice, and on both occasions the digest was silently skipped for the week
       because nothing restarted it before the window. How should scheduling be restructured?
     options:
-      - text: Have the model call a clock tool to decide when it should wake itself up each week for the digest
-        why: Puts the schedule inside a process that can die, and adds model judgment to what should be a fixed trigger.
-        misconception: An agent can reliably schedule itself
+      - text: Keep the process, but persist the next run time to disk and compare it with the clock on every startup
+        why: Catches up after a restart, but something must still restart the process, and it rebuilds a scheduler badly inside an agent.
+        misconception: Persisting the schedule makes a long-lived sleeper durable
       - text: Run a watchdog process that restarts the sleeping process whenever it exits for any reason
         why: A restart after 06:00 would still miss the run unless the restarted process also reconstructs what it missed.
         misconception: Restarting the process restores the schedule
@@ -1047,13 +1047,13 @@ items:
       - text: Retrieve many more memories per request, so that the newer entries outnumber the stale ones in the context
         why: Quantity doesn't establish which entry is current, and the injected instruction would still be among those retrieved.
         misconception: More recall fixes conflicting memory
-      - text: Read the address from the system of record at use time, tag memories with source and expiry, and never treat memory as instructions
+      - text: Read the address from its system of record, give memories a source and expiry, and never treat memory as instructions
         correct: true
         why: Staleness is fixed by reading the owner of the fact, and the injection by controlling what stored content may act as an instruction.
       - text: Screen each memory write with an injection classifier and discard any entry that reads like an instruction to the agent
         why: Addresses the planted line, but the old address is a stale fact that only the system of record can correct, and classifiers miss paraphrased instructions.
         misconception: Input filtering alone secures memory
-      - text: Keep storing everything as before, but rank by recency so that newer entries win in retrieval
+      - text: Keep storing everything as before, but rank retrieved memories by recency so that newer entries win
         why: Helps with some stale facts, but a newly uploaded malicious line would rank highest.
         misconception: Recency is a proxy for trustworthiness
     explanation: |
@@ -1235,7 +1235,7 @@ items:
       - text: Each subagent inherits the orchestrator's full context automatically, so delegation briefs can be kept short
         why: Subagents know only what they are told; a thin brief is what produces duplicated and missing work.
         misconception: Subagents share the orchestrator's context
-      - text: Wall-clock time falls in proportion to the number of subagents added
+      - text: Wall-clock time falls in proportion to the number of subagents that are added to the job
         why: Dependencies between tasks, the orchestrator's own planning and synthesis, and rate limits cap the speedup.
         misconception: Parallelism scales linearly
     explanation: |
