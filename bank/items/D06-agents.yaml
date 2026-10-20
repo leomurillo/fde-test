@@ -10,27 +10,27 @@ items:
     level: apply
     time_s: 60
     stem: |
-      A distributor's finance team reconciles two ledger tables every night: rows match on invoice number
-      and amount, about 2 million rows per run. Mismatches go to an exception queue that clerks already work
-      in their existing tooling. An executive has asked that this be rebuilt "as an AI agent". The matching
-      rules are fully specified and never need interpretation. What should the nightly reconciliation be?
+      A distributor's finance team reconciles two ledger tables every night: rows match on invoice number and amount (within a
+      one-cent rounding tolerance), about 2 million rows per run. Mismatches are genuine control exceptions that clerks must
+      see in the queue they already work in their existing tooling. An executive has asked that this be rebuilt "as an AI
+      agent". The matching rules are fully specified. What should the nightly reconciliation be?
     options:
-      - text: A scheduled SQL job applying the matching rules and writing mismatches to the existing queue
+      - text: "A scheduled SQL job applying the matching rules and writing the mismatches to the existing queue"
         correct: true
         why: Structured data and fixed rules are what plain software does best, cheaply, deterministically and at this volume.
-      - text: An agent with a read-only SQL tool that decides how to match each record and reports the exceptions
+      - text: "The same SQL job, plus an LLM step that tries to resolve each mismatch (typos, split payments) before it reaches the queue"
+        why: The rules already define what a match is, so quietly clearing mismatches weakens a control the clerks are meant to see, and it adds a model call per exception.
+        misconception: Using an LLM to cut clerk workload is free value
+      - text: "An agent with a read-only SQL tool that decides how to match each record and reports the exceptions it finds"
         why: Autonomy adds cost and run-to-run variation to a task whose path never varies, and 2M rows would multiply model calls.
         misconception: An agent is the modern replacement for any batch job
-      - text: A workflow that asks an LLM to judge whether each candidate pair of records matches
-        why: A model call per pair is slower, costlier and less reproducible than an exact comparison that already defines a match.
+      - text: "A workflow that asks an LLM to judge whether each candidate pair of ledger rows is a match"
+        why: A model call per pair is slower, costlier and less reproducible than the exact comparison that already defines a match.
         misconception: LLM judgment is more robust than exact rules
-      - text: The same scheduled job, plus an LLM step that writes a plain-English explanation of every mismatch
-        why: Nobody asked for explanations and clerks already have the queue; the step adds spend and a new failure mode for no stated need.
-        misconception: Adding an LLM step to a deterministic job always adds value
     explanation: |
-      When inputs are structured and the rules are known, traditional software is the right tool. Start with the
-      simplest approach that meets the requirement and add model calls only where they remove a real limitation.
-      An executive's request for "an agent" is a solution statement; the underlying need here is a reliable nightly match.
+      When inputs are structured and the rules are known, traditional software is the right tool. Start with the simplest approach
+      that meets the requirement and add model calls only where they remove a real limitation. An executive's request for "an
+      agent" is a solution statement; the underlying need here is a reliable nightly match whose exceptions stay visible.
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-002
@@ -42,23 +42,22 @@ items:
     level: analyze
     time_s: 90
     stem: |
-      A logistics client's clerks update a customer's address in three legacy systems, one of which is a
-      green-screen mainframe terminal app with no API. The task is the same 12 steps every time, about 500
-      times a day, and the screens change roughly once a year. The client wants it live in four weeks. Which
-      approach fits best?
+      A logistics client's clerks update a customer's address in three legacy systems, one of which is a green-screen mainframe
+      terminal app with no API. The task is the same 12 steps every time, about 500 times a day, and the screens change roughly
+      once a year. The client wants it live in four weeks. Which approach fits best?
     options:
-      - text: Scripted UI automation (RPA) that replays the 12 steps, with a human queue for failures
-        correct: true
-        why: Stable screens and fixed steps are RPA's sweet spot, it needs no API, and it ships in the four-week window.
-      - text: A computer-use agent that looks at the terminal screen and works out each step itself
-        why: It tolerates UI change, but screens barely change here, and per-step model calls add cost, latency and variability to a fixed procedure.
+      - text: "A computer-use agent that looks at each screen and works out the steps itself"
+        why: It tolerates UI change, but the screens barely change here, and per-step model calls add cost, latency and variability to a fixed procedure.
         misconception: Adaptability to UI change is worth paying for even when the UI is stable
-      - text: A new API layer in front of the mainframe, built by the client's platform team
+      - text: "Scripted UI automation (RPA) that replays the 12 steps, with a human queue for failures"
+        correct: true
+        why: Stable screens and fixed steps are RPA's sweet spot, it needs no API, and it ships inside the four-week window.
+      - text: "A new API layer in front of the mainframe, built by the client's platform team"
         why: It is the cleaner long-term design, but a mainframe integration project will not fit a four-week deadline.
-        misconception: The architecturally cleanest option is the right option regardless of the delivery constraint
-      - text: A workflow that has an LLM read each address change request and type it into the terminal
-        why: Typing into the terminal is still the problem; the model adds nothing to a procedure with no interpretation step.
-        misconception: Putting an LLM in the loop modernizes a legacy integration
+        misconception: The architecturally cleanest option is right regardless of the delivery constraint
+      - text: "Writing the address changes straight into each system's database and skipping the screens"
+        why: Bypasses the application's validation, business rules and audit trail, and a mainframe has no supported write path to the data.
+        misconception: Going around the UI is the cheapest integration
     explanation: |
       RPA, an agent, and a proper API are all legitimate answers to "no API on a legacy screen"; the stated constraints decide.
       Fixed steps, stable screens, high volume and a short deadline point to scripted automation. An API layer wins when the
@@ -73,23 +72,23 @@ items:
     level: evaluate
     time_s: 90
     stem: |
-      A payments platform wants help with production incidents. An alert fires and the cause is usually unknown:
-      engineers query logs, metrics, recent deploys and feature-flag history, and the number of lookups varies
-      from three to thirty depending on what turns up. Remediation (rollbacks, flag flips) is always decided and
-      executed by the on-call engineer. Which design suits the investigation step?
+      A payments platform wants help with production incidents. An alert fires and the cause is usually unknown: engineers
+      query logs, metrics, recent deploys and feature-flag history, and the number of lookups varies from three to thirty
+      depending on what turns up. Remediation (rollbacks, flag flips) is decided and executed by the on-call engineer, and the
+      client wants that to stay the case. Which design suits the investigation step?
     options:
-      - text: A fixed runbook workflow that runs the same twelve diagnostic queries for every alert type, then summarizes
-        why: Predefined paths cannot follow evidence that appears mid-investigation, so most incidents would still need manual digging.
-        misconception: A comprehensive enough runbook removes the need for dynamic decisions
-      - text: An agent with read-only observability tools and an iteration cap, reporting to the on-call engineer
+      - text: "A decision-tree runbook workflow per alert type, branching on each query result and ending in a summary"
+        why: The branches cover causes already seen; the stem says the cause is usually unknown, and novel incidents fall outside the tree and still need manual digging.
+        misconception: Enough branching approximates open-ended investigation
+      - text: "An agent with read-only observability tools and an iteration cap, reporting findings to the on-call engineer"
         correct: true
-        why: The path is open-ended and unpredictable, errors are cheap because tools are read-only, and a human keeps remediation.
-      - text: An agent with rollback and flag-flip tools so it can fix what it finds without waiting for a person
-        why: Open-ended investigation suits an agent, but irreversible production changes raise the cost of an error beyond what was requested.
+        why: The path is open-ended and unpredictable, errors are cheap because the tools are read-only, and a human keeps remediation.
+      - text: "An agent that also holds rollback and flag-flip tools, so it can fix what it finds without waiting for a person"
+        why: Open-ended investigation suits an agent, but irreversible production changes raise the cost of an error beyond what the client asked for.
         misconception: If an agent can diagnose, it should also remediate
-      - text: A single LLM call given the last hour of logs and metrics from every service, asked to name the likely cause
-        why: Stuffing context ignores that the relevant evidence is only found by following leads across systems, and volume may exceed the context.
-        misconception: One big prompt is simpler and just as good as iterative investigation
+      - text: "A single LLM call that retrieves similar past postmortems and names the likely cause for the engineer"
+        why: Useful for repeat incidents, but the decisive evidence sits in live logs, metrics and deploys, and an unfamiliar cause has no matching postmortem.
+        misconception: Retrieval over history replaces live investigation
     explanation: |
       Agents earn their cost on open-ended problems where the number of steps cannot be predicted and the model's decisions can be
       trusted within limits. Here the exploration is genuinely dynamic, and read-only tools plus an iteration cap bound the downside.
@@ -137,22 +136,23 @@ items:
     level: analyze
     time_s: 90
     stem: |
-      A bank is putting an assistant on its phone line. Callers ask for three things: balance, card block, or
-      a transfer between their own accounts. The end-to-end response target is under one second, and each of
-      the three actions is backed by an existing internal API. Which architecture is most appropriate?
+      A bank is putting an assistant on its phone line. Callers ask for three things: balance, card block, or a transfer between
+      their own accounts. The end-to-end response target is under one second, each action is backed by an existing internal API,
+      and compliance requires fixed, pre-approved wording when confirming a card block or a transfer. Which architecture is most
+      appropriate?
     options:
-      - text: A reasoning agent that plans each turn, chooses among the three APIs, and verifies results before replying
+      - text: "A reasoning agent that plans each turn, chooses among the three APIs, and verifies results before replying"
         why: Each plan-act-observe cycle is at least one extra model round trip, which breaks a one-second budget for a three-way choice.
         misconception: Agents are the natural fit for anything involving tool calls
-      - text: A multi-agent setup with one specialist agent per action, supervised by a router agent that picks among them
-        why: Adds model hops and coordination for three fixed intents, and increases latency and failure points.
+      - text: "A multi-agent setup with one specialist per action, supervised by a router agent that picks among them"
+        why: Adds model hops and coordination for three fixed intents, increasing latency and failure points.
         misconception: One specialist per function improves accuracy and speed
-      - text: A single large-model prompt that answers from the full transcript and calls whichever API seems needed
-        why: Large-model latency alone is hard to fit in the budget, and open-ended tool choice invites errors on money-moving actions.
-        misconception: A frontier model with tools is the safest default
-      - text: A fast intent classifier routing to deterministic API handlers, with an LLM only for unclear requests
+      - text: "A fast intent classifier routing to deterministic API handlers, with an LLM only for unclear requests"
         correct: true
-        why: Known intents with known APIs need routing, not planning; deterministic handlers meet the latency target and keep actions predictable.
+        why: Known intents with known APIs need routing, not planning; deterministic handlers meet the latency target and produce the approved wording.
+      - text: "A single small-model call with the three APIs as tools, which writes both the API arguments and the reply in one pass"
+        why: Fits the latency budget, but model-written confirmations and arguments on money-moving actions conflict with the fixed-wording rule and leave no deterministic gate.
+        misconception: One fast function-calling call is the simplest safe design
     explanation: |
       When the set of intents is small and each maps to a known action, routing to deterministic handlers beats an agent loop on latency,
       cost and predictability. A model can still handle the ambiguous remainder. Latency budgets are a design input: every extra
@@ -230,21 +230,21 @@ items:
     level: apply
     time_s: 60
     stem: |
-      A CFO asks for an LLM to compute VAT on supplier invoices. The rates and rules are set by statute, and
-      the totals must match the tax filing to the cent. What is the right role for the model?
+      A CFO asks for an LLM to compute VAT on supplier invoices. The rates and rules are set by statute, and the totals must
+      match the tax filing to the cent. What is the right role for the model?
     options:
-      - text: Let an agent with a calculator tool compute the VAT, then re-check its own totals before returning them
+      - text: "Let an agent with a calculator tool compute the VAT, then re-check its own totals before returning them"
         why: Self-checking helps, but the model still chooses rates and steps, so correctness depends on its judgment when code could simply decide.
         misconception: Giving a model a calculator makes it a reliable rules engine
-      - text: Have the model compute VAT directly from the invoice text, guided by a handful of worked examples in the prompt
-        why: LLM arithmetic and rule application are probabilistic; an off-by-a-cent result breaks the filing.
-        misconception: Few-shot examples make exact calculation dependable
-      - text: Compute VAT in plain code from structured fields; use the model only to extract fields or explain results
+      - text: "Have the model write and run code for each invoice through a code-execution tool, then return the result"
+        why: The rules are fixed, so the code should be written once, reviewed and tested; regenerating it per invoice reintroduces variability into a statutory calculation.
+        misconception: Model-generated code per request is as dependable as tested code
+      - text: "Compute VAT in plain code from structured fields; use the model only to extract fields or explain results"
         correct: true
         why: Statutory rules with exact outputs are deterministic logic; the model's only useful place is the unstructured edges.
-      - text: Fine-tune a model on several years of correct filings so that it learns the statutory rate rules
-        why: Fine-tuning teaches patterns, not guarantees, and legal rate changes would require retraining.
-        misconception: Training on past data encodes rules reliably
+      - text: "Have the model compute VAT directly from the invoice text, guided by a handful of worked examples in the prompt"
+        why: LLM arithmetic and rule application are probabilistic; an off-by-a-cent result breaks the filing.
+        misconception: Few-shot examples make exact calculation dependable
     explanation: |
       If the rules are fully specified and exactness is required, write code. Models are for ambiguity, language, and unstructured
       inputs. Using one to extract the fields and explain a result is fine; using it to decide the number is not.
@@ -356,25 +356,25 @@ items:
     subtopic: agents.patterns
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 70
     stem: |
-      An IT helpdesk assistant receives requests that fall into three well-understood categories: password
-      resets, hardware faults and software-access requests. Each category needs its own instructions, its own
-      tools and its own escalation rules, and an inexpensive classifier can label requests accurately. Which
-      composition pattern fits?
+      An IT helpdesk assistant handles password resets, hardware faults and software-access requests. Each category needs its own
+      instructions, tools and escalation rules, and the request text usually makes the category clear. A prototype that gives one
+      prompt all nine tools and all three rule sets mishandles about one request in five, mostly by applying the wrong category's
+      tool or rules. Which change fits best?
     options:
-      - text: Routing, where each request is classified and handed to a specialized prompt and toolset
+      - text: "Add a cheap classification step, then hand each request to a prompt and toolset specific to its category"
         correct: true
-        why: Distinct, accurately classifiable categories with different handling is the textbook case for routing.
-      - text: Orchestrator-workers, where a planner invents subtasks for each request and assigns them to workers
-        why: Useful when subtasks can't be known in advance; here the categories and handling are known up front.
+        why: Distinct, accurately classifiable categories with different handling is the case for routing; each path can be tuned without trading off against the others.
+      - text: "Have a planner model break every request into subtasks and assign them to worker prompts"
+        why: Useful when subtasks cannot be known in advance; here the categories and their handling are known up front, so planning adds a call and decomposition errors.
         misconception: Dynamic delegation is the most general pattern, so it is the safest
-      - text: Prompt chaining, where every request passes through the same sequence of three prompts
-        why: A chain applies the same steps to every input, but each category needs different instructions and tools.
+      - text: "Keep the single agent and write a longer system prompt with explicit decision rules and examples for each category"
+        why: Tools and rule sets still compete inside one prompt, which is the cause of the cross-category mistakes; more text adds to the competition.
+        misconception: A long enough prompt can keep separate concerns separate
+      - text: "Send every request through three prompts in sequence, one per category, each applying its own rules"
+        why: A chain applies every step to every input, so a hardware fault would be pushed through password-reset logic.
         misconception: Sequential prompts are the standard way to organize a support flow
-      - text: Voting, where each request is sent to three prompts and the majority category decides the response
-        why: Voting raises confidence in one judgment; it doesn't give each category its own specialized handling.
-        misconception: Majority agreement substitutes for specialization
     explanation: |
       Routing classifies an input and sends it to a specialized downstream path, which lets each path be optimized without
       trading off against the others. It requires categories that are distinct and classifiable with acceptable accuracy.
@@ -479,33 +479,37 @@ items:
     version: 1
     type: multi
     subtopic: agents.patterns
-    tags: [obs.cost, gov.guardrails]
+    tags: [llm.structured-tools, gov.guardrails]
     difficulty: 2
     level: apply
     time_s: 100
     stem: |
-      A procurement agent in production once made 140 near-identical supplier searches in a single run, reworking the
-      query slightly each time, and consumed about $38 before a person noticed. Which changes belong in the agent
-      harness to prevent a repeat?
+      A document-audit agent loops over tool calls until the model replies without requesting a tool. Given 40 receipts to check,
+      it sometimes ends with a confident "all 40 receipts verified" after processing only 12. Which harness changes make the
+      stopping condition reliable?
     options:
-      - text: A hard cap on iterations and tokens per run, ending in a defined escalation to a person
+      - text: "Before accepting a final answer, compare the receipt IDs with the results recorded in code, and send the agent back to work if any are missing"
         correct: true
-        why: Enforced in code, so the limit holds even when the model keeps reasoning that one more search will help.
-      - text: Detection of repeated or near-identical tool calls that stops or redirects the loop
+        why: The completion test runs outside the model against recorded state, so a premature claim of being done is caught and corrected.
+      - text: "Require the final answer as structured output with one status per receipt ID, validated against the input list"
         correct: true
-        why: Catches the actual failure pattern earlier than the global cap would.
-      - text: A line in the system prompt telling the model to stop searching once it has enough information
-        why: Models already believe they need more; an instruction is a hint, not a control, and the failure was ignoring such cues.
+        why: A schema-checked per-item result makes an unsupported 'all done' claim fail validation instead of reaching the user.
+      - text: "Cap iterations and tokens per run, ending in an escalation to a person when the cap is reached"
+        why: A sound guard against runaway loops, but this failure is the loop stopping too early, so the cap would never fire.
+        misconception: Budget limits are the stopping condition
+      - text: "Add a line to the system prompt telling the model not to finish until every receipt has been checked"
+        why: The model already believes it is finished; an instruction is a hint, not a control.
         misconception: A prompt instruction is sufficient to bound behavior
-      - text: A larger context window so the agent can remember all of its previous searches
-        why: Memory of earlier searches doesn't stop a loop, and more context makes each additional iteration cost more.
-        misconception: The loop happens because the agent forgot what it tried
-      - text: A lower temperature setting so the model repeats itself less
-        why: Lower temperature makes repeated choices more likely, not less, and does not bound the number of steps.
-        misconception: Randomness settings control loop termination
+      - text: "After the final answer, ask the model in the same conversation whether it is sure it processed all receipts"
+        why: The check relies on the same recollection that produced the wrong claim, so it tends to confirm itself.
+        misconception: Self-verification catches omissions
+      - text: "Raise the maximum output tokens and the per-call timeout so the model has room to finish the job"
+        why: Nothing was truncated or timed out; the model chose to stop.
+        misconception: Early stops are caused by resource limits
     explanation: |
-      Agent loops need stopping conditions enforced outside the model: iteration, token and cost budgets, plus detectors for
-      repetition, with a defined fallback such as escalation to a person. Prompts can guide behavior but cannot guarantee termination.
+      Termination should be decided by code that can see state, not by the model's own report. Compare the claimed outcome with
+      recorded progress, validate the final output's structure against the input, and send the agent back when the check fails.
+      Iteration and cost caps remain necessary for the opposite failure, where a loop never ends.
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-017
@@ -610,23 +614,23 @@ items:
     type: single
     subtopic: agents.tools-mcp
     difficulty: 1
-    level: recall
-    time_s: 60
+    level: apply
+    time_s: 70
     stem: |
-      A desktop AI assistant application is configured to use a GitHub MCP server and a Postgres MCP server at the same time.
-      Which statement correctly describes how the Model Context Protocol roles are arranged?
+      A desktop AI assistant is connected to a GitHub MCP server and a Jira MCP server. A user asks it to open a Jira ticket for
+      the newest GitHub issue. Which description of how the MCP roles handle this is accurate?
     options:
-      - text: The host application creates a separate client for each server, and each client talks to exactly one server
+      - text: "The model reads the GitHub result in the host's context and makes a Jira call, which the host sends through the client dedicated to the Jira server"
         correct: true
-        why: This is the specified architecture, and it keeps each server's connection and permissions isolated.
-      - text: The host reaches both servers through one shared client, so all tool context stays in a single connection
-        why: Clients are one-to-one with servers; sharing a connection would blur the security boundary between them.
-        misconception: A single client multiplexes any number of servers
-      - text: The two servers connect to each other so that the Postgres server can read results returned by the GitHub server
+        why: Hosts create one client per server and coordinate between them; servers do not see each other or the conversation.
+      - text: "The GitHub server forwards the issue directly to the Jira server, because MCP servers connect to each other to share results"
         why: Servers are isolated from one another; any cross-server flow goes through the host.
         misconception: Servers form a mesh and share context directly
-      - text: Each server receives the full conversation history so that it can decide which of its own tools are relevant
-        why: Full conversation context stays with the host; servers only receive what a given request needs.
+      - text: "A single client holds both connections, so the Jira server can read the GitHub result from that shared connection"
+        why: Each client talks to exactly one server, which keeps each server's access and permissions separate.
+        misconception: A single client multiplexes any number of servers
+      - text: "Each server is sent the full conversation up front so it can judge which of its own tools apply"
+        why: Full conversation context stays with the host; servers receive only what a given request needs.
         misconception: Servers need the whole conversation to be useful
     explanation: |
       MCP has three roles: the host (the application that coordinates the model and enforces consent and policy), clients (created
@@ -642,27 +646,27 @@ items:
     level: apply
     time_s: 90
     stem: |
-      A platform team is building one MCP server for a retail assistant with three capabilities. First, a refund function that the
-      model should call on its own when a customer asks for one. Second, the product-catalogue file, which the application itself
-      attaches as context when a user opens a product page. Third, an "incident summary" template that users pick from a menu.
-      Which mapping onto MCP primitives matches how each is meant to be controlled?
+      A platform team is building one MCP server for a retail assistant with three capabilities. First, order lookup, which the
+      model should call by itself whenever a customer asks about an order; it only reads data. Second, the returns-policy
+      document, which the application attaches as context whenever a user opens the returns page. Third, an 'escalation email'
+      template that users pick from a slash-command menu. Which mapping onto MCP primitives matches who is meant to control each?
     options:
-      - text: Refund as a tool, catalogue as a resource, summary template as a prompt
-        correct: true
-        why: Tools are model-controlled, resources are attached by the application, and prompts are user-selected templates.
-      - text: All three as tools, since every client supports tools and the model can then call any of them
-        why: It works mechanically, but the application and user lose the control the stem asks for over what is attached and chosen.
+      - text: "Order lookup as a resource, since it only reads data; returns policy as a resource; escalation template as a prompt"
+        why: Resources are chosen by the application, not discovered by the model mid-conversation; a model-initiated read belongs in a tool even when it is read-only.
+        misconception: Read-only means resource
+      - text: "Order lookup as a tool, returns policy as a tool so the model can fetch it, escalation template as a prompt"
+        why: It works, but the stem has the application attach the policy; making it a tool hands that choice to the model and spends a call.
         misconception: Tools are the only primitive worth implementing
-      - text: Refund as a prompt the user triggers, catalogue as a resource, summary template as a prompt
-        why: A user-triggered prompt would stop the model from issuing the refund on its own when a customer asks.
-        misconception: Prompts are the safer way to expose actions
-      - text: Refund as a tool, catalogue as a prompt, summary template as a resource
+      - text: "Order lookup as a tool, returns policy as a resource, escalation template as a prompt"
+        correct: true
+        why: Tools are model-controlled, resources are attached by the application, and prompts are templates the user selects.
+      - text: "Order lookup as a tool, returns policy as a prompt, escalation template as a resource"
         why: Swaps the two context-style primitives; prompts are templates a user invokes and resources are data the app attaches.
         misconception: Resources and prompts are interchangeable
     explanation: |
       MCP servers expose three primitives with different control models. Tools are discovered and invoked by the model, resources are
       contextual data managed by the application, and prompts are templates selected by the user, such as slash commands or menu items.
-      Picking the primitive that matches who should be in control matters for both UX and safety.
+      Whether data is read-only does not decide the primitive; who decides when it is used does.
     refs: [https://modelcontextprotocol.io/specification/latest/server]
 
   - id: D6-022
@@ -737,29 +741,32 @@ items:
     time_s: 110
     stem: |
       An agent is connected to six MCP servers exposing 85 tools in total. Traces show it picks the wrong tool on about 18% of
-      calls, usually among tools named `search`, `find` and `lookup` from different servers with similar one-line descriptions.
-      Which changes should reduce wrong-tool selection?
+      calls, usually among tools named `search`, `find` and `lookup` from different servers, and the 85 definitions consume a
+      large share of the context window. Which changes should reduce wrong-tool selection?
     options:
-      - text: Give each task or route only the subset of tools it needs, instead of all 85 at once
+      - text: "Give each task or route only the subset of tools it needs, rather than all 85 at once"
         correct: true
         why: Fewer candidates at decision time means fewer confusable choices and less context spent on tool definitions.
-      - text: Rename overlapping tools distinctively and rewrite descriptions to say what each does, when to use it and when not to
+      - text: "Let the agent search a tool catalog on demand, so only the few definitions it asks for are loaded into context"
         correct: true
-        why: Models choose from names and descriptions, so clear boundaries between similar tools directly address the confusion.
-      - text: Add a long system-prompt table that maps each kind of request to the tool it should use
+        why: Deferred loading cuts both the context cost and the number of lookalike candidates the model must choose between.
+      - text: "Prefix tool names with their server and rewrite overlapping descriptions to say when each applies and when it does not"
+        correct: true
+        why: Models choose from names and descriptions, so unique names and clear boundaries between similar tools remove the ambiguity directly.
+      - text: "Add a long system-prompt table that maps each kind of request to the tool it should use"
         why: Duplicates tool metadata in a form that goes stale and still leaves all 85 definitions competing for attention.
         misconception: A selection table in the prompt fixes ambiguous tool design
-      - text: Move to the largest available model and keep the full tool list unchanged
+      - text: "Replace the 85 tools with one generic `call_api(service, endpoint, params)` tool"
+        why: Moves the ambiguity into free-form parameters and discards per-tool schemas, validation and permission scoping.
+        misconception: Fewer tools is better however it is achieved
+      - text: "Move to the largest available model and keep the full tool list unchanged"
         why: A stronger model may help somewhat, but near-identical names and descriptions remain ambiguous to any model.
         misconception: Model capability makes tool design unnecessary
-      - text: Require the model to write out its reasoning for all 85 tools before each call
-        why: Burns tokens on every step without removing the ambiguity that causes the wrong pick.
-        misconception: More deliberation compensates for poor interfaces
     explanation: |
       Tools are the agent's interface to the world, and confusable or numerous tools degrade selection. Narrow the toolset per task,
-      and invest in clear names, descriptions and boundaries between similar tools. Aggregating servers also risks name collisions,
-      which are best disambiguated with prefixes.
-    refs: [https://www.anthropic.com/engineering/building-effective-agents]
+      load definitions on demand, and invest in clear, unique names and descriptions. Aggregating servers risks name collisions, which
+      are best disambiguated with prefixes.
+    refs: [https://modelcontextprotocol.io/specification/latest/server/tools]
 
   - id: D6-025
     version: 1
@@ -770,25 +777,30 @@ items:
     level: apply
     time_s: 90
     stem: |
-      An agent's `create_ticket(summary, priority)` tool sometimes produces duplicate tickets. Logs show two causes: the HTTP
-      call to the ticketing system times out after the ticket was actually created and the harness retries, and the model
-      occasionally re-calls the tool after losing track of earlier steps. What is the most robust fix?
+      An agent's `create_ticket` tool is called for monitoring alerts, one ticket per alert, and each alert has a unique ID. It
+      sometimes produces duplicate tickets. Logs show two causes: the HTTP call to the ticketing system times out after the ticket
+      was actually created and the harness retries, and the model occasionally calls the tool again for the same alert after
+      losing track of earlier steps. What is the most robust fix?
     options:
-      - text: Add a sentence to the tool description telling the model to call it once per issue
+      - text: "Add a sentence to the tool description telling the model to call it once per alert"
         why: Guidance may reduce model-initiated repeats, but does nothing for harness retries after a timeout.
         misconception: Documentation alone controls side effects
-      - text: Disable retries for this tool in the harness, so that a timed-out call is not repeated
-        why: Removes duplicates from retries but leaves lost tickets after real transient failures, and model re-calls continue.
+      - text: "Disable retries for this tool in the harness, so that a timed-out call is never repeated"
+        why: Removes duplicates from retries but loses tickets after genuine transient failures, and the model's repeat calls continue.
         misconception: No retries means no duplicates and no downside
-      - text: Accept an idempotency key built from run and step, and return the existing ticket on a repeat
+      - text: "Have the harness attach a fresh idempotency key to each tool call and reuse that key when it retries"
+        why: Fixes timeout retries, but a model-initiated repeat is a new tool call with a new key, so a second ticket still gets created.
+        misconception: One key per call covers every source of duplicates
+      - text: "Derive the idempotency key from the run and the alert ID, and have the ticketing call return the existing ticket for a repeat"
         correct: true
-        why: Both causes produce the same key, so a repeat call returns the original ticket instead of creating another.
-      - text: Check for an existing ticket with a similar summary first, and skip creation if one is found
+        why: Retries and model repeats for the same alert carry the same key, so both return the original ticket.
+      - text: "Check for an existing ticket with a similar summary first, and skip creation if one is found"
         why: Fuzzy matching will suppress legitimate distinct tickets that happen to read alike, and can miss near-duplicates.
         misconception: Semantic similarity is a safe dedupe key
     explanation: |
-      Side-effecting tools should be safe to call more than once. An explicit idempotency key, derived from something stable like
-      run and step, lets the system recognize a repeat regardless of whether the model or the transport caused it.
+      Side-effecting tools should be safe to call more than once. The key must identify the business action (this alert, in this run),
+      not the individual call, otherwise a repeat issued by the model looks like a new request. A per-call key only protects against
+      transport-level retries.
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-026
@@ -832,31 +844,34 @@ items:
     version: 1
     type: single
     subtopic: agents.tools-mcp
-    tags: [gov.identity, data.sql]
+    tags: [int.apis, discovery.selection]
     difficulty: 2
     level: evaluate
     time_s: 90
     stem: |
-      A support agent must read order status and issue refunds of up to $100. The DBA team offers a generic `execute_sql` MCP tool
-      on a read-write role, saying the agent can then do anything it needs without further tooling requests. How should the agent's
-      access be designed?
+      A client's single internal support agent needs three of the company's REST APIs: orders, shipments and refunds. One team
+      owns the agent, which runs as its own service on an agent SDK. No other team has asked to reuse these integrations, and the
+      deployment budget is small. The platform group urges building each API as a separate remote MCP server "because MCP is the
+      standard". What is the best first step?
     options:
-      - text: Expose `get_order_status` and `issue_refund` tools, enforcing the $100 limit and order checks in code
+      - text: "Implement the three integrations as tools inside the agent service behind a thin interface, and move them to MCP servers if a second consumer appears"
         correct: true
-        why: Narrow tools make the allowed actions explicit and put the limits in code the model can't talk its way around.
-      - text: Keep `execute_sql`, but add a system-prompt rule allowing just SELECT statements and refunds under $100
-        why: Prompt rules are advice; a manipulated or mistaken model can still send any statement the role permits.
-        misconception: Prompts are an enforceable access policy
-      - text: Keep `execute_sql` and require a human to review and approve every query before it runs
-        why: Reviewers would face a constant stream of raw SQL they can't judge quickly, and the role still permits anything once approved.
-        misconception: Human review makes broad access safe
-      - text: Keep `execute_sql` but switch it to a read-only role, and let the agent handle refunds through chat
-        why: Read-only SQL covers lookups, yet the refund still has no controlled path, and the chat window isn't a tool.
-        misconception: Splitting read and write access is enough design work
+        why: MCP pays off when several hosts share an integration; with one consumer it adds deployments and auth to operate for no present benefit, and the thin interface keeps the move cheap.
+      - text: "Build three remote MCP servers with OAuth now, so that future agents can reuse them without rework"
+        why: Defensible for a platform strategy, but it spends the small budget on infrastructure for a consumer that does not exist yet.
+        misconception: Build for hypothetical reuse
+      - text: "Build one MCP gateway that fronts these three APIs and any other internal API the company might want to expose"
+        why: Scope balloons well beyond the three APIs the agent needs, and a gateway carries its own security and ownership burden.
+        misconception: A central integration layer should come before the first use case
+      - text: "Give the model a generic HTTP tool and the three OpenAPI documents, so no integration code is needed"
+        why: Skips the narrow tools, argument validation and credential handling that make the actions safe; the model would be forming raw requests.
+        misconception: Documentation substitutes for integration code
     explanation: |
-      Agents should get narrow, purpose-built tools whose parameters and limits are validated in code, not a general-purpose
-      interface governed by prompt instructions. Enforcement belongs in the tool and the credentials behind it.
-    refs: [https://www.anthropic.com/engineering/building-effective-agents]
+      MCP standardizes how many different hosts reach the same tools, resources and prompts. Its value comes from reuse across
+      applications and from a shared authorization story, not from being "the standard". For one agent with one owner, in-process
+      tools with narrow, validated signatures are the simplest thing that works; keep the boundary clean so an MCP server can wrap
+      the same code later.
+    refs: [https://modelcontextprotocol.io/specification/latest/architecture]
 
   # ---------------------------------------------------------------- agents.state
   - id: D6-028
@@ -897,26 +912,26 @@ items:
     level: analyze
     time_s: 90
     stem: |
-      A data-migration agent has been running for three hours and is near its context limit. The harness currently drops the
-      oldest messages when the limit approaches. After the last trim the agent began modifying tables with the `legacy_`
-      prefix, which a constraint given at the start of the task had prohibited. How should compaction work instead?
+      A competitive-analysis agent compacts its context every 40 tool calls by summarizing the transcript so far, including earlier
+      summaries. After several compactions, final reports contain figures that differ slightly from the sources ('$4.2B' has become
+      'about $4B') and some citations point to the wrong page. How should compaction change?
     options:
-      - text: Keep dropping the oldest messages, but drop them in larger blocks so that trims happen less often
-        why: Still discards whatever was said first, including the constraint, just less frequently.
-        misconception: The issue is how often trimming happens, not what is lost
-      - text: Summarize everything in the context, including the system prompt and constraints, into one paragraph
-        why: Constraints reduced to a paraphrase can lose exact wording and scope, such as which prefixes are prohibited.
-        misconception: A summary can safely replace the instructions it summarizes
-      - text: Pin goals and constraints verbatim, summarize older work, and move bulky tool output to storage
+      - text: "Write exact figures, quotes and source locations to a notes store when they are found; keep only reasoning in the running summary, with references to the notes"
         correct: true
-        why: Preserves what must never be lost, compresses what can be, and keeps large artifacts retrievable by reference.
-      - text: Move to the model with the largest available context window and stop trimming history
-        why: Delays the problem, raises cost per step, and long contexts still dilute attention on early instructions.
+        why: Facts that must stay exact never pass through repeated paraphrase, and the summary stays small because it points to the notes.
+      - text: "Tell the summarizer to preserve every number and citation verbatim in each summary"
+        why: Helps at first, but each pass still rewrites prose that includes earlier summaries, so drift accumulates and compliance is not guaranteed.
+        misconception: An instruction to the summarizer prevents lossy compression
+      - text: "Use the strongest available model for the summarization step so that each summary is more faithful"
+        why: A better summarizer loses less per pass, but summaries of summaries still degrade and nothing anchors the exact values.
+        misconception: Summary quality is a model-capability problem
+      - text: "Switch to the longest-context model so that compaction happens far less often"
+        why: Delays the first compaction rather than fixing it, and a long agent run will reach the limit again.
         misconception: Enough context makes memory management unnecessary
     explanation: |
-      Compaction should be selective. Instructions, constraints and decisions are pinned or restated, older exploration is summarized,
-      and large tool outputs live outside the prompt with a pointer. Naive first-in-first-out trimming silently removes exactly the
-      earliest, most important rules.
+      Compaction is lossy, and repeated summarization compounds the loss. Keep facts that must stay exact (numbers, quotes, identifiers,
+      source locations) in structured storage outside the summary and reference them, and let the summary carry the reasoning state.
+      Instructions and constraints should be pinned rather than summarized.
 
   - id: D6-030
     version: 1
@@ -952,34 +967,38 @@ items:
     version: 1
     type: multi
     subtopic: agents.state
-    tags: [int.resilience]
-    difficulty: 2
+    tags: [int.resilience, llm.fundamentals]
+    difficulty: 3
     level: evaluate
-    time_s: 100
+    time_s: 110
     stem: |
-      An agent harness retries any failed model or tool call five times at a fixed one-second interval. During a vendor outage,
-      300 concurrent runs hammered the API in lockstep, and a malformed-argument error was retried five times with identical
-      arguments. Which policies should replace this?
+      A team runs its agent workflow on a durable-execution engine that recovers a crashed run by replaying the workflow code
+      against its recorded event history. The workflow calls an LLM, then a ticketing API, then waits for a human signal. After
+      the team deployed a changed prompt and extra branches, replays of in-flight runs failed or took different paths than the
+      original. Which practices make replay safe?
     options:
-      - text: Retry only transient failures such as timeouts, 429 and 5xx responses, and return validation or permission errors to the model or a person
+      - text: "Execute model and API calls as recorded steps whose results are saved in the history, so a replay reuses the stored result instead of calling again"
         correct: true
-        why: Retrying a deterministic error just repeats it; those errors need a corrected call or a human.
-      - text: Use exponential backoff with random jitter and a cap, honoring any Retry-After value the service sends
+        why: Replay then reproduces the original run exactly, and the ticket is not created twice.
+      - text: "Keep the orchestration code deterministic, with no direct clock reads, random numbers or model calls inside it"
         correct: true
-        why: Spreads retries out so concurrent runs don't synchronize, and respects the service's own recovery signal.
-      - text: Keep the fixed one-second interval so that retry timing is predictable for capacity planning
-        why: Fixed intervals are what made 300 runs hit the vendor simultaneously.
-        misconception: Predictable retry timing is a virtue
-      - text: Retry indefinitely until the call succeeds so no run ever has to fail
-        why: Unbounded retries pin resources and hide outages; runs need a limit and a failure path.
-        misconception: Eventually succeeding is always better than failing
-      - text: Retry side-effecting writes the same way, since the five-attempt cap already bounds any damage
-        why: A cap bounds how many repeats occur, not whether a repeated write is harmful, so duplicates still happen without idempotency.
-        misconception: A retry limit makes writes safe to repeat
+        why: Replay re-executes this code, so anything non-deterministic can send it down a different path from the recorded one.
+      - text: "Version the workflow definition so in-flight runs finish on the logic they started with and only new runs use the new prompt and branches"
+        correct: true
+        why: Replaying old history against changed code is what caused the divergence.
+      - text: "Set the model temperature to zero so that a replayed call returns the same text as the original"
+        why: Low temperature does not guarantee identical output, and model versions change; the recorded result is what makes replay safe.
+        misconception: Temperature zero makes model calls deterministic
+      - text: "On recovery, restart every in-flight run from its first step so that it picks up the current prompt"
+        why: Re-runs completed steps, including side effects such as the ticket, and discards the waiting human signal.
+        misconception: Starting over is the safest recovery
+      - text: "Disable step retries so a replay can never repeat a call"
+        why: Replay and retry are different mechanisms; disabling retries removes resilience to transient errors and does nothing for divergent histories.
+        misconception: Replay safety is a retry setting
     explanation: |
-      Good retry policy distinguishes transient from deterministic failures, uses exponential backoff with jitter so clients don't
-      retry in lockstep, honors server hints, caps attempts, and treats writes carefully by making them idempotent first.
-    refs: [https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/]
+      Durable execution recovers by re-running orchestration code against a recorded history. That requires deterministic workflow
+      code, non-deterministic work (model calls, API calls, time) captured as recorded step results, and versioning so that old
+      histories are only replayed against compatible code.
 
   - id: D6-032
     version: 1

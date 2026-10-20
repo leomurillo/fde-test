@@ -14,16 +14,16 @@ items:
       owner offers 40 claim files that her team "hand-picked because they show the assistant at its best", and
       suggests using them as the benchmark for the pilot. How should you build the golden dataset?
     options:
-      - text: "Stratified sample of real, de-identified claims with known hard cases, and expert-adjudicated reference summaries"
+      - text: "Stratified sample of real, de-identified claims with deliberate hard cases, and expert-adjudicated reference summaries"
         correct: true
         why: The set mirrors what the pilot will actually see, including awkward files, and has trustworthy references.
-      - text: "Use the 40 hand-picked files, because curated examples have the cleanest reference summaries and the least label noise"
-        why: Curation bias; a set chosen to flatter the assistant cannot reveal weaknesses and will overstate pilot quality.
-        misconception: Clean, high-quality examples make the best benchmark
-      - text: "Have a frontier model generate 2,000 synthetic claims with reference summaries and review a sample of them"
+      - text: "Start with the 40 hand-picked files and add 200 randomly sampled claims later, so early iteration is fast and coverage grows over time"
+        why: Early tuning and the first reported scores would be anchored on a set chosen to flatter the assistant, and a set you tuned on is hard to un-bias later.
+        misconception: A curated starter set is harmless if a random set follows
+      - text: "Have a strong model generate 2,000 synthetic claims with reference summaries, with an adjuster reviewing a sample of them"
         why: Synthetic data is useful for augmentation, but alone it reflects the generator's idea of claims, not the client's messy real files.
         misconception: Bigger synthetic sets substitute for real-distribution data
-      - text: "Adopt a public summarisation benchmark so pilot results can be compared against published leaderboard numbers"
+      - text: "Adopt a public document-summarisation benchmark so results can be compared with published numbers for other models"
         why: A generic benchmark measures generic summarisation, not the client's claim formats, terminology or failure costs.
         misconception: Public benchmark scores predict performance on a specific enterprise task
     explanation: |
@@ -149,9 +149,9 @@ items:
       - text: Exclude topics that fewer than 1% of employees ask about, to keep the set focused
         why: Rare topics such as parental leave edge cases can be high stakes; frequency is not the only weight.
         misconception: Coverage should follow traffic frequency alone
-      - text: Load raw employee chat logs unredacted so the cases look as realistic as possible
-        why: Realism does not justify exposing personal data to annotators and repos; redact before labelling.
-        misconception: Realistic data must be raw data
+      - text: Keep employee chat logs unredacted in the annotation tool, since annotators are already bound by employment confidentiality
+        why: Confidentiality terms do not replace data minimisation; personal data should be redacted before it reaches annotators and repositories.
+        misconception: A confidentiality obligation makes raw personal data acceptable
     explanation: |
       Trustworthy sets have reliable labels (agreement checked, disagreements adjudicated), enough structure to
       slice, and deliberate coverage of must-refuse and rare-but-costly cases. Dropping failures or rare topics makes
@@ -176,9 +176,9 @@ items:
       - text: "Build the tool first and treat the lawyers' feedback during the pilot as the evaluation, since they know good output"
         why: Feedback arrives late, is anecdotal and cannot show whether a change helped or hurt.
         misconception: Evals can wait until users exist
-      - text: "Wait until at least 500 labelled contracts exist before running any evaluation or comparing any two prompts"
-        why: Early changes produce large effects that a small set detects; a 500-contract prerequisite delays the entire pilot.
-        misconception: A minimum large sample is required before any evaluation
+      - text: "Start from a public annotated contract corpus now and add the firm's own labels once the pilot is under way"
+        why: Public clause taxonomies and document styles differ from this firm's; early scores would not predict performance on its contracts.
+        misconception: Public labelled data can stand in for the client's own cases
       - text: "Have the LLM label the contracts as well and use its labels as ground truth, then spot-check a few with lawyers"
         why: The model grades its own kind of output; unverified labels bake its mistakes into the benchmark.
         misconception: Model-generated labels are equivalent to expert labels
@@ -228,24 +228,25 @@ items:
     stem: |
       A healthcare client's engineers propose copying a week of production chat transcripts into the shared
       evaluation repository "because those are the most realistic test cases we will ever get". The transcripts
-      contain patient names and diagnoses. How should you respond?
+      contain patient names, record numbers and free-text diagnoses, and the client's clinicians have no time to
+      write test cases from scratch. How should you respond?
     options:
-      - text: "Sample from production after redacting identifiers, restrict repository access, and set a retention limit"
+      - text: "Redact identifiers, including names and record numbers, before ingest, restrict repository access, and set a retention limit"
         correct: true
         why: Keeps the realism and failure coverage of live traffic while meeting minimisation and access obligations.
-      - text: "Decline production data entirely and have clinicians write every test case from scratch to avoid any exposure"
-        why: Safe but loses the real phrasing, typos and edge cases; the controls above make production data usable.
-        misconception: Sensitive data can never be used for evaluation
-      - text: "Copy it as proposed, since the evaluation repository sits inside the same cloud tenant as production"
-        why: Same tenant is not same access scope; broad repo access and indefinite retention violate need-to-know.
-        misconception: Same-tenant storage is equivalent to production controls
-      - text: "Replace every message with an LLM-generated paraphrase and treat the output as de-identified data"
-        why: Paraphrasing can preserve or leak identifying details, and sending raw text to a model is itself a disclosure.
+      - text: "Replace patient names and record numbers with pseudonyms and keep the diagnoses, which are not identifying without a name"
+        why: Free-text diagnoses combined with dates and context can re-identify a patient; pseudonymising direct identifiers alone is not de-identification.
+        misconception: Removing names makes health data anonymous
+      - text: "Copy the transcripts as proposed, since the signed data-processing agreement already covers processing for service improvement"
+        why: A contract permits the purpose but does not justify unrestricted repository access or indefinite retention; minimisation and need-to-know still apply.
+        misconception: A contract covering the purpose waives access controls
+      - text: "Have a model rewrite each transcript into a paraphrased synthetic case and treat the output as de-identified data"
+        why: Paraphrasing can preserve identifying details, and sending raw text to a model is itself a disclosure before any scrubbing.
         misconception: Rewriting text removes personal data
     explanation: |
       Production traffic is the best source of realistic cases, but evaluation data inherits the sensitivity of its
       source. Minimise and redact before it enters the repo, limit who can read it and how long it is kept, and
-      treat model-based paraphrasing as unverified de-identification.
+      treat pseudonymising only names, or model-based paraphrasing, as unverified de-identification.
 
   # ---------------------------------------------------------------- eval.methods
   - id: D7-009
@@ -258,7 +259,7 @@ items:
     time_s: 75
     stem: |
       A logistics client's pipeline extracts invoice fields (vendor, date, total, currency) from PDFs into JSON.
-      A teammate proposes a GPT-based judge to score every extraction against the reference. What is the better
+      A teammate proposes an LLM judge to score every extraction against the reference. What is the better
       first grader?
     options:
       - text: "Schema validation plus normalised exact-match per field, because fields have exact answers; a judge only for free text"
@@ -503,24 +504,25 @@ items:
     time_s: 100
     stem: |
       An appliance-warranty chatbot told a customer the warranty is 5 years; the manual says 2. The same response
-      scores 0.93 on answer relevancy. The product owner asks if the metric is broken. What is the correct reading?
+      scores 0.93 on answer relevancy. The product owner asks whether the metric is broken. What is the correct reading?
     options:
-      - text: "Not broken; relevancy ignores truth, so add faithfulness against context and correctness checks"
+      - text: "Working as designed: it scores whether the answer addresses the question, not whether it is true, so add faithfulness against the retrieved text and a correctness check"
         correct: true
-        why: Answer relevancy is derived from regenerating questions from the answer, so a confident wrong answer on topic scores high.
-      - text: "Broken, because relevancy should be the cosine similarity between the answer and the question"
-        why: Relevancy regenerates questions from the answer and compares them with the original; a plain cosine would be no better at catching a wrong figure.
-        misconception: Answer relevancy is a direct answer-to-query similarity
-      - text: "Not broken; a score above 0.9 means the answer is factually consistent with the retrieved context"
-        why: Consistency with context is faithfulness; relevancy says nothing about it.
+        why: Answer relevancy is derived from regenerating questions from the answer, so a confident, on-topic, wrong answer scores high.
+      - text: "Broken: the judge model behind the metric should be upgraded, because a stronger model would notice that 5 years contradicts the manual"
+        why: The relevancy prompt never sees the manual, so no judge, however strong, can detect the factual error with this metric.
+        misconception: A better judge model makes any metric catch factual errors
+      - text: "Working as designed, and context precision is the metric to add, because it flags statements that contradict the retrieved passages"
+        why: Context precision scores the ranking of retrieved chunks, not the answer text; faithfulness is the metric that checks claims against context.
+        misconception: Context precision measures answer correctness
+      - text: "Working as designed: a score above 0.9 means the answer is consistent with the retrieved context, so the retrieval must be the fault"
+        why: Consistency with context is faithfulness; relevancy says nothing about it, so the score cannot be used to clear or blame retrieval.
         misconception: Relevancy and faithfulness are interchangeable
-      - text: "Broken, and the pass threshold should be raised from 0.8 to 0.99 for the relevancy metric in every report"
-        why: A stricter threshold cannot make the metric sensitive to factual errors it is not designed to detect.
-        misconception: Stricter thresholds compensate for the wrong metric
     explanation: |
       RAGAS answer relevancy has an LLM generate questions from the response and averages the embedding
-      similarity of those questions to the original query. It rewards on-topic, complete answers and does not check
-      facts. Pair it with faithfulness against the retrieved context and, where references exist, a correctness check.
+      similarity of those questions to the original query (not a direct answer-to-query cosine). It rewards on-topic,
+      complete answers and does not check facts. Pair it with faithfulness against the retrieved context and, where
+      references exist, a correctness check.
     refs: [https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/answer_relevance/]
 
   - id: D7-018
@@ -562,31 +564,33 @@ items:
     level: evaluate
     time_s: 120
     stem: |
-      A customer-facing refund agent is evaluated with 5 independent trials per task, and the team must pick between
-      pass@5 and pass^5 for the release report. Which statements are accurate?
+      A customer-facing refund agent is evaluated with 5 independent trials per task. The release report must lead
+      with either pass@5 or pass^5 (the two ways of turning a task's 5 trial results into one pass or fail).
+      Assume the agent succeeds on any trial with probability 0.9. Which statements are accurate?
     options:
-      - text: A task solved in 4 of 5 trials counts as a success under pass@5 and a failure under pass^5
+      - text: A task that succeeds in 4 of its 5 trials passes under pass@5 and fails under pass^5
         correct: true
         why: pass@k needs at least one success in k trials; pass^k needs all k.
-      - text: For a customer-facing agent where every interaction should work, pass^k is the more relevant headline
+      - text: For a given task, pass@5 is above 0.99 and pass^5 is about 0.59
         correct: true
-        why: Customers do not get to retry silently; consistency across trials is what they experience.
-      - text: With a per-trial success rate of 0.9, pass@5 is above 0.99 while pass^5 is about 0.59
+        why: pass@5 = 1 - 0.1^5 = 0.99999; pass^5 = 0.9^5 = 0.59. The same agent looks near-perfect or mediocre depending on the metric.
+      - text: A customer who gets one attempt per request and cannot silently retry experiences pass^k, so it is the better headline here
         correct: true
-        why: pass@5 is 1 - 0.1^5; pass^5 is 0.9^5; the gap shows how much the choice matters.
-      - text: pass^k rises as k grows because more trials give the agent more chances to succeed
-        why: The opposite; requiring all trials to succeed makes pass^k fall as k increases.
-        misconception: Both metrics rise with more trials
-      - text: pass@k is preferable because users can always rephrase and retry
-        why: Appropriate for a single-success setting like code generation with tests, but not for a refund where a wrong action is already taken.
+        why: Consistency across attempts is what a customer-facing agent has to deliver; one failed refund is a failure.
+      - text: For a given task, pass^5 is about 0.41, since pass^5 measures how often at least one of the 5 trials fails
+        why: 0.41 is 1 - 0.9^5, the chance that at least one trial fails; pass^5 itself is the chance that none fail, 0.9^5 = 0.59.
+        misconception: pass^k is the failure-side complement
+      - text: Raising the number of trials from 5 to 10 would raise pass^k, because more trials give a more reliable estimate
+        why: More trials make pass^k stricter (0.9^10 = 0.35); extra trials sharpen the estimate of the task's pass^k, they do not raise it.
+        misconception: More trials always improve the reported score
+      - text: pass@k is the better headline because a user can always rephrase and retry after a wrong refund
+        why: Fits settings where one success is enough, such as code that is tested before use; a refund already issued wrongly is not undone by a retry.
         misconception: Retry availability makes any failure recoverable
-      - text: Using pass@5 or pass^5 gives the same ranking of agents, so the choice is cosmetic
-        why: Agents with high-variance behaviour rank very differently under the two metrics.
-        misconception: The two metrics are interchangeable
     explanation: |
       pass@k is the chance of at least one success in k tries and rises with k; pass^k is the chance that all k
-      succeed and falls with k. Which one to headline depends on whether one success is enough (exploration,
-      code generation) or consistency is required (customer-facing automation).
+      succeed and falls with k (Anthropic's agent-eval guidance gives the same definitions, with 0.75^3 = 42% as its
+      example). Which to headline depends on whether one success is enough (exploration, code generation) or
+      consistency is required (customer-facing automation).
     refs: [https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents]
 
   - id: D7-020
@@ -733,12 +737,12 @@ items:
       - text: Re-run a failed gate and accept the commit if any attempt passes
         why: Retry-until-green turns a noisy test into a coin flip and lets real regressions through.
         misconception: Flaky tests should be retried until they pass
-      - text: Gate only on the judge-scored metrics because they are the most holistic view of quality
+      - text: Score a freshly drawn random subset of the golden set on each commit, to cover more cases over time
+        why: Different cases on each commit add between-run variance; the gate must compare like with like on a fixed set.
+        misconception: Rotating the sample improves coverage without cost to stability
+      - text: Gate only on the judge-scored metrics because they give the most holistic view of quality
         why: Holistic but noisy; hard checks like schema validity are cheap and should anchor the gate.
         misconception: Model-based scores are inherently better
-      - text: Raise the candidate model's temperature to explore more outputs per case
-        why: Higher temperature increases output variance and makes the gate noisier.
-        misconception: More output diversity improves test coverage
     explanation: |
       Flaky gates come from sampling noise in the system under test and in the grader. Measure the noise, gate on
       aggregated results with a tolerance derived from it, pin the grader, and move checkable criteria to code.
@@ -791,12 +795,12 @@ items:
       - text: "Use feedback to find cases to review, and measure quality on a graded random sample of all traffic"
         correct: true
         why: Feedback is a biased but valuable signal for triage; unbiased measurement needs random sampling.
-      - text: "Adopt the thumbs-up rate as proposed, since it comes directly from users and is already collected"
-        why: Self-selected, low-volume ratings over-represent angry users, so the rate moves with who responds.
-        misconception: User-provided signals are representative
-      - text: "Drop the buttons, since feedback this biased is useless and gives the team a false sense of safety"
-        why: Feedback surfaces failures you did not think to test; discarding it removes a cheap discovery channel.
-        misconception: Biased data has no value
+      - text: "Report the thumbs-up rate as a trend rather than a level, since the response bias is constant and cancels out in month-on-month change"
+        why: Who rates changes with the product, the user mix and the button placement, so the bias moves and the trend can mislead.
+        misconception: A constant bias makes a trend trustworthy
+      - text: "Reweight the ratings to match the traffic mix by topic and channel, then report the adjusted thumbs-up rate"
+        why: Reweighting fixes observed mix differences only; whether a user chooses to rate still depends on the unobserved experience.
+        misconception: Post-stratification removes self-selection bias
       - text: "Require a rating before the user can continue, to remove the response bias from the data"
         why: Forced ratings add friction and produce careless answers, which creates a different bias.
         misconception: Mandatory responses give clean data
@@ -828,9 +832,9 @@ items:
       - text: Run a synchronous judge on all responses before returning them, for every route
         why: Doubles latency and judge cost for 200,000 queries a day; reserve inline checks for high-risk routes.
         misconception: Online evaluation must block every response
-      - text: Treat the offline golden-set pass rate as the production hallucination rate
-        why: The golden set is a snapshot; live traffic has different questions and corpus freshness.
-        misconception: Offline score equals live behaviour
+      - text: Track answer relevancy on a sample and treat a stable high score as evidence that hallucinations are not increasing
+        why: Relevancy checks that answers address the question; a fluent, on-topic, unsupported answer scores high, so it cannot detect hallucination.
+        misconception: Answer relevancy is a hallucination detector
     explanation: |
       Online evaluation must be reference-free and affordable: sample traffic, score faithfulness against the
       retrieved context asynchronously, alert on rate changes and send suspicious samples to review. Inline blocking
@@ -920,7 +924,7 @@ items:
     level: evaluate
     time_s: 480
     stem: |
-      A regional bank's VP of Operations is impressed by a demo of your claims-triage assistant and wants to go live
+      A regional insurer's VP of Operations is impressed by a demo of your claims-triage assistant and wants to go live
       in three weeks. She asked for "one paragraph on how we will know it is good enough". Write the message you
       would send. Include what you will measure, what thresholds you propose to gate go-live, and what you need
       from her team.
@@ -1066,8 +1070,8 @@ items:
     stem: |
       Tables `runs(run_id, prompt_version, run_date)` and `results(run_id, case_id, slice, passed)` store eval
       outputs (`passed` is 1 or 0). For each `prompt_version` that has been evaluated in at least 2 distinct runs,
-      return `prompt_version`, `runs` (distinct run count), `n_results` (total result rows) and `pass_rate` (passed
-      divided by total rows, rounded to 3 decimals). Order by `pass_rate` descending, then `prompt_version`.
+      return `prompt_version`, `runs` (distinct run count), `n_results` (total result rows) and `pass_rate` (sum of
+      `passed` over all of that version's result rows divided by the number of those rows, rounded to 3 decimals). Order by `pass_rate` descending, then `prompt_version`.
     sql:
       setup: |
         CREATE TABLE runs(run_id TEXT, prompt_version TEXT, run_date TEXT);
@@ -1077,7 +1081,7 @@ items:
         ('r1','c1','billing',1),('r1','c2','billing',0),('r1','c3','refusal',1),('r1','c4','refusal',1),
         ('r2','c1','billing',1),('r2','c2','billing',1),('r2','c3','refusal',0),('r2','c4','refusal',1),
         ('r3','c1','billing',1),('r3','c2','billing',1),('r3','c3','refusal',1),('r3','c4','refusal',0),
-        ('r4','c1','billing',1),('r4','c2','billing',1),('r4','c3','refusal',1),('r4','c4','refusal',1),
+        ('r4','c1','billing',1),('r4','c2','billing',1),('r4','c3','refusal',1),
         ('r5','c1','billing',1),('r5','c2','billing',1),('r5','c3','refusal',1),('r5','c4','refusal',1);
       reference: |
         SELECT r.prompt_version,
@@ -1092,7 +1096,8 @@ items:
       float_round: 3
     explanation: |
       Join runs to results, aggregate per version, and filter groups with HAVING. Multiply by 1.0 so SQLite does not
-      do integer division, and count DISTINCT run_id because every run contributes many result rows.
+      do integer division, and count DISTINCT run_id because every run contributes many result rows. The pass rate is
+      pooled over all result rows of a version (run r4 has one fewer row), not an average of per-run rates.
 
   - id: D7-035
     version: 1
