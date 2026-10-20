@@ -355,3 +355,11 @@ form[inert] { opacity: .8; }
 .filters .field.inline { flex: 1 1 180px; min-width: 0; }
 .filters .field.inline select { width: 100%; min-width: 0; }
 .options-card fieldset.field { margin-top: 1.2rem; }
+.browser-domains { display: grid; gap: .5rem; }
+.browser-domain { padding: 0; }
+.browser-domain > summary { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .7rem 1rem; cursor: pointer; }
+.browser-domain[open] > summary { border-bottom: 1px solid var(--border); }
+.browser-body { padding: .75rem 1rem 1rem; }
+.browser-body .browser-item { box-shadow: none; }
+.pager { margin-top: .9rem; justify-content: center; }
+.browser-body .browser-item { padding: .55rem .85rem; }

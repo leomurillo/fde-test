@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest==9.1.1
+# Browser smoke tests (tests/e2e); skipped automatically when missing. Then: playwright install chromium
+playwright==1.56.0

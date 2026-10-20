@@ -799,34 +799,76 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
 
     # ------------------------------------------------------------ progress
 
-    @app.get("/progress", response_class=HTMLResponse)
-    def progress_page(request: Request, status: str = "", domain: str = "", type: str = ""):
-        tax = load_taxonomy()
-        with ctx.conn() as c:
-            prog = store.progress(c)
-            rows = store.current_items(c, include_retired=True)
-        st_map = prog.pop("status")
-        browser = []
-        for r in rows:
-            st = st_map.get(r["item_id"]) or {"status": "never_seen", "attempts": 0, "last_at": None, "history": []}
+    BROWSER_PAGE_SIZE = 50
+    BROWSER_STATUSES = ("never_seen", "wrong", "right", "seen", "flagged")
+
+    def _browser_rows(c, st_map: dict, status: str, domain: str, type_: str) -> list[dict]:
+        """Item-browser rows (metadata only for never-seen items), filtered."""
+        out = []
+        for r in store.current_items(c, include_retired=True):
+            st = st_map.get(r["item_id"]) or {"status": "never_seen", "attempts": 0, "last_at": None,
+                                              "history": [], "flagged": False}
             if r["retired"] and not st["attempts"]:
                 continue
-            if status and st["status"] != status:
+            if status == "flagged":
+                if not st.get("flagged"):
+                    continue
+            elif status and st["status"] != status:
                 continue
             if domain and r["domain_id"] != domain:
                 continue
-            if type and r["type"] != type:
+            if type_ and r["type"] != type_:
                 continue
-            content = json.loads(r["content_json"])
-            browser.append({
-                "item_id": r["item_id"], "version": r["version"], "type": r["type"], "subtopic": r["subtopic"],
-                "subtopic_name": views.subtopic_name(r["subtopic"]), "difficulty": r["difficulty"],
-                "level": r["level"], "time_s": r["time_s"], "retired": r["retired"], **st,
-                # never-seen items expose metadata only; their stem stays out of the browser
-                "excerpt": plain_excerpt(content.get("stem"), 220) if st["status"] != "never_seen" else None,
-            })
-        return page(request, "progress.html", nav="progress", prog=prog, browser=browser, tax=tax,
-                    f_status=status, f_domain=domain, f_type=type, types=ALL_TYPES)
+            row = {"item_id": r["item_id"], "version": r["version"], "type": r["type"], "subtopic": r["subtopic"],
+                   "domain_id": r["domain_id"], "difficulty": r["difficulty"], "level": r["level"],
+                   "time_s": r["time_s"], "retired": r["retired"], **st, "excerpt": None}
+            if st["status"] != "never_seen":
+                # never-seen items expose metadata only; their stem never reaches the browser
+                row["excerpt"] = plain_excerpt(json.loads(r["content_json"]).get("stem"), 220)
+            row["subtopic_name"] = views.subtopic_name(r["subtopic"])
+            out.append(row)
+        return out
+
+    def _browser_page(rows: list[dict], page_no: int) -> tuple[list[dict], dict]:
+        pages = max(1, -(-len(rows) // BROWSER_PAGE_SIZE))
+        page_no = min(max(1, page_no), pages)
+        lo = (page_no - 1) * BROWSER_PAGE_SIZE
+        return rows[lo:lo + BROWSER_PAGE_SIZE], {"page": page_no, "pages": pages, "total": len(rows),
+                                                  "first": lo + 1 if rows else 0,
+                                                  "last": min(lo + BROWSER_PAGE_SIZE, len(rows))}
+
+    def _clean_filters(status: str, type_: str) -> tuple[str, str]:
+        return (status if status in BROWSER_STATUSES else ""), (type_ if type_ in ALL_TYPES else "")
+
+    @app.get("/progress", response_class=HTMLResponse)
+    def progress_page(request: Request, status: str = "", domain: str = "", type: str = "", page_no: int = 1):
+        tax = load_taxonomy()
+        status, type = _clean_filters(status, type)
+        with ctx.conn() as c:
+            prog = store.progress(c)
+            st_map = prog.pop("status")
+            rows = _browser_rows(c, st_map, status, "", type)
+        counts = {d.id: 0 for d in tax.domains}
+        for r in rows:
+            counts[r["domain_id"]] = counts.get(r["domain_id"], 0) + 1
+        open_rows, pager = ([], None)
+        if domain in counts:
+            open_rows, pager = _browser_page([r for r in rows if r["domain_id"] == domain], page_no)
+        return page(request, "progress.html", nav="progress", prog=prog, tax=tax, counts=counts,
+                    total_matching=len(rows), open_domain=domain if domain in counts else "",
+                    open_rows=open_rows, pager=pager, f_status=status, f_type=type, types=ALL_TYPES)
+
+    @app.get("/progress/items", response_class=HTMLResponse)
+    def progress_items(request: Request, domain: str, status: str = "", type: str = "", page_no: int = 1):
+        """HTML fragment: one domain's items, one page (loaded when a domain is opened)."""
+        status, type = _clean_filters(status, type)
+        with ctx.conn() as c:
+            st_map = store.item_status_map(c)
+            rows = _browser_rows(c, st_map, status, domain, type)
+        items, pager = _browser_page(rows, page_no)
+        return templates.TemplateResponse(request, "_browser.html", {
+            "items": items, "pager": pager, "domain": domain, "f_status": status, "f_type": type,
+            "type_labels": views.TYPE_LABELS})
 
     # ------------------------------------------------------------ feedback list
 

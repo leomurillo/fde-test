@@ -274,7 +274,8 @@ def recent_sessions(conn: sqlite3.Connection, limit: int = 10) -> list[dict]:
 def item_status_map(conn: sqlite3.Connection) -> dict[str, dict]:
     """item_id -> {status, attempts, last_at, history[...]} across all versions."""
     out: dict[str, dict] = defaultdict(lambda: {"status": "never_seen", "attempts": 0, "last_at": None,
-                                                 "last_correct": None, "history": [], "seen": False})
+                                                 "last_correct": None, "history": [], "seen": False,
+                                                 "flagged": False})
     for r in conn.execute("SELECT DISTINCT item_id FROM session_items WHERE presented_at IS NOT NULL"):
         out[r["item_id"]]["seen"] = True
     for r in conn.execute("""SELECT r.*, s.mode AS session_mode FROM responses r
@@ -285,6 +286,7 @@ def item_status_map(conn: sqlite3.Connection) -> dict[str, dict]:
         st["attempts"] += 1
         st["last_at"] = r["submitted_at"]
         st["last_correct"] = r["correct"]
+        st["flagged"] = st["flagged"] or bool(r["flagged"])
         st["history"].append({
             "submitted_at": r["submitted_at"], "version": r["item_version"], "correct": r["correct"],
             "score": r["score"], "skipped": r["skipped"], "time_ms": r["time_to_submit_ms"],

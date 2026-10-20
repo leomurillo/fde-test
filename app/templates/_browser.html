@@ -1,0 +1,53 @@
+{% from "_macros.html" import feedback_button, status_badge %}
+{% macro qs(p) -%}domain={{ domain }}&status={{ f_status }}&type={{ f_type }}&page_no={{ p }}{%- endmacro %}
+{% if pager.total %}
+<p class="small muted browser-range">Items {{ pager.first }}–{{ pager.last }} of {{ pager.total }}</p>
+{% endif %}
+<ul class="item-browser">
+  {% for it in items %}
+  <li class="card browser-item">
+    <div class="row between wrap">
+      <div class="item-meta small">
+        <span class="mono"><strong>{{ it.item_id }}</strong>@{{ it.version }}</span>
+        <span class="badge">{{ type_labels[it.type] }}</span>
+        <span class="muted">{{ it.subtopic_name }}</span>
+        <span class="muted">difficulty {{ it.difficulty }} · {{ it.level }}</span>
+        {% if it.retired %}<span class="badge">Retired</span>{% endif %}
+        {% if it.flagged %}<span class="badge s-seen">Flagged</span>{% endif %}
+      </div>
+      <div class="row">
+        {{ status_badge(it.status) }}
+        {{ feedback_button(it.item_id, it.version, label='') }}
+      </div>
+    </div>
+    {% if it.excerpt %}<p class="excerpt">{{ it.excerpt }}</p>{% endif %}
+    {% if it.history %}
+    <details>
+      <summary class="small">{{ it.attempts }} attempt{{ '' if it.attempts == 1 else 's' }} · last {{ it.last_at|date }}</summary>
+      <div class="table-wrap"><table class="data compact">
+        <thead><tr><th>Date</th><th>Version</th><th>Result</th><th class="num">Time</th><th></th></tr></thead>
+        <tbody>
+        {% for h in it.history|reverse %}
+        <tr>
+          <td>{{ h.submitted_at|dt }}</td><td>v{{ h.version }}</td>
+          <td>{% if h.skipped %}Skipped{% elif h.correct is none %}Ungraded{% elif h.correct %}Right{% else %}Wrong{% endif %}{% if h.score is not none and not h.skipped and h.score not in (0, 1) %} ({{ '%.0f'|format(100 * h.score) }}%){% endif %}</td>
+          <td class="num">{{ h.time_ms|ms }}</td>
+          <td><a class="small" href="/s/{{ h.session_id }}/review#item-{{ h.position }}">Session</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </details>
+    {% endif %}
+  </li>
+  {% else %}
+  <li class="muted small">No items in this domain match the filters.</li>
+  {% endfor %}
+</ul>
+{% if pager.pages > 1 %}
+<nav class="pager row wrap small" aria-label="Pages">
+  {% if pager.page > 1 %}<a class="btn small" data-page-link href="/progress?{{ qs(pager.page - 1) }}#d-{{ domain }}">Previous</a>{% endif %}
+  <span class="muted">Page {{ pager.page }} of {{ pager.pages }}</span>
+  {% if pager.page < pager.pages %}<a class="btn small" data-page-link href="/progress?{{ qs(pager.page + 1) }}#d-{{ domain }}">Next</a>{% endif %}
+</nav>
+{% endif %}

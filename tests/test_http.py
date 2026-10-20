@@ -202,17 +202,23 @@ def test_progress_hides_never_seen_content(make_client):
     client = make_client()
     page = client.get("/progress")
     assert page.status_code == 200
-    for item in ITEMS.values():
-        assert item["stem"].split("\n")[0][:40] not in page.text
-    assert "Never seen" in page.text
+    assert "D6-901" not in page.text  # domains are collapsed: no items until one is opened
+    frag = client.get("/progress/items?domain=D6")
+    assert frag.status_code == 200 and "D6-901" in frag.text and "Never seen" in frag.text
+    for text in (page.text, frag.text, client.get("/progress?domain=D6").text):
+        for item in ITEMS.values():
+            assert item["stem"].split("\n")[0][:40] not in text
     sid = new_session(client, "realtime", formats=["numeric"], length=1)
     client.get(f"/s/{sid}/item/1")
     submit(client, sid, session_items(client, sid)[0], answer={"value": "1"})
-    page = client.get("/progress?status=wrong")
-    assert "D6-903" in page.text and "voting" in page.text
-    assert "D6-901" not in page.text
-    never = client.get("/progress?status=never_seen&domain=D6")
-    assert "D6-901" in never.text and "D6-903" not in never.text
+    wrong = client.get("/progress/items?domain=D6&status=wrong").text
+    assert "D6-903" in wrong and "voting" in wrong and "D6-901" not in wrong
+    opened = client.get("/progress?domain=D6&status=wrong")
+    assert "D6-903" in opened.text and 'id="d-D6" open' in opened.text
+    never = client.get("/progress/items?domain=D6&status=never_seen").text
+    assert "D6-901" in never and "D6-903" not in never
+    assert "D6-903" in client.get("/progress/items?domain=D6&status=flagged").text  # flagged on submit (pos 1)
+    assert "D6-901" not in client.get("/progress/items?domain=D6&status=flagged").text
 
 
 def test_feedback_context_and_list(make_client):

@@ -31,6 +31,13 @@ Spoken items emulate CandiTech's "Video" questions: a preparation countdown, the
 the microphone that stops automatically at the time limit. Without a microphone you get a timed text box
 in which you cannot edit what you already wrote.
 
+- **Single take, enforced by the server.** When the preparation countdown starts, the page registers an
+  attempt for that item. If the page is reloaded (or you come back to it) after that, the server refuses a
+  new recording and shows only the timed written answer; the response is stored with `attempt_used: true`.
+- **Audio format.** The browser decodes the recording and converts it to 16 kHz mono 16-bit PCM WAV before
+  uploading, because WAV is a format Gemini documents. If decoding fails, the original recording
+  (webm/ogg/mp4) is uploaded instead, and `encode_error` is stored with the response.
+
 ## Gemini key (optional, for AI grading)
 
 Open-text and spoken answers are graded by Gemini against each item's rubric. Bring your own key:
@@ -53,7 +60,7 @@ Everything is local, in `var/` at the repo root (gitignored); override with `FDE
 | Path | Contents |
 |---|---|
 | `var/fde.sqlite3` | sessions, responses, telemetry events, feedback, item version snapshots, settings |
-| `var/audio/{response_id}.webm` | spoken answers (ogg/m4a depending on the browser) |
+| `var/audio/{response_id}.wav` | spoken answers (webm/ogg/m4a only when WAV conversion failed) |
 | `var/secrets.json` | Gemini key, only if saved from Settings |
 
 The item bank is read from `bank/items/*.yaml` at startup (override with `FDE_BANK_DIR`). Invalid items are
@@ -98,7 +105,9 @@ re-selections for single choice, de-selections for multiple select, and editing 
 ## Progress
 
 **Progress** shows, per domain and subtopic, the items in the bank, seen / never seen, last result right
-or wrong, accuracy and median time, plus an item browser with each item's history. Items you have never
+or wrong, accuracy and median time. Below that is an item browser grouped by domain: domains are collapsed,
+opening one loads its items 50 at a time, and you can filter by status (never seen, last wrong, last right,
+flagged) and format. Each item shows its history. Items you have never
 seen show metadata only, never their stem or answers, so they stay fresh for future tests.
 
 ## Tests
@@ -107,3 +116,7 @@ seen show metadata only, never their stem or answers, so they stay fresh for fut
 pip install -r requirements-dev.txt
 python -m pytest -q          # uses the fixture bank in tests/fixtures, never bank/items
 ```
+
+Browser tests in `tests/e2e/` drive Chromium with a fake microphone: a full session in both modes, WAV
+upload, reload after the countdown, and the progress browser. They are skipped automatically when the
+`playwright` package or a Chromium build is missing. To enable them, run `playwright install chromium`.

@@ -16,7 +16,7 @@
     {% for d in prog.domains %}
     <tbody>
       <tr class="domain-row">
-        <th scope="row"><a href="/progress?domain={{ d.id }}#items">{{ d.id }} {{ d.name }}</a> <span class="muted small">{{ d.weight }}%</span></th>
+        <th scope="row"><a href="/progress?domain={{ d.id }}#d-{{ d.id }}">{{ d.id }} {{ d.name }}</a> <span class="muted small">{{ d.weight }}%</span></th>
         <td class="num">{{ d['items'] }}</td><td class="num">{{ d.seen }}</td><td class="num">{{ d.never_seen }}</td>
         <td class="num">{{ d.right }}</td><td class="num">{{ d.wrong }}</td>
         <td class="num">{{ '%.0f%%'|format(d.accuracy_pct) if d.accuracy_pct is not none else '–' }}</td>
@@ -44,15 +44,9 @@
   <label class="field inline"><span>Status</span>
     <select name="status">
       <option value="">All</option>
-      {% for v, l in [('never_seen', 'Never seen'), ('wrong', 'Last wrong'), ('right', 'Last right'), ('seen', 'Seen, ungraded')] %}
+      {% for v, l in [('never_seen', 'Never seen'), ('wrong', 'Last wrong'), ('right', 'Last right'), ('flagged', 'Flagged'), ('seen', 'Seen, ungraded')] %}
       <option value="{{ v }}" {% if f_status == v %}selected{% endif %}>{{ l }}</option>
       {% endfor %}
-    </select>
-  </label>
-  <label class="field inline"><span>Domain</span>
-    <select name="domain">
-      <option value="">All</option>
-      {% for d in tax.domains %}<option value="{{ d.id }}" {% if f_domain == d.id %}selected{% endif %}>{{ d.id }} {{ d.name }}</option>{% endfor %}
     </select>
   </label>
   <label class="field inline"><span>Format</span>
@@ -62,47 +56,19 @@
     </select>
   </label>
   <button class="btn" type="submit">Filter</button>
-  <span class="muted small">{{ browser|length }} items</span>
+  <span class="muted small">{{ total_matching }} matching item{{ '' if total_matching == 1 else 's' }} · open a domain to list them (50 per page)</span>
 </form>
 
-<ul class="item-browser">
-  {% for it in browser %}
-  <li class="card browser-item">
-    <div class="row between wrap">
-      <div class="item-meta small">
-        <span class="mono"><strong>{{ it.item_id }}</strong>@{{ it.version }}</span>
-        <span class="badge">{{ type_labels[it.type] }}</span>
-        <span class="muted">{{ it.subtopic_name }}</span>
-        <span class="muted">difficulty {{ it.difficulty }} · {{ it.level }}</span>
-        {% if it.retired %}<span class="badge">Retired</span>{% endif %}
-      </div>
-      <div class="row">
-        {{ status_badge(it.status) }}
-        {{ feedback_button(it.item_id, it.version, label='') }}
-      </div>
+<div class="browser-domains">
+  {% for d in tax.domains %}
+  {% set is_open = (open_domain == d.id) %}
+  <details class="browser-domain card" id="d-{{ d.id }}" {% if is_open %}open{% endif %}>
+    <summary><span><strong>{{ d.id }}</strong> {{ d.name }}</span><span class="badge">{{ counts[d.id] }}</span></summary>
+    <div class="browser-body" data-src="/progress/items?domain={{ d.id }}&status={{ f_status }}&type={{ f_type }}" {% if is_open %}data-loaded="1"{% endif %}>
+      {% if is_open %}{% with items=open_rows, pager=pager, domain=d.id %}{% include "_browser.html" %}{% endwith %}{% else %}<noscript><a href="/progress?domain={{ d.id }}&status={{ f_status }}&type={{ f_type }}#d-{{ d.id }}">Show items</a></noscript>{% endif %}
     </div>
-    {% if it.excerpt %}<p class="excerpt">{{ it.excerpt }}</p>{% endif %}
-    {% if it.history %}
-    <details>
-      <summary class="small">{{ it.attempts }} attempt{{ '' if it.attempts == 1 else 's' }} · last {{ it.last_at|date }}</summary>
-      <table class="data compact">
-        <thead><tr><th>Date</th><th>Version</th><th>Result</th><th class="num">Time</th><th></th></tr></thead>
-        <tbody>
-        {% for h in it.history|reverse %}
-        <tr>
-          <td>{{ h.submitted_at|dt }}</td><td>v{{ h.version }}</td>
-          <td>{% if h.skipped %}Skipped{% elif h.correct is none %}Ungraded{% elif h.correct %}Right{% else %}Wrong{% endif %}{% if h.score is not none and not h.skipped and h.score not in (0, 1) %} ({{ '%.0f'|format(100 * h.score) }}%){% endif %}</td>
-          <td class="num">{{ h.time_ms|ms }}</td>
-          <td><a class="small" href="/s/{{ h.session_id }}/review#item-{{ h.position }}">Session</a></td>
-        </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </details>
-    {% endif %}
-  </li>
-  {% else %}
-  <li class="muted">No items match these filters.</li>
+  </details>
   {% endfor %}
-</ul>
+</div>
 {% endblock %}
+{% block scripts %}<script src="/static/progress.js?v={{ app_version }}"></script>{% endblock %}
