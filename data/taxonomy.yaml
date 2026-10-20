@@ -1,0 +1,742 @@
+# FDE examination taxonomy — source of truth for tagging questions.
+#
+# Weights:
+#   domain.weight     = % of a full examination (domains sum to 100)
+#   subtopic.share    = % of its domain (subtopics sum to 100 per domain)
+#   effective weight  = domain.weight * subtopic.share / 100
+#
+# Question tags use the subtopic `tag` (e.g. "agents.when"); the domain is implied
+# by the prefix. Cross-cutting competencies and formats are separate dimensions.
+#
+# Policy (see data/terminology.yaml): questions test principles and mainstream
+# terminology only. Frameworks coined by either handbook are never the thing
+# being tested; their underlying idea may be, phrased in mainstream terms.
+#
+# Validate / render:  python tools/taxonomy.py --check --render
+
+version: 1
+updated: 2026-10-20
+scope: >-
+  Forward Deployed Engineer examination, role-agnostic. The Gorilla Logic
+  Senior FDE (AI Platform) job description is used as a coverage floor
+  (every non-generic item must map to at least one subtopic), not as a bias.
+mcq_bank_target: 220
+
+cognitive_levels:
+  - id: recall
+    desc: Know a mainstream term or fact (keep these rare).
+  - id: apply
+    desc: Use a concept in a concrete situation.
+  - id: analyze
+    desc: Diagnose a scenario, find the cause, compare options.
+  - id: evaluate
+    desc: Judge a trade-off and defend a choice under constraints.
+
+formats:
+  # Mirrors CandiTech's documented question types where we can emulate them.
+  - id: mcq_single
+    canditech: Multiple Choice
+    grading: auto
+  - id: mcq_multi
+    canditech: Multiple Choice (Multiple Select)
+    grading: auto
+  - id: value
+    canditech: Value
+    grading: auto
+    note: Numeric/text answer, e.g. back-of-envelope token cost or latency.
+  - id: open_text
+    canditech: Open Text
+    grading: ai_rubric
+    note: Graded by Gemini against a rubric (CandiTech uses rubric-based AI agents on Enterprise plans).
+  - id: spoken
+    canditech: Video
+    grading: ai_rubric
+    note: Timed verbal answer; emulate with audio or a timed no-edit text box.
+  - id: code
+    canditech: Code
+    grading: auto
+    note: Python function with hidden test cases.
+  - id: sql
+    canditech: SQL
+    grading: auto
+    note: Query against provided tables (SQLite); compare result sets.
+  - id: ai_assisted
+    canditech: AI skills section (embedded ChatGPT / Claude, transcript recorded)
+    grading: ai_rubric
+    note: Candidate works with an embedded assistant; the transcript and final output are both graded.
+  - id: code_project
+    canditech: Code Project (Beta)
+    grading: auto+ai_rubric
+    note: Multi-file task with an AI coding assistant. Later phase.
+
+cross_cutting:
+  # Assessed mainly through formats rather than MCQ counts.
+  - id: x.ai-assisted
+    name: AI-assisted execution
+    desc: >-
+      Drive an AI assistant to a correct result: structured prompts, purposeful
+      iteration, verifying output, catching hallucinations, knowing when to
+      override it. CandiTech records these transcripts for review.
+    formats: [ai_assisted, code_project]
+  - id: x.decomposition
+    name: Structured decomposition
+    desc: Break a vague customer problem into parts and a plan (Palantir-style decomposition round).
+    formats: [open_text, spoken, ai_assisted]
+  - id: x.python
+    name: Hands-on Python
+    formats: [code, code_project]
+  - id: x.sql
+    name: Hands-on SQL
+    formats: [sql]
+  - id: x.estimation
+    name: Quantitative estimation
+    desc: Token, cost, latency, throughput and capacity arithmetic.
+    formats: [value, mcq_single]
+  - id: x.written-comms
+    name: Written and verbal communication
+    desc: Bottom line first, audience-appropriate, trade-offs explicit.
+    formats: [open_text, spoken]
+
+jd_coverage_items:
+  # Non-generic items from the Gorilla Logic JD. Generic soft skills, seniority
+  # and language/frontend framework choices are deliberately excluded.
+  jd.platform-code: Production services, APIs, SDKs, internal tools, reusable platform capabilities
+  jd.hybrid-systems: Agents + tools + deterministic workflows + APIs + events + human approval steps
+  jd.execution: Agent runtimes, model invocation, reusable skills, automated actions
+  jd.orchestration: Routing, sequencing, parallelism, delegation, retries, checkpoints, scheduling, memory, state
+  jd.enterprise-context: MCP, RAG, repos, tickets, docs, DBs, search, APIs
+  jd.integrations: GitHub, Azure DevOps, Jira, Slack, cloud, SaaS
+  jd.governance: Identity, permissions, policies, approval gates, guardrails, access control, audit trails, kill switches
+  jd.observability: Traces, logs, metrics, token use, model and tool calls, failures, latency, cost
+  jd.evaluation: Automated evals, benchmark datasets, regression suites, thresholds, hallucination checks, model/prompt comparison
+  jd.devex: APIs, SDKs, CLIs, templates, config, docs
+  jd.deployment: Cloud, containers, serverless, CI/CD, IaC, IAM, networking, secrets
+  jd.client-work: Discovery in unfamiliar client environments, fast path to production, communicating trade-offs
+  jd.distributed: Async, events, state, reliability; REST, GraphQL, webhooks, queues, DBs, auth
+  jd.llm: LLM APIs, tool calling, structured outputs, embeddings, RAG, agents, model selection
+  jd.agents-vs-workflows: When to use agents vs deterministic workflows vs automation vs traditional software
+  jd.data: SQL, retrieval, indexing, vector stores
+  jd.troubleshooting: Troubleshooting across layers; discovery and prototyping
+  jd.preferred: MCP, multi-agent, Kubernetes, IaC, OpenTelemetry, automated evals for agents
+
+domains:
+  - id: D1
+    slug: role
+    name: FDE Role, Operating Model & Economics
+    weight: 6
+    rationale: >-
+      Both handbooks spend most pages here (Richard Xu Parts 1, 5, 6), but a
+      skills test samples it lightly: certifications fold it into one
+      "mindset" module (GSDC 1 of 13) and the Adaface FDE test has none.
+      Kept small and principle-only because this is where book-specific
+      theory is densest.
+    sources:
+      richardxu: [ch01, ch02, ch03, ch04, ch05, ch19, ch20, ch21, ch22, ch26]
+      goday: [ch1]
+      external: [palantir-dev-delta, yc-mcgrew-fde, gsdc-cfde]
+    subtopics:
+      - id: D1.1
+        tag: role.definition
+        name: What an FDE is accountable for
+        share: 30
+        concepts:
+          - Outcome accountability in the customer's real environment, not feature delivery
+          - '"One customer, many capabilities" (Delta) vs "one capability, many customers" (Dev) — Palantir'
+          - Echo (deployment strategist / problem owner) vs Delta (builder) split
+          - Why AI labs revived the role (deployment gap between model capability and enterprise value)
+        jd: [jd.client-work]
+      - id: D1.2
+        tag: role.adjacent
+        name: FDE vs adjacent roles
+        share: 20
+        concepts:
+          - Solutions engineer / presales, solutions architect, consultant / SI, customer success, professional services
+          - Discriminators — who writes production code, where it lives, who owns the outcome, how work is priced
+        jd: []
+      - id: D1.3
+        tag: role.productization
+        name: Field-to-product feedback and productization
+        share: 30
+        concepts:
+          - Core platform vs customer-specific code; configuration over customization; no per-customer forks
+          - When to generalize a repeated customization (rule of three) and who decides
+          - Reusable field assets — connectors, templates, eval sets, failure-mode libraries
+          - Per-customer customization effort should fall over time or it is a services business
+        jd: [jd.platform-code]
+      - id: D1.4
+        tag: role.economics
+        name: Engagement economics
+        share: 20
+        concepts:
+          - Services vs software margins; why FDE-heavy models are a deliberate trade
+          - Pricing models (time & materials, fixed scope, outcome-based) and who carries which risk
+          - ROI against the real baseline (cost of the human process replaced), TCO, build / buy / partner
+        jd: []
+
+  - id: D2
+    slug: discovery
+    name: Discovery, Scoping & Delivery Lifecycle
+    weight: 10
+    rationale: >-
+      The defining FDE skill per Palantir's decomposition interview, every
+      certification syllabus and both handbooks; also an explicit JD duty
+      ("discovery in unfamiliar client environments, then fast progress to
+      production"). Best tested by scenarios and open text.
+    sources:
+      richardxu: [ch06, ch07, ch08, ch09, appA]
+      goday: [ch1, ch2, ch3]
+      external: [palantir-decomposition, gsdc-cfde, aiu-cfde]
+    subtopics:
+      - id: D2.1
+        tag: discovery.framing
+        name: Problem framing and decomposition
+        share: 25
+        concepts:
+          - Stated request vs underlying problem; observe the workflow, don't only interview
+          - Issue trees / MECE decomposition of a vague problem
+          - End user vs buyer vs sponsor needs
+        jd: [jd.client-work]
+      - id: D2.2
+        tag: discovery.selection
+        name: Choosing the problem worth solving
+        share: 20
+        concepts:
+          - Value x feasibility x data availability x risk x sponsorship
+          - When AI is the wrong tool (deterministic rule, report or form will do)
+          - Measurable baseline exists before you start
+        jd: [jd.client-work, jd.agents-vs-workflows]
+      - id: D2.3
+        tag: discovery.environment
+        name: Working in an unfamiliar client environment
+        share: 15
+        concepts:
+          - System archaeology — undocumented schemas, legacy code, tribal knowledge
+          - Data and access inventory before design; who grants access and how long it takes
+          - Prototyping against real data early
+        jd: [jd.client-work, jd.troubleshooting]
+      - id: D2.4
+        tag: delivery.scoping
+        name: Scoping PoC, pilot, MVP and production
+        share: 20
+        concepts:
+          - PoC vs pilot vs MVP vs production; a pilot needs real users, real data, real workflow
+          - Success metrics and acceptance criteria agreed before building
+          - Time-boxing, cutting scope not value, managing scope creep; first version is disposable
+        jd: [jd.client-work]
+      - id: D2.5
+        tag: delivery.go-live
+        name: Production readiness and rollout
+        share: 20
+        concepts:
+          - The PoC-to-production gap ("pilot purgatory") and its usual causes
+          - Production readiness review — acceptance criteria, ownership, on-call, runbooks, rollback
+          - Progressive rollout — shadow mode, limited cohort, percentage ramp
+        jd: [jd.client-work, jd.deployment]
+
+  - id: D3
+    slug: stakeholders
+    name: Stakeholders, Communication & Adoption
+    weight: 9
+    rationale: >-
+      CandiTech emphasises open-text and video answers graded by AI rubrics,
+      and its AI-skills material asks candidates to explain and defend
+      decisions — this domain is where those formats land. JD: "communicate
+      trade-offs to client engineers, architects and leadership".
+    sources:
+      richardxu: [ch15, ch16, ch17, ch08]
+      goday: [ch2]
+      external: [canditech-ai-skills, gsdc-cfde]
+    subtopics:
+      - id: D3.1
+        tag: comms.tradeoffs
+        name: Communicating trade-offs and uncertainty
+        share: 25
+        concepts:
+          - Bottom line first (Pyramid Principle / BLUF) for executives; depth for engineers
+          - Design docs and decision records; stating options, costs and risks
+          - Explaining probabilistic AI behaviour and its limits to non-technical stakeholders
+        jd: [jd.client-work]
+      - id: D3.2
+        tag: comms.stakeholders
+        name: Stakeholder management
+        share: 25
+        concepts:
+          - Stakeholder mapping — sponsor, buyer, users, IT, security, legal, blockers
+          - Handling pushback and resistant IT / security teams; earning trust through evidence
+          - Expectation management, saying no, escalation paths
+        jd: [jd.client-work]
+      - id: D3.3
+        tag: adoption.change
+        name: Adoption and change management
+        share: 25
+        concepts:
+          - Go-live is not adoption; define and measure activation and usage
+          - Embedding in existing workflows; incentives over training; fear of replacement
+          - Executive sponsorship for cross-department change; gradual rollout
+        jd: []
+      - id: D3.4
+        tag: adoption.handoff
+        name: Handoff and enablement
+        share: 25
+        concepts:
+          - Exit criteria; documentation, runbooks and knowledge transfer
+          - Customer can operate, change and troubleshoot without you; avoiding vendor dependency
+          - Support model after handoff
+        jd: [jd.devex]
+
+  - id: D4
+    slug: llm
+    name: LLM Application Engineering
+    weight: 12
+    rationale: >-
+      Core of every AI-era FDE syllabus (GSDC prompt engineering module; CCA-F
+      "Prompt Engineering & Structured Output" 20%; Adaface FDE test 8/16 MCQs
+      on prompting + generative AI) and an explicit JD requirement.
+    sources:
+      richardxu: [ch14]
+      goday: [ch8]
+      external: [cca-f, adaface-fde, gsdc-cfde]
+    subtopics:
+      - id: D4.1
+        tag: llm.fundamentals
+        name: Model and API fundamentals
+        share: 20
+        concepts:
+          - Tokens, context windows, sampling (temperature, top-p), non-determinism
+          - Latency (time to first token, output length), streaming, rate limits, batch APIs
+          - Prompt caching and what invalidates it
+        jd: [jd.llm, jd.execution]
+      - id: D4.2
+        tag: llm.prompting
+        name: Prompt and context engineering
+        share: 20
+        concepts:
+          - System prompts, clear instructions, examples (few-shot), delimiters / tags
+          - Reasoning / thinking models and when explicit step-by-step helps
+          - Context budgeting, long-context pitfalls, what to put in vs retrieve
+        jd: [jd.llm]
+      - id: D4.3
+        tag: llm.structured-tools
+        name: Structured outputs and tool calling
+        share: 25
+        concepts:
+          - JSON schema / constrained decoding vs "please return JSON"; validate and repair
+          - Tool calling mechanics — the model proposes, the application executes and returns results
+          - Writing tool definitions the model can use correctly
+        jd: [jd.llm, jd.execution]
+      - id: D4.4
+        tag: llm.model-selection
+        name: Model selection and adaptation
+        share: 20
+        concepts:
+          - Choosing by capability, latency, cost, context length, data residency
+          - Routing and cascades (small model first, escalate on low confidence)
+          - Prompting vs RAG vs fine-tuning vs tools — which problem each solves
+          - Hosted API vs open-weight self-hosted; abstraction to limit lock-in
+        jd: [jd.llm]
+      - id: D4.5
+        tag: llm.failure-modes
+        name: LLM failure modes
+        share: 15
+        concepts:
+          - Hallucination and its causes; knowledge cutoff
+          - Prompt injection (direct and indirect), jailbreaks
+          - Prompt brittleness across model versions; sycophancy
+        jd: [jd.evaluation, jd.governance]
+
+  - id: D5
+    slug: rag-data
+    name: Retrieval, RAG & Enterprise Data
+    weight: 11
+    rationale: >-
+      JD lists "SQL, retrieval, indexing and vector stores" and "enterprise
+      context" as requirements; GSDC has dedicated RAG and data-engineering
+      modules; goday spends three chapters on data. CandiTech's SQL question
+      type makes hands-on SQL likely in any data-touching assessment.
+    sources:
+      richardxu: [ch10, ch13]
+      goday: [ch3, ch4, ch7]
+      external: [gsdc-cfde, canditech-question-types]
+    subtopics:
+      - id: D5.1
+        tag: rag.retrieval
+        name: Retrieval mechanics
+        share: 30
+        concepts:
+          - Embeddings, similarity metrics, chunking strategies and their trade-offs
+          - Vector indexes (ANN / HNSW) and recall vs latency
+          - Hybrid search (BM25 + dense), fusion (reciprocal rank fusion), cross-encoder reranking
+          - Query rewriting / expansion
+        jd: [jd.data, jd.llm, jd.enterprise-context]
+      - id: D5.2
+        tag: rag.ingestion
+        name: Ingestion, freshness and permissions
+        share: 20
+        concepts:
+          - Parsing PDFs and tables; metadata; deduplication
+          - Incremental indexing and freshness
+          - Permission-aware retrieval (filter by the caller's ACLs at query time)
+          - Citations / source attribution in answers
+        jd: [jd.enterprise-context, jd.governance]
+      - id: D5.3
+        tag: rag.architecture
+        name: Choosing a context strategy
+        share: 15
+        concepts:
+          - RAG vs long context vs fine-tuning vs live API / tool lookups
+          - Agentic retrieval; structured data belongs in SQL, not in a vector store
+          - Repos, tickets, docs and search as context sources
+        jd: [jd.enterprise-context]
+      - id: D5.4
+        tag: data.sql
+        name: SQL and data discovery
+        share: 25
+        concepts:
+          - Joins, aggregation, window functions, CTEs, NULL semantics
+          - Discovering undocumented schemas; profiling and data-quality checks
+          - Indexes and reading a query plan at a basic level
+          - Text-to-SQL risks (read-only roles, row limits, validation)
+        jd: [jd.data]
+      - id: D5.5
+        tag: data.modeling
+        name: Data modeling and pipelines
+        share: 10
+        concepts:
+          - OLTP vs OLAP; star schema; layered raw / cleaned / curated pipelines
+          - ETL vs ELT; data contracts between producers and consumers
+        jd: [jd.data]
+
+  - id: D6
+    slug: agents
+    name: Agents, Orchestration & Hybrid Systems
+    weight: 13
+    rationale: >-
+      Largest domain. It is the centre of the JD ("AI Harness", hybrid systems,
+      orchestration, "when to use agents vs deterministic workflows"), the top
+      CCA-F domain (Agentic Architecture 27% + Tool Design & MCP 18%), and a
+      dedicated module in every FDE certification.
+    sources:
+      richardxu: [ch09, ch11]
+      goday: [ch8]
+      external: [anthropic-building-effective-agents, mcp-spec, cca-f, gsdc-cfde]
+    subtopics:
+      - id: D6.1
+        tag: agents.when
+        name: Agents vs workflows vs automation vs traditional software
+        share: 25
+        concepts:
+          - "Workflow: predefined code path with LLM steps. Agent: the model directs its own steps and tool use"
+          - Choose by predictability of the path, cost of error, auditability needs, latency and cost budget
+          - Start with the simplest thing that works; add autonomy only when it pays
+          - Plain software or RPA when inputs are structured and rules are known
+        jd: [jd.agents-vs-workflows, jd.hybrid-systems]
+      - id: D6.2
+        tag: agents.patterns
+        name: Composition patterns
+        share: 20
+        concepts:
+          - Prompt chaining with programmatic gates; routing; parallelization (sectioning, voting)
+          - Orchestrator-workers; evaluator-optimizer
+          - The agent loop (reason, act, observe) and explicit stopping conditions
+        jd: [jd.orchestration, jd.hybrid-systems]
+      - id: D6.3
+        tag: agents.tools-mcp
+        name: Tools and the Model Context Protocol
+        share: 20
+        concepts:
+          - Tool design for agents — narrow scope, clear names and descriptions, useful errors, idempotent actions
+          - MCP architecture — host, client, server; tools, resources, prompts; stdio vs HTTP transports
+          - Too many tools degrades selection; agent-to-agent protocols (A2A) at awareness level
+        jd: [jd.enterprise-context, jd.execution, jd.preferred]
+      - id: D6.4
+        tag: agents.state
+        name: State, memory and durable execution
+        share: 20
+        concepts:
+          - Short-term (context) vs long-term memory; context compaction
+          - Checkpointing and resuming long runs (e.g. after an overnight approval)
+          - Retries, scheduling, idempotency of side-effecting steps
+        jd: [jd.orchestration]
+      - id: D6.5
+        tag: agents.multi
+        name: Multi-agent systems and human steps
+        share: 15
+        concepts:
+          - Supervisor / hierarchical / handoff topologies
+          - When multi-agent helps (parallel breadth) and when it hurts (coordination cost, compounding errors)
+          - Human approval steps inside automated flows
+        jd: [jd.orchestration, jd.hybrid-systems, jd.preferred]
+
+  - id: D7
+    slug: evaluation
+    name: Evaluation & Quality
+    weight: 10
+    rationale: >-
+      Both handbooks treat evaluation as the bridge from demo to production;
+      the JD lists a full eval stack; CCA-F "Context Management & Reliability"
+      15%. Mainstream practice (golden datasets, regression suites, LLM-as-
+      judge) is consistent across sources, so this is high-signal and
+      low-ambiguity.
+    sources:
+      richardxu: [ch12, ch13]
+      goday: [ch9]
+      external: [anthropic-demystifying-evals, ragas]
+    subtopics:
+      - id: D7.1
+        tag: eval.datasets
+        name: Eval datasets
+        share: 25
+        concepts:
+          - Golden datasets built from real cases and edge cases
+          - Regression suites that grow with every production failure
+          - Versioning; leakage; eval-driven development
+        jd: [jd.evaluation]
+      - id: D7.2
+        tag: eval.methods
+        name: Grading methods
+        share: 25
+        concepts:
+          - Code-based graders (exact match, schema, unit tests) before model graders
+          - LLM-as-judge with rubrics; pairwise comparison; position, verbosity and self-preference bias
+          - Calibrating judges against human labels
+        jd: [jd.evaluation]
+      - id: D7.3
+        tag: eval.rag-agent
+        name: RAG and agent metrics
+        share: 20
+        concepts:
+          - Faithfulness / groundedness, answer relevance, context precision and recall
+          - Agent task success vs trajectory / tool-call correctness
+          - pass@k vs pass^k (reliability across repeated trials); cost and latency per task
+        jd: [jd.evaluation, jd.preferred]
+      - id: D7.4
+        tag: eval.gates
+        name: Thresholds, gates and comparisons
+        share: 15
+        concepts:
+          - Release gates in CI; thresholds per metric
+          - Model and prompt comparison; re-running evals on model upgrades
+          - Small-sample noise; when a difference is real
+        jd: [jd.evaluation]
+      - id: D7.5
+        tag: eval.online
+        name: Online evaluation
+        share: 15
+        concepts:
+          - Offline vs online evaluation; sampling production traffic for review
+          - User feedback signals; drift; hallucination checks in production
+        jd: [jd.evaluation, jd.observability]
+
+  - id: D8
+    slug: governance
+    name: Governance, Security & Responsible AI
+    weight: 9
+    rationale: >-
+      A full JD bullet (identity, permissions, approval gates, guardrails,
+      audit trails, kill switches) and three Richard Xu chapters. Enterprise
+      AI deployments stall here more than anywhere else, so scenario
+      questions are realistic.
+    sources:
+      richardxu: [ch10, ch11, ch13]
+      goday: [ch5, ch6]
+      external: [owasp-llm-top10, aiu-cfde]
+    subtopics:
+      - id: D8.1
+        tag: gov.identity
+        name: Identity and access for agents
+        share: 25
+        concepts:
+          - SSO (OIDC / SAML), OAuth 2.0 flows, scopes
+          - Delegated (on-behalf-of the user) vs service identity; an agent should not exceed the user's permissions
+          - Least privilege, RBAC vs ABAC, workload identity instead of long-lived keys, secrets management
+        jd: [jd.governance, jd.deployment, jd.distributed]
+      - id: D8.2
+        tag: gov.guardrails
+        name: Guardrails and injection defence
+        share: 25
+        concepts:
+          - Input / output filtering; PII redaction
+          - Treat retrieved and tool content as untrusted; privilege separation; tool allowlists
+          - Validate tool parameters before any side effect; sandbox code execution
+        jd: [jd.governance]
+      - id: D8.3
+        tag: gov.approvals
+        name: Approval gates and kill switches
+        share: 20
+        concepts:
+          - Human approval tiered by risk, reversibility and blast radius — not on every action
+          - Approval as a durable, auditable step (not a click-through prompt)
+          - Kill switches, action rate limits, dry-run modes
+        jd: [jd.governance, jd.hybrid-systems]
+      - id: D8.4
+        tag: gov.audit-compliance
+        name: Audit, data protection and compliance
+        share: 20
+        concepts:
+          - Audit trails — who, what, when, on whose behalf, inputs, outputs, tool calls
+          - Data residency, retention, provider data-use terms
+          - GDPR, HIPAA, SOC 2 at awareness level; data sensitivity drives the deployment model
+        jd: [jd.governance, jd.observability]
+      - id: D8.5
+        tag: gov.responsible-ai
+        name: Responsible AI
+        share: 10
+        concepts:
+          - Bias, transparency, explainability through citations
+          - Risk-tiered regulation (e.g. EU AI Act) at awareness level
+        jd: []
+
+  - id: D9
+    slug: integration
+    name: Integration & Distributed Systems
+    weight: 8
+    rationale: >-
+      JD requirements (APIs, async, events, REST, GraphQL, webhooks, queues)
+      and the Adaface FDE test devotes half its MCQs to backend and system
+      design. Mainstream, well-defined material; good MCQ territory.
+    sources:
+      richardxu: [ch14]
+      goday: [ch10]
+      external: [adaface-fde, gsdc-cfde]
+    subtopics:
+      - id: D9.1
+        tag: int.apis
+        name: API styles and webhooks
+        share: 25
+        concepts:
+          - REST semantics, pagination, versioning; GraphQL trade-offs
+          - Webhooks — signature verification, retries, idempotency keys, replay protection
+        jd: [jd.distributed, jd.platform-code]
+      - id: D9.2
+        tag: int.async
+        name: Async and event-driven design
+        share: 30
+        concepts:
+          - Queues and streams; at-least-once delivery and idempotent consumers; ordering; dead-letter queues
+          - Sagas and compensation; backpressure; long-running jobs and status callbacks
+          - Choosing sync vs async
+        jd: [jd.distributed, jd.hybrid-systems]
+      - id: D9.3
+        tag: int.resilience
+        name: Resilience patterns
+        share: 25
+        concepts:
+          - Timeouts, retries with exponential backoff and jitter, circuit breakers
+          - Rate limiting, graceful degradation and fallbacks (including to humans)
+          - Consistency trade-offs, caching
+        jd: [jd.distributed, jd.orchestration]
+      - id: D9.4
+        tag: int.enterprise-devex
+        name: Enterprise integrations and developer experience
+        share: 20
+        concepts:
+          - SaaS integrations (GitHub, Jira, Slack, Azure DevOps) — OAuth apps, rate limits, webhooks
+          - Adapters / anti-corruption layers for legacy systems
+          - SDK, CLI, template and config design; documentation as a product
+        jd: [jd.integrations, jd.devex, jd.platform-code]
+
+  - id: D10
+    slug: deployment
+    name: Cloud Deployment & Platform
+    weight: 5
+    rationale: >-
+      JD requires one cloud plus containers, serverless, CI/CD, IaC, IAM.
+      Kept vendor-neutral and principle-level: goday's GCP-specific chapters
+      are vendor detail, and CandiTech generic tests are unlikely to go deep
+      on one cloud.
+    sources:
+      richardxu: [ch10]
+      goday: [ch5, ch6, ch10]
+      external: [gsdc-cfde, aiu-cfde]
+    subtopics:
+      - id: D10.1
+        tag: deploy.compute
+        name: Compute choices
+        share: 30
+        concepts:
+          - Containers and Kubernetes basics; serverless trade-offs (cold starts, max duration vs long LLM calls)
+          - Picking compute for long-running agent workloads
+        jd: [jd.deployment, jd.preferred]
+      - id: D10.2
+        tag: deploy.delivery
+        name: CI/CD and infrastructure as code
+        share: 30
+        concepts:
+          - Pipelines, environment parity, IaC (e.g. Terraform) and drift
+          - Canary, blue / green, feature flags, rollback
+        jd: [jd.deployment, jd.preferred]
+      - id: D10.3
+        tag: deploy.models-network
+        name: Deployment models and network security
+        share: 40
+        concepts:
+          - Multi-tenant SaaS vs single-tenant vs customer VPC / BYOC vs on-prem / air-gapped
+          - Private endpoints, egress control, data-exfiltration perimeters
+          - IAM and secrets in the customer's cloud
+        jd: [jd.deployment, jd.governance]
+
+  - id: D11
+    slug: operations
+    name: Observability, Reliability & Cost
+    weight: 7
+    rationale: >-
+      A full JD bullet (traces, token use, latency, cost) plus "troubleshooting
+      across layers"; Richard Xu ch13-14. Runaway cost and flaky behaviour in
+      production are classic FDE scenario questions.
+    sources:
+      richardxu: [ch13, ch14]
+      goday: [ch8, ch10]
+      external: [otel-genai]
+    subtopics:
+      - id: D11.1
+        tag: obs.tracing
+        name: Tracing and telemetry for AI systems
+        share: 30
+        concepts:
+          - Traces and spans across model and tool calls; structured logs; metrics
+          - OpenTelemetry and its GenAI semantic conventions; correlation IDs
+          - Replaying a run; logging prompts and outputs without leaking PII
+        jd: [jd.observability, jd.preferred]
+      - id: D11.2
+        tag: obs.troubleshooting
+        name: Troubleshooting across layers
+        share: 25
+        concepts:
+          - Isolate the layer — network, auth, data, retrieval, prompt, model, tool
+          - Why prod differs from staging (data, permissions, config, model version)
+          - Reproducing non-deterministic failures; classifying failures
+        jd: [jd.troubleshooting, jd.observability]
+      - id: D11.3
+        tag: obs.cost
+        name: Cost control
+        share: 25
+        concepts:
+          - Token accounting and cost attribution per run, tenant and feature
+          - Prompt caching, routing / cascades, batching, output-length control
+          - Budgets and spend circuit breakers
+        jd: [jd.observability]
+      - id: D11.4
+        tag: obs.slo
+        name: SLOs and incident response
+        share: 20
+        concepts:
+          - Separate SLOs for availability, latency and quality; error budgets
+          - Alerting, on-call, runbooks, post-incident review
+        jd: [jd.observability]
+
+external_sources:
+  palantir-dev-delta: https://blog.palantir.com/dev-versus-delta-demystifying-engineering-roles-at-palantir-ad44c2a6e87
+  palantir-decomposition: https://www.tryexponent.com/guides/palantir-forward-deployed-engineer-interview
+  yc-mcgrew-fde: https://podcast.app/the-fde-playbook-for-ai-startups-with-bob-mcgrew-e425046129
+  gsdc-cfde: https://www.gsdcouncil.org/certified-forward-deployed-engineer
+  aiu-cfde: https://aiu.ac/training/cfde/
+  adaface-fde: https://www.adaface.com/assessment-test/forward-deployed-engineer-test
+  cca-f: https://rickhigh.substack.com/p/claude-certified-architect-the-complete
+  canditech-question-types: https://helpcenter.canditech.io/en/articles/8512793-question-types
+  canditech-ai-skills: https://www.canditech.io/blog/ai-skill-assessment-ai-skills-test/
+  anthropic-building-effective-agents: https://www.anthropic.com/engineering/building-effective-agents
+  anthropic-demystifying-evals: https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents
+  mcp-spec: https://modelcontextprotocol.io/specification
+  ragas: https://docs.ragas.io/en/stable/concepts/metrics/
+  owasp-llm-top10: https://genai.owasp.org/llm-top-10/
+  otel-genai: https://opentelemetry.io/docs/specs/semconv/gen-ai/

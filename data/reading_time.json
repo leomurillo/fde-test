@@ -1,0 +1,296 @@
+{
+  "wpm": 300,
+  "books": [
+    {
+      "key": "richardxu",
+      "title": "The FDE Handbook (Richard Xu)",
+      "repo": "https://github.com/RichardXu001/the-fde-handbook.git",
+      "subdir": "en",
+      "commit": "c6da668830478423bcd7880383dcfebb1b9816fd",
+      "files": 41,
+      "prose_words": 75190,
+      "raw_tokens": 78767,
+      "reading_minutes": 250.6,
+      "per_file": [
+        {
+          "path": "00-Preface.md",
+          "raw": 1489,
+          "prose": 1455
+        },
+        {
+          "path": "01-Authors-Preface.md",
+          "raw": 951,
+          "prose": 911
+        },
+        {
+          "path": "02-Copyright.md",
+          "raw": 255,
+          "prose": 226
+        },
+        {
+          "path": "Appendix/Appendix-A-Delivery-Checklists.md",
+          "raw": 3822,
+          "prose": 3101
+        },
+        {
+          "path": "Appendix/Appendix-B-Glossary.md",
+          "raw": 2586,
+          "prose": 2205
+        },
+        {
+          "path": "Appendix/Appendix-C-Sources-and-Citation-Notes.md",
+          "raw": 1152,
+          "prose": 1046
+        },
+        {
+          "path": "Part-Five-Business-and-Productization/Chapter-19-Count-the-Big-Ledger-Not-the-Small-One.md",
+          "raw": 2248,
+          "prose": 2166
+        },
+        {
+          "path": "Part-Five-Business-and-Productization/Chapter-20-How-to-Charge-for-It.md",
+          "raw": 2422,
+          "prose": 2367
+        },
+        {
+          "path": "Part-Five-Business-and-Productization/Chapter-21-Why-Customization-Must-Decline.md",
+          "raw": 2374,
+          "prose": 2292
+        },
+        {
+          "path": "Part-Five-Business-and-Productization/Chapter-22-How-Field-Experience-Becomes-Product.md",
+          "raw": 2111,
+          "prose": 2061
+        },
+        {
+          "path": "Part-Five-Business-and-Productization/Part-Introduction.md",
+          "raw": 252,
+          "prose": 246
+        },
+        {
+          "path": "Part-Four-Adoption-and-Handoff/Chapter-15-It-Shipped-So-Why-Is-No-One-Using-It.md",
+          "raw": 3724,
+          "prose": 3637
+        },
+        {
+          "path": "Part-Four-Adoption-and-Handoff/Chapter-16-Why-This-Has-to-Be-an-Executive-Sponsored-Project.md",
+          "raw": 3745,
+          "prose": 3649
+        },
+        {
+          "path": "Part-Four-Adoption-and-Handoff/Chapter-17-How-to-Hand-Off-So-the-Customer-Can-Run-It-Themselves.md",
+          "raw": 2568,
+          "prose": 2497
+        },
+        {
+          "path": "Part-Four-Adoption-and-Handoff/Chapter-18-Why-China-Plays-By-Different-Rules.md",
+          "raw": 3966,
+          "prose": 3890
+        },
+        {
+          "path": "Part-Four-Adoption-and-Handoff/Part-Introduction.md",
+          "raw": 452,
+          "prose": 441
+        },
+        {
+          "path": "Part-One-Role-and-Boundaries/Chapter-01-What-Is-an-FDE.md",
+          "raw": 1652,
+          "prose": 1600
+        },
+        {
+          "path": "Part-One-Role-and-Boundaries/Chapter-02-How-to-Tell-It-Apart-from-Adjacent-Roles.md",
+          "raw": 1969,
+          "prose": 1867
+        },
+        {
+          "path": "Part-One-Role-and-Boundaries/Chapter-03-Is-This-Just-Outsourcing-in-a-New-Coat.md",
+          "raw": 1177,
+          "prose": 1136
+        },
+        {
+          "path": "Part-One-Role-and-Boundaries/Chapter-04-Why-Is-Everyone-Talking-About-FDE-in-2026.md",
+          "raw": 1407,
+          "prose": 1338
+        },
+        {
+          "path": "Part-One-Role-and-Boundaries/Chapter-05-Will-AI-Replace-the-FDE.md",
+          "raw": 1738,
+          "prose": 1645
+        },
+        {
+          "path": "Part-One-Role-and-Boundaries/Part-Introduction.md",
+          "raw": 291,
+          "prose": 282
+        },
+        {
+          "path": "Part-Six-People-and-Organization/Chapter-23-A-Day-in-the-Life-of-an-FDE.md",
+          "raw": 1640,
+          "prose": 1594
+        },
+        {
+          "path": "Part-Six-People-and-Organization/Chapter-24-Who-Is-Cut-Out-to-Be-an-FDE.md",
+          "raw": 2768,
+          "prose": 2691
+        },
+        {
+          "path": "Part-Six-People-and-Organization/Chapter-25-How-Engineers-Make-the-Transition.md",
+          "raw": 1602,
+          "prose": 1553
+        },
+        {
+          "path": "Part-Six-People-and-Organization/Chapter-26-How-Companies-Build-an-FDE-Team.md",
+          "raw": 2541,
+          "prose": 2448
+        },
+        {
+          "path": "Part-Six-People-and-Organization/Chapter-27-Can-an-Individual-Do-FDE-Alone.md",
+          "raw": 2341,
+          "prose": 2231
+        },
+        {
+          "path": "Part-Six-People-and-Organization/Chapter-28-The-Endgame-for-FDE.md",
+          "raw": 1900,
+          "prose": 1851
+        },
+        {
+          "path": "Part-Six-People-and-Organization/Part-Introduction.md",
+          "raw": 189,
+          "prose": 182
+        },
+        {
+          "path": "Part-Three-Engineering-Foundations/Chapter-09-How-Many-Walls-Stand-Between-PoC-and-Production.md",
+          "raw": 2495,
+          "prose": 2368
+        },
+        {
+          "path": "Part-Three-Engineering-Foundations/Chapter-10-How-to-Wire-Up-Data-and-Permissions.md",
+          "raw": 1883,
+          "prose": 1823
+        },
+        {
+          "path": "Part-Three-Engineering-Foundations/Chapter-11-How-to-Constrain-What-an-Agent-Can-Do.md",
+          "raw": 2012,
+          "prose": 1931
+        },
+        {
+          "path": "Part-Three-Engineering-Foundations/Chapter-12-How-to-Build-an-Evaluation-System-from-Zero.md",
+          "raw": 2887,
+          "prose": 2809
+        },
+        {
+          "path": "Part-Three-Engineering-Foundations/Chapter-13-What-Proves-You-Right-When-the-Customer-Pushes-Back.md",
+          "raw": 1725,
+          "prose": 1655
+        },
+        {
+          "path": "Part-Three-Engineering-Foundations/Chapter-14-What-to-Do-About-Runaway-Bills-and-Jitter.md",
+          "raw": 2041,
+          "prose": 1983
+        },
+        {
+          "path": "Part-Three-Engineering-Foundations/Part-Introduction.md",
+          "raw": 390,
+          "prose": 382
+        },
+        {
+          "path": "Part-Two-From-Discovery-to-Production/Chapter-06-How-to-Find-a-Problem-Worth-Solving.md",
+          "raw": 3740,
+          "prose": 3632
+        },
+        {
+          "path": "Part-Two-From-Discovery-to-Production/Chapter-07-What-Is-a-Minimum-Viable-Deployment.md",
+          "raw": 2671,
+          "prose": 2584
+        },
+        {
+          "path": "Part-Two-From-Discovery-to-Production/Chapter-08-When-Is-It-Ready-to-Go-Live.md",
+          "raw": 2884,
+          "prose": 2783
+        },
+        {
+          "path": "Part-Two-From-Discovery-to-Production/Part-Introduction.md",
+          "raw": 302,
+          "prose": 291
+        },
+        {
+          "path": "README.md",
+          "raw": 405,
+          "prose": 341
+        }
+      ]
+    },
+    {
+      "key": "goday",
+      "title": "FDE Handbook (goday-org)",
+      "repo": "https://github.com/goday-org/FDE-Handbook.git",
+      "subdir": "book_en",
+      "commit": "229db7b57e3362f3a66c3b757b1cb0c264e69535",
+      "files": 11,
+      "prose_words": 7864,
+      "raw_tokens": 12885,
+      "reading_minutes": 26.2,
+      "per_file": [
+        {
+          "path": "chapter1.md",
+          "raw": 1631,
+          "prose": 1078
+        },
+        {
+          "path": "chapter2.md",
+          "raw": 1334,
+          "prose": 982
+        },
+        {
+          "path": "chapter3.md",
+          "raw": 981,
+          "prose": 549
+        },
+        {
+          "path": "chapter4.md",
+          "raw": 1084,
+          "prose": 612
+        },
+        {
+          "path": "chapter5.md",
+          "raw": 905,
+          "prose": 435
+        },
+        {
+          "path": "chapter6.md",
+          "raw": 996,
+          "prose": 584
+        },
+        {
+          "path": "chapter7.md",
+          "raw": 1048,
+          "prose": 458
+        },
+        {
+          "path": "chapter8.md",
+          "raw": 1007,
+          "prose": 413
+        },
+        {
+          "path": "chapter9.md",
+          "raw": 1046,
+          "prose": 515
+        },
+        {
+          "path": "chapter10.md",
+          "raw": 1155,
+          "prose": 609
+        },
+        {
+          "path": "chapter11.md",
+          "raw": 1698,
+          "prose": 1629
+        }
+      ]
+    }
+  ],
+  "total": {
+    "prose_words": 83054,
+    "raw_tokens": 91652,
+    "reading_minutes": 276.8
+  }
+}

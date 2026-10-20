@@ -1,0 +1,249 @@
+# Terminology register — what questions may and may not lean on.
+#
+# status:
+#   mainstream      widely used beyond these books; fair to name in a question
+#   vendor          a product or cloud-specific name; test the concept, not the product
+#   book-coined     framework/label invented or popularised by one handbook; never test the label
+#   divergent       the book uses a mainstream term with a non-mainstream meaning; use the mainstream one
+#
+# policy:
+#   test            may appear by name
+#   concept-only    the underlying idea may be tested, phrased in mainstream language
+#   do-not-test     out of scope for questions
+
+terms:
+  # ---- goday-org / FDE-Handbook ----------------------------------------
+  - term: Dev vs. Delta
+    source: goday ch1, ch11
+    status: divergent
+    policy: concept-only
+    mainstream: >-
+      Palantir's "Dev versus Delta" names two engineering roles — Devs build the
+      platform (one capability, many customers); Deltas (forward deployed
+      software engineers) deploy it (one customer, many capabilities).
+    note: >-
+      goday recasts it as a code-architecture split (core platform code vs
+      client integration code). The split itself is sound practice (core vs
+      customization, no per-customer forks), but it is not what the term means.
+      Questions use the role meaning; the code split is tested as
+      "core platform vs customer-specific code".
+    refs: [https://blog.palantir.com/dev-versus-delta-demystifying-engineering-roles-at-palantir-ad44c2a6e87]
+
+  - term: Minimum Viable Value (MVV)
+    source: goday ch2
+    status: book-coined
+    policy: concept-only
+    mainstream: MVP / pilot scoped to a measurable business outcome; success metrics agreed up front; time to value.
+
+  - term: Two-loop evaluation lifecycle (inner / outer loop)
+    source: goday ch9
+    status: book-coined
+    policy: concept-only
+    mainstream: Offline evaluation (pre-release, golden / regression sets) vs online evaluation (production sampling and monitoring).
+
+  - term: Answer Relevance = cosine(answer, query)
+    source: goday ch9
+    status: divergent
+    policy: concept-only
+    mainstream: >-
+      In RAGAS, answer relevancy generates questions from the answer with an LLM
+      and averages their embedding similarity to the original question; it is
+      not a direct answer-to-query cosine.
+    refs: [https://docs.ragas.io/en/stable/concepts/metrics/]
+
+  - term: AutoSxS
+    source: goday ch9
+    status: vendor
+    policy: concept-only
+    mainstream: Pairwise (side-by-side) LLM-as-judge comparison producing a win rate.
+
+  - term: VPC Service Controls, Shared VPC, Access Context Manager, Private Service Connect
+    source: goday ch5, ch6
+    status: vendor
+    policy: concept-only
+    mainstream: Data-exfiltration perimeters, centrally managed networks, context-aware access, private endpoints.
+
+  - term: Workload Identity (Federation)
+    source: goday ch5
+    status: mainstream
+    policy: test
+    note: Exists across clouds (GCP, AWS IRSA / Pod Identity, Azure Workload Identity). Principle — no long-lived keys.
+
+  - term: LlamaParse, LangGraph, ADK
+    source: goday ch7, ch8, ch11
+    status: vendor
+    policy: concept-only
+    mainstream: Document parsing; stateful graph orchestration; agent frameworks.
+
+  - term: MECE, Pyramid Principle
+    source: goday ch2
+    status: mainstream
+    policy: test
+
+  - term: Medallion architecture (bronze / silver / gold)
+    source: goday ch4
+    status: mainstream
+    policy: concept-only
+    note: Databricks-originated name for layered raw / cleaned / curated pipelines; low weight for FDE.
+
+  - term: Salting (data skew), dbt tests, star schema, OBT
+    source: goday ch4
+    status: mainstream
+    policy: concept-only
+    note: Data-engineering depth beyond most FDE exams; only D5.5 at light weight.
+
+  - term: Reciprocal Rank Fusion, BM25, hybrid search, cross-encoder reranker
+    source: goday ch7
+    status: mainstream
+    policy: test
+
+  - term: A2A (Agent-to-Agent protocol)
+    source: goday ch11
+    status: mainstream
+    policy: test
+    note: Awareness level only.
+
+  # ---- RichardXu001 / the-fde-handbook ---------------------------------
+  - term: Echo / Delta
+    source: richardxu ch1
+    status: mainstream
+    policy: test
+    note: Palantir terms — Echo (deployment strategist) and Delta (forward deployed software engineer).
+
+  - term: The Four Responsibilities (discovery / production / adoption / feedback)
+    source: richardxu ch1
+    status: book-coined
+    policy: concept-only
+    mainstream: FDE spans discovery, building to production, adoption, and feeding learnings back to product.
+
+  - term: The three tests (where code goes, where experience goes, how it's priced)
+    source: richardxu ch2
+    status: book-coined
+    policy: concept-only
+
+  - term: The five filters; the discovery deliverables
+    source: richardxu ch6
+    status: book-coined
+    policy: concept-only
+    mainstream: Problem prioritisation (value, feasibility, data, risk, sponsorship); discovery outputs.
+
+  - term: Minimum Viable Deployment (MVD); the three "real" conditions
+    source: richardxu ch7
+    status: book-coined
+    policy: concept-only
+    mainstream: Pilot / MVP with real users, real data and a real workflow; not a demo.
+
+  - term: Outcome acceptance sheet; operational readiness checklist; responsibility handoff table
+    source: richardxu ch8
+    status: book-coined
+    policy: concept-only
+    mainstream: Acceptance criteria; production / operational readiness review; RACI / ownership of failure modes.
+
+  - term: The eight walls (PoC to production)
+    source: richardxu ch9
+    status: book-coined
+    policy: concept-only
+    mainstream: The PoC-to-production gap ("pilot purgatory") — data access, integration, permissions, reliability, evaluation, cost, ownership.
+
+  - term: Harness
+    source: richardxu ch9
+    status: mainstream
+    policy: test
+    note: Increasingly standard ("agent harness"); the Gorilla Logic JD uses "AI Harness".
+
+  - term: Data contract
+    source: richardxu ch10
+    status: divergent
+    policy: concept-only
+    mainstream: >-
+      In data engineering a data contract is a schema / quality / SLA agreement
+      between data producers and consumers. Richard Xu uses it for an access
+      agreement (scope, visibility, retention, audit) — test that as data
+      access agreement / DPA.
+
+  - term: Tool contract / ToolSpec; run state machine; approval ticket
+    source: richardxu ch9, ch11
+    status: book-coined
+    policy: concept-only
+    mainstream: Tool schemas with parameter validation; durable execution / checkpointing; human-in-the-loop approval step.
+
+  - term: Tiered authorization
+    source: richardxu ch11
+    status: book-coined
+    policy: concept-only
+    mainstream: Risk-based human-in-the-loop; approval proportional to reversibility and blast radius.
+
+  - term: Golden set, regression set, LLM-as-judge, release gate
+    source: richardxu ch12
+    status: mainstream
+    policy: test
+    note: '"Golden dataset" is the more common phrasing.'
+
+  - term: The three layers of trust; EvidenceRef
+    source: richardxu ch13
+    status: book-coined
+    policy: concept-only
+    mainstream: Citations / provenance, traceability and replay, failure classification.
+
+  - term: Four resilience primitives (timeout, retry, idempotency, graceful degradation)
+    source: richardxu ch13-14
+    status: book-coined
+    policy: concept-only
+    note: The grouping is the book's; each item is mainstream and testable by name.
+
+  - term: Model routing; budget circuit breaker; cost attribution; SLO
+    source: richardxu ch14
+    status: mainstream
+    policy: test
+
+  - term: Activation (vs go-live)
+    source: richardxu ch15
+    status: mainstream
+    policy: test
+    note: Standard product-analytics term.
+
+  - term: The three exit conditions
+    source: richardxu ch17
+    status: book-coined
+    policy: concept-only
+    mainstream: Handoff exit criteria.
+
+  - term: China-specific FDE model; "who defines the last mile"; the trio; Tu FDE
+    source: richardxu ch18, ch26, ch27
+    status: book-coined
+    policy: do-not-test
+
+  - term: Big ledger vs small ledger; the six metrics
+    source: richardxu ch19
+    status: book-coined
+    policy: concept-only
+    mainstream: ROI / TCO against the replaced process, not against zero.
+
+  - term: Result as a Service (RaaS)
+    source: richardxu ch20
+    status: book-coined
+    policy: concept-only
+    mainstream: Outcome-based pricing.
+
+  - term: Declining customization; six reusable assets; three steps and two gates
+    source: richardxu ch21-22
+    status: book-coined
+    policy: concept-only
+    mainstream: Productization of field work; configuration over customization; field feedback loop.
+
+  - term: Forward Deployed Product Manager (FDPM)
+    source: richardxu ch26
+    status: mainstream
+    policy: concept-only
+    note: Used by some companies; not universal. Awareness only.
+
+  - term: AI FDE (Palantir product)
+    source: richardxu ch4
+    status: vendor
+    policy: do-not-test
+
+  - term: Career, team-building and solo-practice chapters
+    source: richardxu ch23-28
+    status: book-coined
+    policy: do-not-test
+    note: Useful context for the candidate, not exam material.
