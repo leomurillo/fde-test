@@ -45,19 +45,19 @@ items:
       attacker who captures one valid delivery (body and signature) could resend it later and trigger the action
       again, such as opening a deployment ticket. Which changes close this gap?
     options:
-      - text: Include a timestamp in the signed content and reject deliveries outside a short tolerance window
+      - text: "Sign a timestamp with the body and reject deliveries outside a short tolerance window"
         correct: true
         why: A captured request goes stale after a few minutes, and the attacker cannot alter the timestamp without breaking the signature.
-      - text: Record each delivery id for the length of the window and ignore ids that have been seen
+      - text: "Record each delivery id for the length of the window and ignore ids already seen"
         correct: true
         why: It blocks replays inside the tolerance window, and it also absorbs the provider's own redelivery of the same event.
-      - text: Move from SHA-256 to SHA-512 for the signature
+      - text: "Move the signature algorithm from SHA-256 to SHA-512 for stronger protection"
         why: A stronger hash makes forgery harder, but a replayed request carries a genuine signature of either kind.
         misconception: A stronger algorithm prevents replay
-      - text: Switch the signature comparison to a constant-time function
+      - text: "Switch the signature comparison to a constant-time function to avoid timing leaks"
         why: This is good practice against timing attacks, but a replayed request is bit-for-bit valid and still passes.
         misconception: Timing-safe comparison also addresses replay
-      - text: Allow only the provider's published IP ranges to reach the endpoint
+      - text: "Allow only the provider's published IP ranges to reach the webhook endpoint"
         why: A replay through a compromised or shared egress address, or from captured traffic inside the network, still passes the filter.
         misconception: Network filtering stops replayed requests
     explanation: |
@@ -78,7 +78,7 @@ items:
       `updated_at` descending. Tickets are edited while the job runs, and the resulting export contains duplicates
       and misses tickets that the vendor's own UI shows. What is the best remedy?
     options:
-      - text: Page with an opaque cursor, or with keyset paging on `(updated_at, id)`, and checkpoint it after each page
+      - text: "Page with an opaque cursor (or keyset on updated_at and id) and checkpoint it after each page"
         correct: true
         why: A cursor anchors the position to a stable key rather than a row count, so edits no longer shift pages.
       - text: Raise the limit to the maximum page size so that fewer pages are fetched while the data moves
@@ -87,7 +87,7 @@ items:
       - text: Sort by `created_at` ascending and keep using offsets so that new tickets land at the end
         why: Inserts then land at the end, but deleted or re-sorted rows still shift offsets, and edits to older tickets are missed.
         misconception: An insert-only ordering makes offset paging safe
-      - text: Schedule the export for the quietest hour and keep using offset paging
+      - text: "Schedule the export for the quietest hour of the night and keep using offset paging"
         why: A quiet window lowers the error rate without removing it, and it breaks when volumes grow or time zones overlap.
         misconception: Low traffic makes offset paging reliable
     explanation: |
@@ -108,16 +108,16 @@ items:
       clients retry and the platform starts a second run, billing the customer twice. The API owner wants retries
       to remain possible. What should the endpoint support?
     options:
-      - text: An `Idempotency-Key` header, with the server storing the first result per key and returning it for repeats
+      - text: "Support an Idempotency-Key header and return the stored first result for any repeat"
         correct: true
         why: A retry carrying the same key resolves to the original run instead of creating another, with no change to client retry logic.
-      - text: Rejecting a new run with 409 whenever the same user has any run in progress
+      - text: "Reject any new run with a 409 whenever the same user already has a run in progress"
         why: It blocks legitimate parallel runs from one user and does nothing for a retry that arrives after the first run has finished.
         misconception: A concurrency lock is the same as idempotency
-      - text: Treating requests with identical request bodies within five minutes as duplicates
+      - text: "Treat requests with identical request bodies within five minutes as duplicates of each other"
         why: Two intentional runs with the same prompt would collapse into one, and the window is arbitrary.
         misconception: Identical payloads always mean a retry
-      - text: Telling clients not to retry `POST` calls and to poll for the run afterwards
+      - text: "Tell clients not to retry POST calls and to poll for the run afterwards instead"
         why: There is no run id to poll for when the response never arrived, and it removes the safety net clients need.
         misconception: POST is unsafe to retry, so retries should not be offered
     explanation: |
@@ -175,16 +175,16 @@ items:
       own Postgres database and then acknowledges the message. After a worker crash between insert and
       acknowledge, the broker redelivers the event and the case appears twice. How should the consumer be made safe?
     options:
-      - text: Insert with a unique constraint on the producer's event id and treat a conflict as already processed
+      - text: "Add a unique constraint on the producer's event id and treat a conflict as already done"
         correct: true
         why: The event id is stable across redeliveries, and the database enforces it atomically with the insert.
       - text: Turn on the broker's exactly-once mode and remove the duplicate handling from the consumer
         why: Broker-side settings cannot cover a crash between the consumer's external write and its acknowledgement.
         misconception: Exactly-once delivery by the broker gives exactly-once effects in the consumer
-      - text: Key de-duplication on the receipt handle the broker issues with each delivery
+      - text: "Key de-duplication on the receipt handle the broker issues with each delivery attempt"
         why: A redelivery gets a new receipt handle, so the second copy would look new and be inserted again.
         misconception: Any identifier attached to a message is a stable de-duplication key
-      - text: Skip events whose timestamp is within one second of an event already stored
+      - text: "Skip events whose timestamp is within one second of an event that is already stored"
         why: Distinct cases can be created in the same second, so valid events are dropped while duplicates arriving later pass.
         misconception: Time proximity identifies duplicates
     explanation: |
@@ -204,10 +204,10 @@ items:
       every time. The broker redelivers the message immediately, one shard of the queue is stuck behind it, and
       other customers' documents are delayed. What is the best fix?
     options:
-      - text: Cap delivery attempts, then move the message to a dead-letter queue with an alert and a redrive tool
+      - text: "Cap delivery attempts, then park the message in a dead-letter queue with an alert"
         correct: true
         why: The bad message stops blocking others, remains available for diagnosis, and can be replayed after a fix.
-      - text: Increase the visibility timeout so that the message is not redelivered as quickly
+      - text: "Increase the visibility timeout so that the failing message is not redelivered so quickly"
         why: This only slows the redelivery loop; the message still fails every attempt and holds the shard longer.
         misconception: Slower redelivery resolves a deterministic failure
       - text: Catch every exception in the worker and acknowledge the message so it leaves the queue
@@ -233,10 +233,10 @@ items:
       endpoint sits behind a gateway with a 60-second timeout, so long requests fail with 504 even though the work
       itself succeeds. What is the right API change?
     options:
-      - text: Return 202 with a job id at once, run the agent in the background, and expose status and result endpoints
+      - text: "Return 202 with a job id immediately and expose status and result endpoints"
         correct: true
         why: Decoupling submission from completion removes the dependency on the gateway timeout, and clients can poll or receive a callback.
-      - text: Raise the gateway timeout to 15 minutes for this route
+      - text: "Raise the gateway timeout for this route to 15 minutes so that the call can complete"
         why: Long-held connections are fragile to client, proxy and load-balancer limits, and they tie up capacity while waiting.
         misconception: A longer timeout makes a long synchronous call reliable
       - text: Send periodic keep-alive bytes on the open connection until the agent finishes
@@ -262,7 +262,7 @@ items:
       `updated` event is applied after the `closed` event that followed it, leaving the mirrored issue open.
       Overall throughput must stay high. What is the best change?
     options:
-      - text: Use the issue key as the partition key so each issue's events go to one consumer in order
+      - text: "Use the issue key as the partition key so each issue's events stay in order"
         correct: true
         why: Order is preserved where it matters (per issue) while different issues are still processed in parallel.
       - text: Run a single consumer for the whole topic so that events are handled in arrival order
@@ -293,16 +293,16 @@ items:
       the first two resources remain and the customer is half onboarded. These are three independent SaaS APIs.
       Which approach is the most appropriate?
     options:
-      - text: Model the steps as a saga with a compensating action for each, run by a durable workflow that records progress
+      - text: "Model the steps as a saga with compensating actions, run by a durable workflow engine"
         correct: true
         why: Each completed step can be undone or retried idempotently, and the recorded state survives restarts and tells operators where it stopped.
-      - text: Wrap the three calls in a distributed transaction using two-phase commit
+      - text: "Wrap the three calls in one distributed transaction using two-phase commit across them"
         why: Public SaaS APIs do not take part in a transaction coordinator, so atomic commit across them is not available.
         misconception: Distributed transactions can span arbitrary external APIs
-      - text: Retry the Slack call indefinitely with backoff until it succeeds
+      - text: "Retry the Slack call indefinitely with exponential backoff until it finally succeeds"
         why: A permanent quota failure never succeeds, so the customer waits forever and the partially built workspace stays inconsistent.
         misconception: Persistent retrying converges on success
-      - text: Log the failure and have an engineer clean up the leftover resources each week
+      - text: "Log the failure and have an engineer clean up the leftover resources each week"
         why: It leaves customers half onboarded for days, depends on manual work, and does not scale with volume.
         misconception: Manual cleanup is an acceptable consistency model
     explanation: |
@@ -332,13 +332,13 @@ items:
       - text: Let the queue absorb bursts, and alert on the age of the oldest message rather than on depth
         correct: true
         why: Age reflects the delay customers actually see, and the queue is designed to buffer a backlog safely.
-      - text: Autoscale workers on queue depth so the backlog clears sooner
+      - text: "Autoscale workers on queue depth so that the backlog clears sooner than it does now"
         why: More workers send more requests into the same rate limit, which multiplies the 429s and retries.
         misconception: More consumers drain a queue faster whatever the downstream limit is
-      - text: Discard the oldest messages once the queue passes a fixed length
+      - text: "Discard the oldest messages once the queue passes a fixed length to bound the backlog"
         why: Dropped summaries are lost work, and the same customers submit them again, adding load.
         misconception: Shedding queued work is free for batch jobs
-      - text: Remove retries from the workers so failed calls stop adding load
+      - text: "Remove retries from the workers so that failed calls stop adding more load"
         why: Transient errors then become permanent failures, and the lost jobs need manual replay.
         misconception: Turning off retries is the right response to rate limiting
     explanation: |
@@ -360,7 +360,7 @@ items:
       producing duplicate comments on pull requests. The broker is working as documented. What is the root cause
       and fix?
     options:
-      - text: The lease expires mid-job and the message becomes visible again; extend it during work and make the job idempotent
+      - text: "The lease expires mid-job; renew it while working and make the job idempotent"
         correct: true
         why: Redelivery after lease expiry is expected behaviour, so renewing the lease while working and guarding side effects fixes both causes.
       - text: The broker is delivering twice by mistake; switch to a FIFO queue to enforce single delivery
@@ -391,7 +391,7 @@ items:
       downstream agent never hears about the case. The team cannot rely on the broker supporting transactions
       shared with the database. What is the most robust design?
     options:
-      - text: Write the event to an outbox table in the same transaction, and have a relay publish it at least once
+      - text: "Write the event to an outbox table in the same transaction; a relay publishes it"
         correct: true
         why: The case and its event commit or fail together, and a crash after commit leaves the event waiting for the relay.
       - text: Publish first and write to the database afterwards so that no event is ever missed
@@ -400,7 +400,7 @@ items:
       - text: Catch publish errors and retry the publish in the request handler a few times
         why: A process crash between commit and publish skips the retry entirely, and in-memory retries are lost with it.
         misconception: In-process retries cover process failure
-      - text: Use two-phase commit between the database and the broker
+      - text: "Use two-phase commit between the database and the broker for every request"
         why: It needs both systems to support the protocol and adds blocking failure modes, so most brokers and managed databases do not offer it.
         misconception: Atomic commit across systems is routinely available
     explanation: |
@@ -452,16 +452,16 @@ items:
       hangs until timeout, the service's request threads are exhausted, and even the health-check and FAQ pages stop
       responding. The business wants customers to still get some help during provider outages. What pattern fits?
     options:
-      - text: A circuit breaker that fails fast after repeated errors, with a fallback and periodic trial requests
+      - text: "A circuit breaker that fails fast after repeated errors, plus a fallback path"
         correct: true
         why: Threads are freed immediately, and the fallback (backup model, cached answer, or handoff to a human) keeps serving users.
-      - text: Raise the timeout to 120 seconds so that slow responses have time to complete
+      - text: "Raise the timeout from 60 to 120 seconds so that slow provider responses can complete"
         why: Requests that would fail anyway hold their threads twice as long, deepening the exhaustion.
         misconception: Longer waits make an unhealthy dependency usable
-      - text: Retry each failed call five times before returning an error to the customer
+      - text: "Retry each failed call up to five times before returning an error to the customer"
         why: Retries multiply the load and the time each request ties up a thread during the outage.
         misconception: More retries improve availability during an outage
-      - text: Add more instances of the service so more threads are available
+      - text: "Add more instances of the service behind the load balancer so more threads are available"
         why: Each new thread is consumed by the same hanging calls, so capacity is exhausted a little later at more cost.
         misconception: Scaling out compensates for a failing dependency
     explanation: |
@@ -501,3 +501,267 @@ items:
       Layered retries multiply: three layers with three retries each can issue up to 4 x 4 x 4 = 64 attempts per
       user call. Keep retries at one layer, propagate deadlines, and cap retry volume with a budget.
     refs: [https://sre.google/sre-book/handling-overload/]
+
+  - id: D9-017
+    version: 1
+    type: single
+    subtopic: int.resilience
+    tags: [llm.fundamentals, obs.cost]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      Your LLM provider limits the account to 1,000 requests and 2 million tokens per minute. Batch jobs send
+      requests whose size varies from 500 to 40,000 tokens (input plus maximum output). A client-side limiter set to
+      1,000 requests per minute still triggers frequent 429 errors whenever large requests cluster. How should the
+      limiter be changed?
+    options:
+      - text: "A token bucket charged by estimated tokens, shared across workers and reconciled with actual usage"
+        correct: true
+        why: The binding constraint is tokens, so cost-weighted admission keeps the total under the limit however sizes vary.
+      - text: Keep the request-count limiter and lower it to 300 per minute, which leaves ample slack for large requests
+        why: It wastes capacity for small requests and still fails if enough large requests arrive in the same minute.
+        misconception: A lower request cap is a safe proxy for a token limit
+      - text: Give each worker a fixed sleep between calls so that no worker exceeds its share
+        why: Per-worker sleeps ignore request size and the number of active workers, so combined traffic can still exceed the limit.
+        misconception: Local pacing in each worker equals a global rate limit
+      - text: Remove client-side limiting and rely on 429 responses with backoff to find the right rate
+        why: It works eventually but wastes calls, adds latency, and rate-limit errors can also affect interactive traffic on the same account.
+        misconception: Reactive backoff is as good as admission control
+    explanation: |
+      When a provider limits several dimensions (requests and tokens), enforce each of them on the client, charging
+      requests by their estimated cost and correcting with actual usage. Share the limiter across workers, or the
+      per-process limits add up to more than the account's limit.
+
+  - id: D9-018
+    version: 1
+    type: single
+    subtopic: int.resilience
+    tags: [int.enterprise-devex, agents.state]
+    difficulty: 2
+    level: analyze
+    time_s: 95
+    stem: |
+      To stay within Jira's rate limits, an assistant caches issue details for one hour. Users now see stale statuses,
+      and last week the agent transitioned an issue based on a cached state that someone had changed minutes earlier.
+      Reads must stay cheap. What is the best design?
+    options:
+      - text: "Invalidate on Jira webhook events and re-read with a version check before any write"
+        correct: true
+        why: Reads stay cheap while writes are protected by fresh state, so the agent cannot act on a stale view.
+      - text: "Lengthen the cache lifetime to 24 hours so that far fewer calls reach the Jira API"
+        why: It lowers API usage further but makes the stale reads, and the risk of acting on them, much worse.
+        misconception: Rate-limit pressure justifies longer staleness
+      - text: "Remove the cache entirely and fetch the issue from Jira again on every single read"
+        why: It restores freshness but reintroduces the rate-limit problem the cache solved, and reads that need no freshness pay for it too.
+        misconception: Caching is unsafe for mutable data
+      - text: Keep the one-hour cache but show users the time at which each value was fetched
+        why: It improves transparency for people, but the agent still acts on stale state when it writes.
+        misconception: Disclosing staleness makes stale data safe to act on
+    explanation: |
+      Match consistency to the use. Reads can tolerate bounded staleness, so cache them and invalidate on change
+      events; writes and decisions that depend on current state should re-check at the source, ideally with an
+      optimistic concurrency token (ETag or version) so a conflicting change is detected.
+
+  - id: D9-019
+    version: 1
+    type: single
+    subtopic: int.enterprise-devex
+    tags: [gov.identity]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      An internal tool reads pull requests and posts review comments across 40 repositories in a customer's GitHub
+      organisation. The prototype uses a classic personal access token from the developer who built it, and rate-limit
+      errors have started. The customer's security team asks for a production design. What do you propose?
+    options:
+      - text: "A GitHub App installed on the org with minimal permissions and short-lived tokens"
+        correct: true
+        why: Access is scoped, tokens expire, the integration does not depend on one person, and rate limits scale with the installation.
+      - text: A shared service-account user with a classic personal access token that has the full repo scope
+        why: The token is long-lived, over-privileged, consumes a seat, and shares one user's rate limit.
+        misconception: A shared bot user is equivalent to a purpose-built integration identity
+      - text: An OAuth app that acts as each developer who signs in, with each person's own token
+        why: This fits actions taken on behalf of a user, but this is a background service that needs to act without anyone present.
+        misconception: User-delegated OAuth suits every integration
+      - text: A deploy key on each repository, used for both git operations and API calls
+        why: Deploy keys authorise git access to one repository only and cannot call the REST API for comments.
+        misconception: SSH deploy keys are general API credentials
+    explanation: |
+      For background integrations with an organisation, prefer a GitHub App: fine-grained permissions chosen by the
+      installer, short-lived installation tokens, webhooks, and rate limits that scale with the installation. Use
+      user-to-server tokens only when an action must be attributed to, and limited by, a specific user.
+    refs: [https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/about-creating-github-apps]
+
+  - id: D9-020
+    version: 1
+    type: single
+    subtopic: int.enterprise-devex
+    tags: [agents.tools-mcp]
+    difficulty: 2
+    level: evaluate
+    time_s: 95
+    stem: |
+      A manufacturer's 20-year-old ERP exposes a SOAP service with fields like `STAT_CD = "07"` and dates as
+      `YYYYMMDD` strings. You are building agent tools that need order status. The ERP team will not change the
+      service. How should the agent connect to it?
+    options:
+      - text: "Put an adapter in front that maps codes and formats into a clean domain model for the tools"
+        correct: true
+        why: Legacy quirks stay in one place, the tool schema stays stable and readable, and the mapping is testable and reviewable.
+      - text: Expose the SOAP operations directly as tools and describe the status codes in the tool descriptions
+        why: Legacy codes leak into prompts and tool schemas, and any ERP change forces prompt changes across every agent.
+        misconception: Documenting a legacy interface in prompts is sufficient integration
+      - text: Let the model interpret the raw codes and date strings from the responses on its own each time
+        why: Interpretation becomes nondeterministic and cannot be audited, and mistakes show up as wrong answers to users.
+        misconception: LLMs can reliably infer undocumented code tables
+      - text: "Re-platform the ERP's order module first, then build the agent tools against the new system"
+        why: A multi-year migration is out of proportion to the need and blocks delivery of value now.
+        misconception: Legacy systems must be replaced before they can be integrated
+    explanation: |
+      An anti-corruption layer (adapter) translates between a legacy model and the model your system wants,
+      so the legacy design does not leak into new components. Codes, formats and quirks are mapped once, in tested
+      code, and agents see stable, meaningful fields.
+
+  - id: D9-021
+    version: 1
+    type: single
+    subtopic: int.enterprise-devex
+    tags: [int.async, agents.state]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A Slack slash command `/summarize-incident` triggers an agent that needs about 40 seconds to finish. Users
+      see a Slack timeout error even though the summary is eventually produced by the backend. What is the
+      correct way to handle the interaction?
+    options:
+      - text: "Acknowledge within 3 seconds, work in the background, and post the result via the response URL"
+        correct: true
+        why: Slack requires a quick acknowledgement, and the delayed response URL or message API delivers the result when it is ready.
+      - text: "Increase the web server's response timeout for this route to 60 seconds to cover the run"
+        why: Slack gives up on its side after about 3 seconds, so server-side timeouts have no effect on the error.
+        misconception: The server's timeout controls how long the platform waits
+      - text: "Stream partial tokens back in the HTTP response as the agent produces them, line by line"
+        why: Slack's command acknowledgement is not a streaming channel and it needs a response within seconds.
+        misconception: Streaming the HTTP response satisfies the platform's timeout
+      - text: "Switch to a smaller, faster model so that the answer comes back within the time limit"
+        why: Even the fastest agent run is unlikely to finish in three seconds with tool calls, and the next slow day will fail again.
+        misconception: Optimising latency is the right answer to a protocol deadline
+    explanation: |
+      Chat platforms expect an acknowledgement within a few seconds. Treat the incoming event as a trigger: respond
+      immediately, enqueue the work, and post the result later through the callback URL or the API. The same
+      pattern applies to webhooks from other SaaS products.
+    refs: [https://api.slack.com/interactivity/slash-commands]
+
+  - id: D9-022
+    version: 1
+    type: multi
+    subtopic: int.enterprise-devex
+    tags: [int.apis, int.async]
+    difficulty: 2
+    level: evaluate
+    time_s: 105
+    stem: |
+      You are keeping an internal work-item index in sync with a customer's Azure DevOps (or Jira) project. The
+      business wants changes visible within a minute and the index to be correct, and the vendor API enforces rate
+      limits. Which elements belong in the design?
+    options:
+      - text: "Subscribe to service hooks for work-item events and enqueue each one for processing"
+        correct: true
+        why: Push delivery gives sub-minute latency without spending API quota on polling.
+      - text: "Run a periodic reconciliation of items changed since a stored cursor, repairing differences"
+        correct: true
+        why: Webhooks can be dropped or delayed, so a low-frequency sweep restores correctness for anything missed.
+      - text: "Poll the full item list every 10 seconds to guarantee the freshest possible view"
+        why: Full polling burns the rate limit quickly and gets slower as the project grows.
+        misconception: Aggressive polling is the dependable route to freshness
+      - text: "Rely on webhooks alone, since the vendor retries failed deliveries by itself"
+        why: Vendor retries are limited in time and number, and delivery can still be lost during your own outages.
+        misconception: Webhooks alone guarantee eventual delivery of every event
+      - text: "Disable rate-limit handling because webhook-driven designs do not consume API quota"
+        why: Fetching details for each event and running reconciliation still call the API, so 429 handling remains necessary.
+        misconception: Event-driven integrations never hit API limits
+    explanation: |
+      Combine push and pull: webhooks for latency, a cursor-based sweep for correctness, and idempotent processing
+      to handle duplicates. The receiver should acknowledge quickly and process asynchronously, and API calls
+      still need rate-limit handling.
+
+  - id: D9-023
+    version: 1
+    type: single
+    subtopic: int.enterprise-devex
+    tags: [role.productization]
+    difficulty: 2
+    level: evaluate
+    time_s: 95
+    stem: |
+      Your FDE team has deployed a document-intake agent at five customers. Each deployment began as a copy of the
+      repository with customer-specific edits, and bug fixes now have to be ported by hand. The team wants a
+      sustainable structure that still allows real per-customer differences. What do you propose?
+    options:
+      - text: "One shared codebase with typed, validated per-customer config and defined extension points"
+        correct: true
+        why: Fixes ship once to everyone, and customer differences live in reviewable config and plug-ins rather than forks.
+      - text: "Keep per-customer forks and merge the upstream changes into each of them every month"
+        why: Merge conflicts and drift accumulate with each customer, and fixes reach customers at different times.
+        misconception: Forks are the safest way to isolate customer differences
+      - text: "Add per-customer if branches in the main code for each variation as it comes up"
+        why: The core fills with special cases, every change risks other customers, and the branching is hard to test.
+        misconception: Conditionals in core code are equivalent to configuration
+      - text: "Move all differences into free-form environment variables set by whoever does the deploy"
+        why: Without a schema or validation, mistakes surface only at runtime, and the settings cannot be reviewed or versioned reliably.
+        misconception: Unstructured settings are as good as designed configuration
+    explanation: |
+      Keep a single product core and push customer variation into validated configuration, adapters and
+      extension points. This is the same discipline as separating a platform from customer-specific
+      integration code, and it lets field learnings flow back into the product.
+
+  - id: D9-024
+    version: 1
+    type: numeric
+    subtopic: int.async
+    tags: [int.resilience, obs.cost]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      After an outage, 9,000 document-summarisation jobs are queued. Each job consumes 6,500 tokens (input plus
+      output) of LLM capacity. The provider allows 1.2 million tokens per minute and 500 requests per minute (one
+      request per job). Interactive users must keep 25% of both limits free. Ignoring ramp-up, how many minutes
+      will it take the workers to drain the queue at the maximum allowed rate?
+    answer: {value: 65, tolerance: 1, tolerance_type: abs, unit: "minutes"}
+    work: |
+      Capacity available to batch work: 75% of each limit.
+      Token limit: 0.75 * 1,200,000 = 900,000 tokens per minute, which is 900,000 / 6,500 = 138.5 jobs per minute.
+      Request limit: 0.75 * 500 = 375 jobs per minute.
+      The token limit binds (138.5 < 375), so the rate is 138.46 jobs per minute.
+      Total tokens = 9,000 * 6,500 = 58,500,000. Time = 58,500,000 / 900,000 = 65 minutes.
+    explanation: |
+      Common mistakes: using the request limit (9,000 / 375 = 24 minutes), forgetting the interactive reserve
+      (48.75 minutes), or applying the reserve to only one limit. Find the binding constraint first, then divide.
+
+  - id: D9-025
+    version: 1
+    type: numeric
+    subtopic: int.resilience
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      A client retries failed calls up to 6 times using exponential backoff with full jitter: before retry
+      number n (n = 1, 2, ...) it sleeps a uniformly random time between 0 and min(cap, base * 2^(n-1)). The base
+      is 0.5 seconds and the cap is 8 seconds. If all 6 retries are used, what is the expected total time spent
+      sleeping, in seconds?
+    answer: {value: 11.75, tolerance: 0.1, tolerance_type: abs, unit: "seconds"}
+    work: |
+      Upper bounds for retries 1 to 6: 0.5, 1, 2, 4, 8 (8 would be 8 = 0.5 * 2^4), and then min(8, 16) = 8.
+      Sum of bounds = 0.5 + 1 + 2 + 4 + 8 + 8 = 23.5 seconds.
+      A uniform random value on [0, b] has mean b/2, so the expected total is 23.5 / 2 = 11.75 seconds.
+    explanation: |
+      Common mistakes: reporting the worst case (23.5 s), forgetting the cap on retry 6 (giving 31.5 / 2 = 15.75), or
+      halving only the last term. Full jitter halves the average wait compared with plain backoff while spreading
+      clients out, but the worst case remains the sum of the capped bounds.

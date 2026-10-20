@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}New test{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>New test</h1>
+    <p class="muted">Choose a scope, length and formats. Items are drawn in proportion to the taxonomy weights.</p>
+  </div>
+</div>
+{% if error %}<div class="notice bad" role="alert">{{ error }}</div>{% endif %}
+
+<form method="post" action="/new" id="new-form" class="new-layout">
+  <input type="hidden" name="client" id="client-info" value="">
+  <section class="card scope-card">
+    <div class="card-head">
+      <h2>Scope</h2>
+      <div class="row small">
+        <button type="button" class="link-btn" data-scope-all>Select all</button>
+        <button type="button" class="link-btn" data-scope-none>Clear</button>
+      </div>
+    </div>
+    <label class="field">
+      <span>Preset</span>
+      <select name="preset" id="preset">
+        {% for s in scopes %}
+        <option value="{{ s.id }}" data-subtopics="{{ s.subtopics|join(',') }}" data-length="{{ s.default_length or 20 }}"
+          data-formats="{{ (s.default_formats or [])|join(',') }}" {% if chosen and s.id == chosen.id %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+        <option value="">Custom selection</option>
+      </select>
+    </label>
+    <p class="muted small" id="preset-desc">{{ chosen.description if chosen else '' }}</p>
+    <div class="tree" id="scope-tree">
+      {% set chosen_subs = chosen.subtopics if chosen else [] %}
+      {% for d in tax.domains %}
+      <details class="tree-domain" {% if loop.index <= 0 %}open{% endif %}>
+        <summary>
+          <label class="check" onclick="event.stopPropagation()">
+            <input type="checkbox" class="domain-check" data-domain="{{ d.id }}">
+            <span><strong>{{ d.id }}</strong> {{ d.name }}</span>
+          </label>
+          <span class="muted small">{{ d.weight }}%</span>
+        </summary>
+        <ul>
+          {% for s in d.subtopics %}
+          {% set c = counts.get(s.tag, {}) %}
+          <li>
+            <label class="check">
+              <input type="checkbox" name="subtopics" value="{{ s.tag }}" data-domain="{{ d.id }}"
+                data-counts="{{ c|jsonval }}" {% if s.tag in chosen_subs %}checked{% endif %}>
+              <span>{{ s.name }} <code class="tag">{{ s.tag }}</code></span>
+            </label>
+            <span class="muted small sub-count" data-count-for="{{ s.tag }}">{{ c.values()|sum }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card options-card stack">
+    <h2>Options</h2>
+    <label class="field">
+      <span>Length (items)</span>
+      <input type="number" name="length" id="length" min="1" max="200" value="{{ chosen.default_length if chosen and chosen.default_length else 20 }}" required>
+    </label>
+    <fieldset class="field">
+      <legend>Formats</legend>
+      <div class="chips">
+        {% set fmt_default = chosen.default_formats if chosen and chosen.default_formats else types %}
+        {% for t in types %}
+        <label class="chip"><input type="checkbox" name="formats" value="{{ t }}" {% if t in fmt_default %}checked{% endif %}><span>{{ type_labels[t] }}</span></label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <fieldset class="field">
+      <legend>Feedback</legend>
+      <label class="radio"><input type="radio" name="mode" value="realtime" checked><span><strong>Real-time feedback</strong><br><span class="muted small">See the answer, why each option is right or wrong, and the explanation after every item.</span></span></label>
+      <label class="radio"><input type="radio" name="mode" value="end"><span><strong>Feedback at the end</strong><br><span class="muted small">Exam conditions: no reveals until you finish.</span></span></label>
+    </fieldset>
+    <fieldset class="field">
+      <legend>Item priority</legend>
+      <label class="radio"><input type="radio" name="priority" value="unseen_first" checked><span>Unseen first, then ones I got wrong</span></label>
+      <label class="radio"><input type="radio" name="priority" value="weak_first"><span>Weakest first (wrong, then lowest scores)</span></label>
+      <label class="radio"><input type="radio" name="priority" value="random"><span>Random</span></label>
+    </fieldset>
+    <div class="row wrap">
+      <label class="field grow">
+        <span>Time limit (minutes, optional)</span>
+        <input type="number" name="time_limit_min" min="1" max="600" placeholder="None">
+      </label>
+      <label class="field grow">
+        <span>Seed (optional)</span>
+        <input type="number" name="seed" min="0" placeholder="Random">
+      </label>
+    </div>
+    <div class="preview" id="preview" aria-live="polite">
+      <div class="preview-row"><span>Pool</span><strong id="pv-pool">–</strong></div>
+      <div class="preview-row"><span>Items in test</span><strong id="pv-count">–</strong></div>
+      <div class="preview-row"><span>Estimated time</span><strong id="pv-time">–</strong></div>
+      <div class="preview-sections small muted" id="pv-sections"></div>
+      <p class="small warn-text" id="pv-note" hidden></p>
+    </div>
+    <button type="submit" class="btn primary block" id="start-btn">Start test</button>
+  </section>
+</form>
+{% endblock %}
+{% block scripts %}<script src="/static/new.js?v={{ app_version }}"></script>{% endblock %}

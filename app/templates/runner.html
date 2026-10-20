@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% from "_macros.html" import feedback_button %}
+{% block title %}Item {{ pos }} of {{ total }}{% endblock %}
+{% block body_class %}runner-page{% endblock %}
+{% block main_class %}container runner-container{% endblock %}
+{% block content %}
+<script type="application/json" id="item-config">{{ config|tojson }}</script>
+<header class="runner-head">
+  <div class="runner-where">
+    <span class="section-name">{{ si.section }}</span>
+    <span class="pos">Item <strong>{{ pos }}</strong> of {{ total }}</span>
+  </div>
+  <div class="runner-tools">
+    <span class="timer" title="Elapsed time in this test"><span class="sr-only">Elapsed </span><span id="elapsed">0:00</span></span>
+    {% if config.timeLimitS %}<span class="timer countdown" title="Time left"><span class="sr-only">Time left </span><span id="countdown">–</span></span>{% endif %}
+    {% if not resp %}
+    <button type="button" class="btn ghost small" id="flag-btn" aria-pressed="false" title="Flag for review (F)">
+      <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 17V3m0 1h9l-2 3.5L14 11H5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Flag</span>
+    </button>
+    {% endif %}
+    {{ feedback_button(si.item_id, si.item_version, session.session_id, pos) }}
+  </div>
+</header>
+
+<nav class="pos-strip" aria-label="Items in this test">
+  {% for x in strip %}
+    {% set link = (x.state == 'skipped') or (x.state == 'answered' and session.mode == 'realtime') %}
+    {% if link and x.pos != pos %}
+      <a class="dot st-{{ x.state }}" href="/s/{{ session.session_id }}/item/{{ x.pos }}" title="Item {{ x.pos }} · {{ x.section }} · {{ x.state }}">{{ x.pos }}</a>
+    {% else %}
+      <span class="dot st-{{ x.state }}{% if x.pos == pos %} current{% endif %}" title="Item {{ x.pos }} · {{ x.section }}" {% if x.pos == pos %}aria-current="step"{% endif %}>{{ x.pos }}</span>
+    {% endif %}
+  {% endfor %}
+</nav>
+
+<article class="card item-card" id="item" data-type="{{ item.type }}">
+  <div class="item-meta small muted">
+    <span class="badge">{{ item.type_label }}</span>
+    <span>{{ item.subtopic_name }}</span>
+    {% if item.time_s %}<span>~{{ item.time_s|dur }}</span>{% endif %}
+  </div>
+  <div class="stem prose">{{ item.stem|md }}</div>
+
+  <form id="answer-form" class="answer" autocomplete="off" {% if resp %}inert{% endif %}>
+    {% if item.type in ('single', 'multi') %}
+      {% if item.type == 'multi' %}<p class="select-n"><strong>Select {{ item.n_correct }}.</strong></p>{% endif %}
+      <ol class="options" role="{{ 'radiogroup' if item.type == 'single' else 'group' }}" aria-label="Options">
+        {% set chosen = (resp.response.selected_presented if resp else []) %}
+        {% for o in item.options %}
+        <li>
+          <label class="option">
+            <input type="{{ 'radio' if item.type == 'single' else 'checkbox' }}" name="opt" value="{{ o.index }}" {% if o.index in chosen %}checked{% endif %}>
+            <span class="key" aria-hidden="true">{{ loop.index }}</span>
+            <span class="option-text">{{ o.text|mdi }}</span>
+          </label>
+        </li>
+        {% endfor %}
+      </ol>
+    {% elif item.type == 'numeric' %}
+      <label class="field numeric-field">
+        <span>Your answer</span>
+        <span class="input-unit">
+          <input type="text" inputmode="decimal" name="value" id="numeric-input" value="{{ resp.response.value if resp else '' }}" placeholder="e.g. 12.5" aria-describedby="unit">
+          {% if item.unit %}<span class="unit" id="unit">{{ item.unit }}</span>{% endif %}
+        </span>
+      </label>
+    {% elif item.type == 'open' %}
+      <label class="field">
+        <span>Your answer</span>
+        <textarea name="text" id="open-input" rows="12" maxlength="{{ item.max_chars }}" placeholder="Write your answer…">{{ resp.response.text if resp else '' }}</textarea>
+      </label>
+      <p class="small muted right"><span id="char-count">0</span> / {{ item.max_chars }} characters</p>
+    {% elif item.type == 'sql' %}
+      <details class="schema" open>
+        <summary>Schema and sample rows</summary>
+        {% for t in item.tables %}
+        <div class="schema-table">
+          <pre class="code ddl">{{ t.ddl }}</pre>
+          {% if t.columns %}
+          <div class="table-wrap"><table class="data">
+            <thead><tr>{% for col in t.columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+            <tbody>{% for r in t.rows %}<tr>{% for v in r %}<td>{{ 'NULL' if v is none else v }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+          </table></div>
+          <p class="muted small">Showing {{ t.rows|length }} of {{ t.count }} rows in <code>{{ t.name }}</code>.</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </details>
+      <label class="field">
+        <span>Your query (SQLite)</span>
+        <textarea name="sql" id="code-input" class="code-editor" rows="10" spellcheck="false" placeholder="SELECT …">{{ resp.response.sql if resp else '' }}</textarea>
+      </label>
+      <div class="row"><button type="button" class="btn" id="run-btn">Run query</button><span class="muted small">Ctrl+' runs · shows up to 50 rows</span></div>
+      <div id="run-output" class="run-output" aria-live="polite"></div>
+    {% elif item.type == 'code' %}
+      {% if item.examples %}
+      <details class="schema" open>
+        <summary>Examples</summary>
+        <ul class="examples">
+          {% for e in item.examples %}
+          <li><code>{{ item.function }}({% for a in e.args %}{{ a|jsonval }}{% if not loop.last %}, {% endif %}{% endfor %}{% if e.args and e.kwargs %}, {% endif %}{% for k, v in e.kwargs.items() %}{{ k }}={{ v|jsonval }}{% if not loop.last %}, {% endif %}{% endfor %})</code> → <code>{{ e.expected|jsonval }}</code></li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+      <label class="field">
+        <span>Your solution (Python, standard library only)</span>
+        <textarea name="code" id="code-input" class="code-editor" rows="16" spellcheck="false">{{ resp.response.code if resp else item.starter }}</textarea>
+      </label>
+      <div class="row"><button type="button" class="btn" id="run-btn">Run examples</button><span class="muted small">Ctrl+' runs · hidden tests run on submit</span></div>
+      <div id="run-output" class="run-output" aria-live="polite"></div>
+    {% elif item.type == 'audio' %}
+      <div class="audio-box" id="audio-box" data-prep="{{ item.prep_s }}" data-max="{{ item.max_s }}">
+        {% if resp %}
+          <p class="muted">Answer recorded.</p>
+        {% else %}
+        <div class="audio-stage" data-stage="intro">
+          <p>You will get <strong>{{ item.prep_s }} s</strong> to prepare, then up to <strong>{{ item.max_s|dur }}</strong> to answer out loud. <strong>One take</strong>: recording stops automatically and cannot be redone.</p>
+          <div class="row wrap">
+            <button type="button" class="btn primary" id="audio-begin">Begin (allow microphone)</button>
+            <button type="button" class="btn ghost" id="audio-text">No microphone? Answer in writing</button>
+          </div>
+        </div>
+        <div class="audio-stage" data-stage="prep" hidden>
+          <p class="big-count"><span id="prep-left">{{ item.prep_s }}</span><span class="muted"> s to prepare</span></p>
+          <button type="button" class="btn" id="audio-start-now">Start answering now</button>
+        </div>
+        <div class="audio-stage" data-stage="rec" hidden>
+          <p class="rec-line"><span class="rec-dot" aria-hidden="true"></span> <strong id="rec-label">Recording</strong> · <span id="rec-left">{{ item.max_s }}</span> s left</p>
+          <div class="level" aria-hidden="true"><span id="level-bar"></span></div>
+          <div class="text-fallback" hidden>
+            <p class="small muted">Timed, no-edit answer: Backspace, Delete, cursor moves and paste are disabled, like speaking.</p>
+            <textarea id="fallback-input" rows="8" spellcheck="false"></textarea>
+          </div>
+          <button type="button" class="btn primary" id="audio-stop">Stop and submit</button>
+        </div>
+        <div class="audio-stage" data-stage="upload" hidden><p class="muted">Uploading and grading… <span class="spinner" aria-hidden="true"></span></p></div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </form>
+
+  {% if not resp %}
+  <div class="confidence" role="group" aria-label="How sure are you? (optional)">
+    <span class="small muted">How sure are you?</span>
+    <label class="chip small"><input type="radio" name="confidence" value="1"><span>Guess</span></label>
+    <label class="chip small"><input type="radio" name="confidence" value="2"><span>Unsure</span></label>
+    <label class="chip small"><input type="radio" name="confidence" value="3"><span>Sure</span></label>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn ghost" id="skip-btn">Skip for now</button>
+    <span class="grow"></span>
+    <span class="small muted kbd-hint">{% if item.type in ('single','multi') %}<kbd>1</kbd>–<kbd>{{ item.options|length }}</kbd> select · {% endif %}<kbd>Enter</kbd> submit · <kbd>F</kbd> flag</span>
+    {% if item.type != 'audio' %}<button type="button" class="btn primary" id="submit-btn">Submit</button>{% endif %}
+  </div>
+  <p class="form-msg small" id="submit-msg" role="status" aria-live="polite"></p>
+  {% endif %}
+</article>
+
+<section id="reveal" class="reveal-wrap" aria-live="polite">{% if reveal_html %}{{ reveal_html }}{% endif %}</section>
+
+<div class="next-bar" id="next-bar" {% if not resp %}hidden{% endif %}>
+  <a class="btn primary" id="next-btn" href="/s/{{ session.session_id }}">Next <kbd>Enter</kbd></a>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/runner.js?v={{ app_version }}"></script>{% endblock %}

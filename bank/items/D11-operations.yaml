@@ -13,10 +13,10 @@ items:
       API-gateway request logs and CPU graphs, so nobody can say whether the time goes to the model, the ERP lookup
       or retries. What instrumentation answers the question most directly?
     options:
-      - text: "One trace per run, with child spans for each model call and tool call recording model, tokens and latency"
+      - text: "One trace per run, with a span per model and tool call recording model, tokens and latency, so the slow step shows"
         correct: true
         why: The span tree shows which step consumed the 40 seconds and how many steps ran.
-      - text: Request-level latency histograms per endpoint, with an alert when p95 exceeds the target for five minutes
+      - text: "Request-level latency histograms per endpoint, with an alert when p95 exceeds the target for five consecutive minutes"
         why: Shows that requests are slow, but not which step inside the run is responsible.
         misconception: Aggregate latency metrics are enough to locate a slow step
       - text: "Verbose INFO logs containing the full prompt and response of every model call, searchable by request ID"
@@ -176,7 +176,7 @@ items:
       - text: "Compare the model alias and snapshot in the two environments, since a silent change could explain weaker answers"
         why: A weaker model would produce poor answers, not systematic "nothing found" responses concentrated on one user group.
         misconception: Any production-only symptom is a model-version issue
-      - text: Rebuild the production index from scratch, since a partly failed ingestion explains empty results
+      - text: "Rebuild the production index from scratch and re-run ingestion for the whole document set"
         why: Same snapshot in both environments and partner queries succeed, so the index content is not the common cause.
         misconception: Missing results mean a broken index
       - text: Lower the production similarity threshold to staging's more permissive default
@@ -200,13 +200,13 @@ items:
       and code are unchanged, and traces record model name, finish reason, input length and tenant. What is the best
       first diagnostic step?
     options:
-      - text: Segment failing and passing traces by model version, finish reason, input length and tenant
+      - text: "Segment failing and passing traces by model version, finish reason, input length and tenant"
         correct: true
         why: Finds what separates failures from successes (for example truncation, a snapshot change or one tenant's inputs) before acting.
       - text: Add a JSON-repair step with two retries on parse failure, which will push the error rate near zero
         why: Masks the symptom and adds cost; the cause stays unknown and may worsen.
         misconception: Retry and repair is root-cause analysis
-      - text: "Open a high-severity ticket with the provider and hold changes until their root-cause analysis arrives"
+      - text: "Open a high-severity ticket with the provider and hold further changes until their root-cause analysis arrives"
         why: May be justified later, but without evidence of a provider-side change it delays your own diagnosis.
         misconception: Unexplained behaviour is the provider's responsibility
       - text: "Add a stricter instruction to return valid JSON to the system prompt and ship it as a hotfix"
@@ -332,7 +332,7 @@ items:
       - text: Route by prompt length, sending short questions to the small model since they are probably simple
         why: Length is a weak proxy for difficulty; short questions can need careful reasoning.
         misconception: Input size predicts difficulty
-      - text: Keep the large model for everything but cap output length, which saves cost without routing risk
+      - text: "Keep the large model for everything but cap output length to a fixed maximum for every answer"
         why: Truncating answers risks cutting needed content and leaves the main cost, large-model input, untouched.
         misconception: Output caps are a risk-free substitute for routing
     explanation: |
@@ -355,13 +355,13 @@ items:
       - text: Per-run caps on steps, tokens and cost in the harness, plus per-tenant spend limits that halt work
         correct: true
         why: Stops the loop at the source and bounds each tenant's exposure automatically, without a human present.
-      - text: Send finance a daily spend summary and add a dashboard so anomalies are noticed the next morning
+      - text: "Send finance a daily spend summary and add a dashboard, so anomalies are noticed the next working morning"
         why: Alerts report after the money is spent and depend on someone reading them over a weekend.
         misconception: Reporting is a control
       - text: Set a hard monthly spend cap on the provider account so that total spend can never exceed budget
         why: A single runaway tenant exhausts the cap and takes every other tenant down with it.
         misconception: An account-wide cap is sufficient protection
-      - text: Reduce the maximum output tokens on every model call so that a single call cannot become expensive
+      - text: "Reduce the maximum output tokens on every model call to a low fixed ceiling"
         why: The cost came from the number of iterations, not the size of one call.
         misconception: Per-call limits bound per-run cost
     explanation: |
@@ -391,7 +391,7 @@ items:
       - text: Return HTTP 5xx whenever the model hedges, so low-confidence answers count as errors
         why: Hedging is not wrongness, and this degrades user experience while still missing confident wrong answers.
         misconception: Error codes can stand in for quality
-      - text: Rely on the quarterly CSAT survey to catch quality problems, since users are the final judge
+      - text: "Rely on the quarterly CSAT survey and the support-ticket backlog to catch quality problems"
         why: A quarterly signal detects a three-day incident months after the fact.
         misconception: Lagging satisfaction scores are an adequate quality monitor
     explanation: |
@@ -453,7 +453,7 @@ items:
       - text: Exclude the outage from the SLI this month, since users cannot hold the team responsible for a provider
         why: Users experienced the failures; excluding them hides a dependency risk the team can mitigate.
         misconception: Dependency failures should not count against your SLO
-      - text: Relax the target to 99% for the rest of the month so that the remaining budget is not exhausted
+      - text: "Relax the target to 99% for the rest of the month and recalculate the remaining budget"
         why: Moving the goalposts after a miss removes the signal the budget exists to provide.
         misconception: SLOs can be adjusted to fit results
     explanation: |
@@ -474,7 +474,7 @@ items:
       tenant's documents. Traces show a retrieval filter was bypassed after yesterday's release. What is the right
       first move?
     options:
-      - text: Cut off the affected retrieval path with a kill switch, keeping logs and traces for the investigation
+      - text: "Cut off the affected retrieval path with a kill switch, keeping logs and traces for the investigation"
         correct: true
         why: Contain the exposure now; evidence is preserved so impact and cause can be established afterwards.
       - text: Reproduce the bug in staging first so that the fix is verified before touching production

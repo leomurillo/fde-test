@@ -1,0 +1,97 @@
+{% from "_macros.html" import verdict_badge, result_table %}
+<div class="card reveal v-{{ rv.verdict }}" data-response-id="{{ rv.response_id or '' }}">
+  <div class="reveal-head">
+    {{ verdict_badge(rv.verdict) }}
+    {% if rv.score is not none and rv.verdict not in ('skipped', 'unanswered') %}
+      {% if rv.max_points and rv.max_points != 1 %}
+      <span class="muted">{{ '%g'|format(rv.points or 0) }} / {{ '%g'|format(rv.max_points) }} points</span>
+      {% elif rv.verdict == 'partial' %}<span class="muted">score {{ '%.0f'|format(100 * rv.score) }}%</span>{% endif %}
+    {% endif %}
+    {% if rv.grader == 'gemini' %}<span class="muted small">graded by {{ rv.grader_model or 'Gemini' }}</span>
+    {% elif rv.grader == 'self' %}<span class="muted small">self-graded</span>{% endif %}
+    {% if rv.time_ms %}<span class="muted small grow right">{{ rv.time_ms|ms }}</span>{% endif %}
+  </div>
+
+  {% if rv.type in ('single', 'multi') %}
+  <ol class="options reveal-options">
+    {% for o in rv.options %}
+    <li class="ro {{ 'is-correct' if o.correct else 'is-wrong' }} {{ 'is-chosen' if o.chosen else '' }}">
+      <div class="ro-head">
+        <span class="ro-mark" aria-hidden="true">{{ '✓' if o.correct else '✕' }}</span>
+        <span class="ro-text">{{ o.text|mdi }}</span>
+        {% if o.chosen %}<span class="badge small">Your pick</span>{% endif %}
+      </div>
+      <p class="ro-why"><span class="sr-only">{{ 'Correct option.' if o.correct else 'Incorrect option.' }}</span>{{ o.why|mdi }}</p>
+      {% if o.misconception and not o.correct %}<p class="ro-mis small muted">Trap: {{ o.misconception }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+
+  {% elif rv.type == 'numeric' %}
+  <dl class="kv">
+    <dt>Your answer</dt><dd>{{ rv.answer.value or '–' }} {{ rv.unit }}</dd>
+    <dt>Correct answer</dt><dd><strong>{{ '%g'|format(rv.expected) }} {{ rv.unit }}</strong>
+      <span class="muted small">(accepted ± {{ '%g'|format(rv.tolerance * 100) ~ '%' if rv.tolerance_type == 'rel' else '%g'|format(rv.tolerance) }})</span></dd>
+  </dl>
+  {% if rv.work %}<h3>Worked solution</h3><div class="prose">{{ rv.work|md }}</div>{% endif %}
+
+  {% elif rv.type in ('open', 'audio') %}
+    {% if rv.audio_url %}<audio controls preload="none" src="{{ rv.audio_url }}" class="block"></audio>{% endif %}
+    {% if rv.transcript %}<h3>Transcript</h3><blockquote class="answer-quote">{{ rv.transcript }}</blockquote>
+    {% elif rv.answer.text %}<h3>Your answer{% if rv.fallback == 'text' %} (written fallback){% endif %}</h3><blockquote class="answer-quote">{{ rv.answer.text }}</blockquote>{% endif %}
+    {% if rv.verdict != 'skipped' %}
+    <h3>Rubric</h3>
+    {% if rv.needs_self_grade %}
+      <p class="notice">{% if rv.grading_status == 'ungraded' and rv.grading_reason == 'grading in background' %}AI grading is still running; reload in a moment, or grade yourself.{% else %}AI grading is unavailable{% if rv.grading_reason %} ({{ rv.grading_reason }}){% endif %}. Compare with the model answer and grade yourself.{% endif %}</p>
+      <form class="selfgrade stack" data-selfgrade="{{ rv.response_id }}">
+        {% for r in rv.rubric %}
+        {% set ci = loop.index0 %}
+        <fieldset class="crit">
+          <legend><strong>{{ r.criterion }}</strong> <span class="muted small">(max {{ r.points }})</span></legend>
+          <p class="small muted">{{ r.guidance }}</p>
+          <div class="chips">
+            {% for p in range(r.points + 1) %}
+            <label class="chip small"><input type="radio" name="c{{ ci }}_{{ rv.response_id }}" value="{{ p }}" data-crit="{{ ci }}" required><span>{{ p }}</span></label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        {% endfor %}
+        <div class="row end"><button type="submit" class="btn primary">Save self-grade</button></div>
+      </form>
+    {% else %}
+      <table class="rubric">
+        <thead><tr><th>Criterion</th><th class="num">Points</th><th>Why</th></tr></thead>
+        <tbody>
+        {% for r in rv.rubric %}
+          {% set c = rv.criteria[loop.index0] if rv.criteria|length > loop.index0 else none %}
+          <tr><td><strong>{{ r.criterion }}</strong><br><span class="small muted">{{ r.guidance }}</span></td>
+              <td class="num">{{ '%g'|format(c.points) if c else '–' }} / {{ r.points }}</td>
+              <td>{{ c.justification if c else '' }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if rv.overall_feedback %}<p class="feedback-note">{{ rv.overall_feedback }}</p>{% endif %}
+    {% endif %}
+    {% endif %}
+    {% if rv.model_answer %}<h3>Model answer</h3><div class="prose model-answer">{{ rv.model_answer|md }}</div>{% endif %}
+
+  {% elif rv.type == 'sql' %}
+    {% if rv.answer.sql %}<h3>Your query</h3><pre class="code">{{ rv.answer.sql }}</pre>{% endif %}
+    {% if rv.detail.error %}<p class="sql-error">{{ rv.detail.error }}</p>{% elif rv.detail.hint %}<p class="muted">{{ rv.detail.hint }}</p>{% endif %}
+    {% if rv.your_result %}<h3>Your result</h3>{{ result_table(rv.your_result) }}{% endif %}
+    <h3>Expected result</h3>{{ result_table(rv.expected_result) }}
+    <h3>Reference query</h3><pre class="code">{{ rv.reference }}</pre>
+
+  {% elif rv.type == 'code' %}
+    {% if rv.total %}<p>Hidden tests passed: <strong>{{ rv.passed }} / {{ rv.total }}</strong></p>{% endif %}
+    {% if rv.code_error %}<pre class="code error">{{ rv.code_error }}</pre>{% endif %}
+    {% if rv.case_errors %}<p class="muted small">Errors raised: {{ rv.case_errors|join(', ') }}</p>{% endif %}
+    {% if rv.answer.code %}<details><summary>Your code</summary><pre class="code">{{ rv.answer.code }}</pre></details>{% endif %}
+  {% endif %}
+
+  {% if rv.explanation %}<h3>Explanation</h3><div class="prose">{{ rv.explanation|md }}</div>{% endif %}
+  {% if rv.refs %}
+  <h3>References</h3>
+  <ul class="refs">{% for r in rv.refs %}<li><a href="{{ r }}" target="_blank" rel="noopener noreferrer">{{ r }}</a></li>{% endfor %}</ul>
+  {% endif %}
+</div>

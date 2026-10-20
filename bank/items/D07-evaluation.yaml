@@ -20,7 +20,7 @@ items:
       - text: "Use the 40 hand-picked files, because curated examples have the cleanest reference summaries and the least label noise"
         why: Curation bias; a set chosen to flatter the assistant cannot reveal weaknesses and will overstate pilot quality.
         misconception: Clean, high-quality examples make the best benchmark
-      - text: "Have a frontier model generate 2,000 synthetic claims with reference summaries so the set is large and internally consistent"
+      - text: "Have a frontier model generate 2,000 synthetic claims with reference summaries and review a sample of them"
         why: Synthetic data is useful for augmentation, but alone it reflects the generator's idea of claims, not the client's messy real files.
         misconception: Bigger synthetic sets substitute for real-distribution data
       - text: "Adopt a public summarisation benchmark so pilot results can be compared against published leaderboard numbers"
@@ -45,13 +45,13 @@ items:
       few-shot examples. Eval accuracy climbs from 71% to 93% over two weeks, yet misrouted-ticket complaints in the
       pilot are unchanged. What is the most effective fix to the evaluation process?
     options:
-      - text: "Keep a development set for iteration and a held-out set scored only at release, refreshed from production"
+      - text: "Keep a development set for iteration and a held-out set scored only at release, so reported scores stay unbiased"
         correct: true
         why: Held-out cases that never influenced the prompt give an unbiased estimate, and refreshing them tracks the live distribution.
       - text: "Paraphrase the few-shot examples so they no longer match the eval inputs word for word, then re-run the evaluation"
         why: Paraphrases of the same cases still teach the prompt the answers; the score remains contaminated.
         misconception: Leakage only matters when strings match exactly
-      - text: "Triple the eval set by generating paraphrased variants of the existing 150 cases, which gives a more precise average"
+      - text: "Triple the eval set by generating paraphrased variants of the existing 150 cases and averaging over all 450"
         why: Variants of cases already used for tuning are near-duplicates; a bigger set with the same leakage is still optimistic.
         misconception: More samples fix a biased estimate
       - text: "Switch the scoring to an LLM judge so the grader is not tied to the exact labels the prompt was tuned against"
@@ -75,7 +75,7 @@ items:
       last quarter. The fix, refreshing the policy document in the knowledge base, ships the same day. Which
       follow-up best prevents this class of failure from silently returning?
     options:
-      - text: "Add the failing question, anonymised, with paraphrased variants and the expected policy answer to the regression suite"
+      - text: "Add the failing question, anonymised, with variants and the expected policy answer to the regression suite, so recurrence fails a test"
         correct: true
         why: Every future change is now checked against this exact failure, so a stale-content regression fails the gate.
       - text: "Re-run the existing golden set after the knowledge-base refresh and ship the fix if the aggregate score has not dropped relative to the previous run"
@@ -170,13 +170,13 @@ items:
       the client says they have no labelled data and "can't spare lawyers for annotation until the tool exists."
       What do you propose?
     options:
-      - text: "Have two associates label 30 to 50 real contracts in week one and score every change against them"
+      - text: "Have two associates label 30 to 50 real contracts in week one, so every prompt change can be scored against them"
         correct: true
         why: A small, real, early set makes every prompt or retrieval change measurable and costs days, not months.
       - text: "Build the tool first and treat the lawyers' feedback during the pilot as the evaluation, since they know good output"
         why: Feedback arrives late, is anecdotal and cannot show whether a change helped or hurt.
         misconception: Evals can wait until users exist
-      - text: "Wait until at least 500 labelled contracts exist, so that scores are statistically meaningful before iterating"
+      - text: "Wait until at least 500 labelled contracts exist before running any evaluation or comparing any two prompts"
         why: Early changes produce large effects that a small set detects; a 500-contract prerequisite delays the entire pilot.
         misconception: A minimum large sample is required before any evaluation
       - text: "Have the LLM label the contracts as well and use its labels as ground truth, then spot-check a few with lawyers"
@@ -206,7 +206,7 @@ items:
       - text: "Raise the overall accuracy threshold to 98% so the gate becomes stricter and forces the model to improve"
         why: A tighter average can be met by getting routine cases right; it does not force escalations to be caught.
         misconception: A stricter aggregate threshold protects the rare class
-      - text: "Keep reporting accuracy but add a confidence interval, since 12 cases are too few to conclude anything"
+      - text: "Keep reporting overall accuracy but add a confidence interval around it and note the small count of escalation cases"
         why: The interval is a fair caveat, but it is not a response; the metric still ignores the critical class.
         misconception: Statistical uncertainty is the main problem
       - text: "Rebalance by deleting routine cases until the classes are 50/50, then keep using accuracy as the metric"
@@ -261,7 +261,7 @@ items:
       A teammate proposes a GPT-based judge to score every extraction against the reference. What is the better
       first grader?
     options:
-      - text: Schema validation plus normalised exact-match per field, with a judge reserved for free-text fields
+      - text: "Schema validation plus normalised exact-match per field, because fields have exact answers; a judge only for free text"
         correct: true
         why: Fields have deterministic right answers, so a cheap, reproducible code grader is more accurate and faster.
       - text: An LLM judge scoring each extraction on a 1 to 5 scale, because it tolerates formatting differences
@@ -297,7 +297,7 @@ items:
       - text: "Add an instruction to the judge prompt telling it to ignore the order in which answers are presented"
         why: Instructions reduce bias but do not remove it; you would still not know how much of the 68% is order.
         misconception: Telling the model to be unbiased makes it unbiased
-      - text: "Switch to a larger judge model, which will be less sensitive to presentation details like order"
+      - text: "Switch to a larger judge model with a longer context window and stronger instruction following"
         why: Position bias appears across model sizes; scale is not a substitute for counterbalancing.
         misconception: Stronger models are free of presentation bias
       - text: "Sample each verdict several times at a higher temperature and take the majority across samples"
@@ -329,7 +329,7 @@ items:
       - text: "Use a judge from a different model vendor to remove the original vendor's stylistic preferences from scoring"
         why: That targets self-preference, a different bias; the judge may still reward length.
         misconception: Any judge bias is cured by switching vendor
-      - text: "Discard the judge and rely on the humans' side-by-side result, since users are the ground truth for quality"
+      - text: "Discard the judge and rely on the humans' side-by-side result as the only measure of quality going forward"
         why: Judges are valuable at scale once calibrated; discarding it throws away the cheap signal instead of fixing it.
         misconception: Automated graders are untrustworthy by nature
     explanation: |
@@ -420,7 +420,7 @@ items:
       - text: "Widen the scale to 1 to 100 so that the judge has finer resolution to separate good answers from great ones in every batch"
         why: A vague criterion on a wider scale produces more clustered noise, not more signal.
         misconception: Finer scales add discrimination
-      - text: "Add 'be strict and critical' to the instructions so that average scores shift downward"
+      - text: "Add 'be strict and critical' to the instructions and tell the judge to avoid defaulting to the middle of the scale"
         why: Shifts the average downward without defining what to be strict about; the compression remains.
         misconception: Tone instructions fix rubric vagueness
       - text: "Run the same judge three times per answer and average the scores to reduce variance"
@@ -514,7 +514,7 @@ items:
       - text: "Not broken; a score above 0.9 means the answer is factually consistent with the retrieved context"
         why: Consistency with context is faithfulness; relevancy says nothing about it.
         misconception: Relevancy and faithfulness are interchangeable
-      - text: "Broken, and the pass threshold should be raised to 0.99 so that wrong answers fail"
+      - text: "Broken, and the pass threshold should be raised from 0.8 to 0.99 for the relevancy metric in every report"
         why: A stricter threshold cannot make the metric sensitive to factual errors it is not designed to detect.
         misconception: Stricter thresholds compensate for the wrong metric
     explanation: |
@@ -602,7 +602,7 @@ items:
       successful runs finds that about 15% of them called the `reset_mfa` tool without the required manager
       approval step. How should the evaluation change?
     options:
-      - text: "Add transcript graders that fail any `reset_mfa` call lacking a prior approval, reported next to task success"
+      - text: "Add transcript graders that fail any `reset_mfa` call lacking a prior approval, because the end state hides the bypass"
         correct: true
         why: Outcome grading cannot see policy violations on the way; a transcript check makes the constraint measurable and gateable.
       - text: "Keep outcome-only grading, since the final account state is correct and that is what the business asked for"
@@ -643,7 +643,7 @@ items:
       - text: "Keep the gate as is and require manual review of every diff in the eval output before each release"
         why: Does not scale and relies on a human spotting the slice drop each time.
         misconception: Manual review is a substitute for explicit criteria
-      - text: "Add 300 more cases to the set so that the overall average is estimated with more precision"
+      - text: "Add 300 more cases to the set and report the overall average with a confidence interval"
         why: A more precise average still conceals a slice-level regression.
         misconception: Precision of the mean is the issue
     explanation: |
@@ -668,8 +668,8 @@ items:
       - text: "Ship v2, since deterministic results mean the 4-point gain is a real and repeatable improvement"
         why: Repeatability shows the evaluation is stable, not that it generalises beyond these 50 cases.
         misconception: Deterministic runs remove sampling noise
-      - text: "Run each prompt three more times and average the scores, because averaging cancels out the noise"
-        why: Repeated runs at temperature 0 are identical; the uncertainty comes from which cases were sampled.
+      - text: "Run each prompt three more times at temperature 0.7 and compare the averaged scores"
+        why: Averaging runs smooths output randomness, but the uncertainty here comes from which 50 cases were sampled.
         misconception: More runs fix a small-sample problem
       - text: "Keep v1, because a gain of under 5 points is below the usual significance threshold for evals"
         why: There is no universal 5-point rule; significance depends on sample size and variance.
@@ -692,7 +692,7 @@ items:
       days, with a successor described as "a drop-in improvement". Engineering proposes switching the model name
       in config and spot-checking five documents. What should the plan be?
     options:
-      - text: "Run the full regression suite on the successor, compare per slice with the baseline, and pin the version"
+      - text: "Run the full regression suite on the successor and compare per slice with the baseline, because behaviour can shift quietly"
         correct: true
         why: Behaviour can shift in ways a summary claim hides; sliced comparison on your own suite decides if cutover is safe.
       - text: "Accept the five-document check, since the provider's published benchmarks already show clear gains"
@@ -850,7 +850,7 @@ items:
       user-visible change, and any duplicate ticket, until quality is shown on live traffic. Which rollout
       approach fits?
     options:
-      - text: "Mirror live requests to the candidate in shadow mode with side-effecting tools stubbed"
+      - text: "Mirror live requests to the candidate in shadow mode with side-effecting tools stubbed, so users and tickets are untouched"
         correct: true
         why: Gets live-traffic evidence with no user impact and no duplicate tickets.
       - text: "A 5% canary to real users, with the ability to roll back within minutes if errors rise"
