@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ code }}{% endblock %}
+{% block content %}
+<section class="card narrow center">
+  <h1>{{ 'Not found' if code == 404 else 'Something went wrong' }}</h1>
+  <p class="muted">{{ detail }}</p>
+  <p><a class="btn" href="/">Back to the dashboard</a></p>
+</section>
+{% endblock %}

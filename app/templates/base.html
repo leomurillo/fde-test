@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}FDE Test{% endblock %} · FDE Test</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css?v={{ app_version }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">FDE</span><span class="brand-name">Practice Exam</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="/" {% if nav == 'home' %}aria-current="page"{% endif %}>Dashboard</a>
+        <a href="/new" {% if nav == 'new' %}aria-current="page"{% endif %}>New test</a>
+        <a href="/progress" {% if nav == 'progress' %}aria-current="page"{% endif %}>Progress</a>
+        <a href="/feedback" {% if nav == 'feedback' %}aria-current="page"{% endif %}>Feedback</a>
+        <a href="/export" {% if nav == 'export' %}aria-current="page"{% endif %}>Export</a>
+        <a href="/settings" {% if nav == 'settings' %}aria-current="page"{% endif %}>Settings</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main" class="{% block main_class %}container{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>v{{ app_version }}</span>
+      <span>Bank: {{ bank.loaded }} items{% if bank.skipped %} · <a href="/settings#bank">{{ bank.skipped }} skipped</a>{% endif %}</span>
+      <span title="Anonymous installation id">Install {{ installation_id[:8] }}</span>
+    </div>
+  </footer>
+
+  <dialog id="feedback-dialog" class="dialog" aria-labelledby="fb-title">
+    <form method="dialog" id="feedback-form" class="stack">
+      <div class="dialog-head">
+        <h2 id="fb-title">Feedback</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">&times;</button>
+      </div>
+      <p class="muted small" id="fb-target">About this item.</p>
+      <label class="field">
+        <span>What kind of issue?</span>
+        <select name="category" required>
+          {% for key, label in feedback_categories.items() %}
+          <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>Details</span>
+        <textarea name="text" rows="5" placeholder="What is wrong or could be better? (Ctrl+Enter to send)"></textarea>
+      </label>
+      <p class="form-msg small" role="status" aria-live="polite"></p>
+      <div class="row end">
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button type="submit" class="btn primary" value="send">Send feedback</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="/static/common.js?v={{ app_version }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

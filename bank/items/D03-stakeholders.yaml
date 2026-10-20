@@ -1,0 +1,1021 @@
+domain: D3
+items:
+  # ---------------------------------------------------------------- comms.tradeoffs
+  - id: D3-001
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    tags: [discovery.environment]
+    competencies: [x.written-comms]
+    difficulty: 1
+    level: apply
+    time_s: 60
+    stem: |
+      A pilot will miss its launch date by three weeks because the customer's data-access approval is still pending.
+      You are writing the first paragraph of an update to the customer's COO, who reads on a phone between meetings.
+      Which opening is best?
+    options:
+      - text: "Launch moves from 3 November to 24 November. To hold that date, we need your approval of read access to the claims warehouse by Friday."
+        correct: true
+        why: "Leads with the decision-relevant fact and the specific ask, which is what a busy executive needs from the first lines."
+      - text: "Since kickoff the data team has hit three delays: the access request, a VPN change and a security questionnaire, which together push launch back about three weeks."
+        why: "Accurate but chronological. The reader has to work through the history to find the consequence and what is wanted of them."
+        misconception: "Explaining the sequence of events builds credibility"
+      - text: "The team is making great progress on the build and the project is tracking well overall; the one item to flag is a small risk to the launch date from data access."
+        why: "Buries a three-week slip under reassurance and calls it a small risk, which will damage trust when the date moves."
+        misconception: "Soften bad news by leading with positives"
+      - text: "First, I want to apologise for the delay and reassure you of our full commitment to making this a success; the details of what happened follow."
+        why: "Expresses goodwill but the executive still does not know the new date or what is needed from them."
+        misconception: "Acknowledging feelings must come before the facts"
+    explanation: |
+      For executives, lead with the bottom line: the decision, the impact, and the ask. Background goes underneath for those
+      who want it. This is the Pyramid Principle, sometimes called BLUF (bottom line up front).
+
+  - id: D3-002
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    tags: [llm.failure-modes, eval.gates]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      A customer's head of compliance asks about a policy-question assistant: "Will it ever give a wrong answer? We
+      need it to be right every time." Pilot testing shows it answers about 94% of test policy questions correctly. Which
+      response is most useful to her decision?
+    options:
+      - text: "Report the measured accuracy on a representative test set with the types of error found, then describe the review step that catches the costly ones"
+        correct: true
+        why: "Gives her a calibrated picture, with evidence and controls she can take to her own risk process."
+      - text: "Commit to full correctness on policy questions by restricting answers to quoted passages and tightening the prompt, since instructions can enforce that"
+        why: "Instructions reduce errors but do not guarantee them, and an unmet promise to a compliance head is costly."
+        misconception: "Prompting and guardrails can make a model deterministic"
+      - text: "Explain that outputs are sampled from a probability distribution and that lowering temperature reduces variation, so she can judge the residual risk"
+        why: "Technically sound but not decision-relevant; it explains mechanism instead of telling her how often, how badly, and with what safeguards."
+        misconception: "Explaining the mechanism is what makes uncertainty understandable"
+      - text: "Point out that human reviewers also make mistakes on policy questions and that the assistant probably matches their error rate, so the risk is acceptable"
+        why: "A fair comparison needs a measured human baseline. Asserting parity without data dismisses her concern."
+        misconception: "Humans are imperfect, so the AI's imperfection needs no further treatment"
+    explanation: |
+      Communicate probabilistic behaviour with measured rates, the kinds of errors, and the controls around them. Neither
+      promising perfection nor lecturing on sampling gives a risk owner what she needs.
+
+  - id: D3-003
+    version: 1
+    type: multi
+    subtopic: comms.tradeoffs
+    tags: [llm.model-selection, deploy.models-network]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      An FDE must record the choice between a hosted frontier-model API and a self-hosted open-weights model for a
+      customer's contract-review tool. The record is for future engineers and the customer's architecture board. Which
+      content belongs in it?
+    options:
+      - text: "The options considered, including the rejected one, with costs, risks and the evidence behind them"
+        correct: true
+        why: "Readers need to see what was weighed, or the decision cannot be reviewed or reversed intelligently."
+      - text: "The criteria and constraints that drove the choice, such as data residency and expected volume"
+        correct: true
+        why: "Lets a later reader tell whether the decision still holds when a constraint changes."
+      - text: "The conditions that would make the team revisit the choice, such as a price change or a quality regression"
+        correct: true
+        why: "Decisions age; naming triggers turns the record into a living control."
+      - text: "Transcripts of every prompt variant tried during the evaluation, kept so that nothing is lost"
+        why: "Belongs, if anywhere, in an appendix or repository. In the record it buries the argument."
+        misconception: "More detail makes a decision record more rigorous"
+      - text: "Only the benefits of the chosen option, to keep the board's attention on the recommendation"
+        why: "Omits the trade-offs, which is the main thing a reviewer needs to challenge."
+        misconception: "A persuasive document should not show the downsides"
+      - text: "The vendors' published benchmark results as the primary evidence for the quality comparison"
+        why: "Generic benchmarks do not show how either option performs on this customer's contracts."
+        misconception: "Public benchmarks substitute for customer-specific evaluation"
+    explanation: |
+      A decision record states the options, the criteria, the decision and its trade-offs, and the conditions for
+      revisiting it. It is a short argument, not an archive.
+
+  - id: D3-004
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    tags: [eval.methods]
+    competencies: [x.written-comms]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A customer's architecture review board, all senior engineers, is sceptical about using an LLM to extract fields in
+      a payments flow. You have twenty minutes. Which way of presenting is most likely to earn their confidence?
+    options:
+      - text: "Start with failure modes and error rates measured on their own documents, the controls around them, and the limits of the claims"
+        correct: true
+        why: "Engineers test claims; showing measured limits on their data invites scrutiny and builds trust."
+      - text: "Open with the business case and projected savings, so that the board understands why the payments flow is worth taking some risk on"
+        why: "That framing suits executives. This audience will read it as avoiding the technical questions."
+        misconception: "One message works for every audience"
+      - text: "Run a live demo on well-chosen documents to show extraction quality at its best, then take questions from the board"
+        why: "A curated demo shows the best case, which a sceptical board will discount."
+        misconception: "Showing it working is more persuasive than showing where it fails"
+      - text: "Compare the approach with two competing vendor products in a feature matrix, to show the choice was considered"
+        why: "Answers a procurement question, not the board's concern about reliability in a payments flow."
+        misconception: "Comparison with alternatives answers a reliability question"
+    explanation: |
+      For technical reviewers, lead with evidence and limits: measured behaviour, failure modes, controls. Depth and
+      candour about weaknesses do more for credibility than breadth or polish.
+
+  - id: D3-005
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    tags: [eval.gates, delivery.go-live]
+    competencies: [x.written-comms]
+    difficulty: 3
+    level: analyze
+    time_s: 100
+    stem: |
+      A pilot's evaluation shows 87% field-level accuracy against an agreed 95% target. The sponsor, under pressure
+      from her own boss, wants to go live next week. Most remaining errors come from low-quality scans. How should the FDE
+      communicate this?
+    options:
+      - text: "Report 87% against the 95% target with the error breakdown, and recommend a limited launch with human review of uncertain cases"
+        correct: true
+        why: "Honest about the gap, offers a path that respects her deadline, and gives her something to decide, not just a problem."
+      - text: "Describe the accuracy as roughly 90% and still improving, which is accurate to the nearest ten and avoids a distracting debate about the agreed target"
+        why: "Rounding that hides a miss against an agreed target damages credibility the moment anyone checks."
+        misconception: "Round favourably to keep momentum"
+      - text: "Present the shortfall and the possible paths, then ask the sponsor to choose between them, since the launch decision is hers to make"
+        why: "The decision is hers but she needs a recommendation. Handing back options leaves her to decide on technical grounds."
+        misconception: "Neutrality is the safest stance for an advisor"
+      - text: "Hold the launch date unchanged while the team works to close the gap, and report once 95% is reached"
+        why: "Surprises the sponsor if the date slips and leaves her unable to manage her own boss."
+        misconception: "Do not raise a problem until it is fixed"
+    explanation: |
+      Communicating uncertainty means stating the measured result against the agreed bar, explaining the cause, and
+      recommending a course with a date. Rounding, withholding and neutrality each fail the sponsor in a different way.
+
+  - id: D3-006
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    tags: [llm.model-selection, obs.cost]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A smaller model costs 60% less per case but gets about four more cases wrong per hundred. The business-unit head
+      who sponsors the project must choose between the two. How should the FDE frame the choice?
+    options:
+      - text: "Express the gap in business terms: extra corrections per thousand cases, their cost, against the monthly saving, with a recommendation"
+        correct: true
+        why: "Translates the technical difference into units the sponsor can weigh, and offers a view."
+      - text: "Share benchmark scores for both models and let the sponsor pick, since numbers are the neutral way to present it"
+        why: "Benchmark scores do not tell her what four extra errors per hundred cost her operation."
+        misconception: "Presenting raw metrics is neutral and therefore sufficient"
+      - text: "Recommend the larger model, since a quality loss that users can see will cost more credibility than any saving it brings"
+        why: "May be right, but stated as an assertion. Without numbers, the sponsor cannot test it against her own priorities."
+        misconception: "Quality always beats cost"
+      - text: "Keep the decision in engineering and report the result, since model choice is an implementation detail the sponsor need not weigh"
+        why: "The choice moves cost and error exposure that belong to the sponsor's budget and risk, so it is not merely technical."
+        misconception: "Anything involving a model is a technical decision"
+    explanation: |
+      Trade-offs are communicated in the decision-maker's units: money, risk and operational effort. Give a recommendation
+      and the numbers behind it, so the sponsor can agree or disagree for stated reasons.
+
+  # ---------------------------------------------------------------- comms.stakeholders
+  - id: D3-007
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    tags: [gov.identity]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      The customer's security lead refuses read access to a production database replica, saying "LLM means data
+      leakage". The sponsor is frustrated and wants the FDE to join an escalation to the CIO. The project has two weeks
+      of slack. What should the FDE do first?
+    options:
+      - text: "Meet the security lead, ask what evidence they need, and propose a scoped read-only role with logging; escalate if that stalls"
+        correct: true
+        why: "Treats the objection as a requirement to be met, and leaves escalation as a fallback with slack still available."
+      - text: "Join the escalation to the CIO now, since delay is costing the project weeks and security's risk appetite is a leadership decision"
+        why: "Speed is tempting, but escalating before understanding the concern hardens opposition, and slack remains."
+        misconception: "Escalate early to protect the schedule"
+      - text: "Continue on synthetic data and bring real data to security once the prototype impresses them"
+        why: "Defers the problem and risks a prototype that cannot meet the real data's quality or constraints."
+        misconception: "Showing results will dissolve a security objection"
+      - text: "Ask the sponsor to sign a time-limited exception so access can start while the security review continues"
+        why: "The sponsor does not own the security risk; an exception signed by the wrong person bypasses the control and harms trust."
+        misconception: "Whoever sponsors the project can waive security policy"
+    explanation: |
+      Resistant security teams are usually pursuing a legitimate concern. Engage them directly, convert the objection
+      into specific requirements, and propose controls such as least privilege and audit logging. Escalate when dialogue fails.
+
+  - id: D3-008
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    tags: [discovery.framing, gov.audit-compliance]
+    difficulty: 1
+    level: analyze
+    time_s: 90
+    stem: |
+      A legal-document assistant is nearly built for the General Counsel's team when the records-management group
+      objects: retention policy bars derived copies of certain documents, and that includes the search index. Which
+      discovery practice would most likely have caught this earlier?
+    options:
+      - text: "Mapping stakeholders by who controls data, policy and sign-off as well as who sponsors and uses the system"
+        correct: true
+        why: "Records management is neither sponsor nor user but controls a constraint; mapping by control surfaces them."
+      - text: "Holding weekly demos with the sponsor, so any objection comes out as soon as features become visible"
+        why: "Demos to the sponsor reveal what the sponsor sees. A group that was never invited would not appear."
+        misconception: "More frequent demos solve a missing-stakeholder problem"
+      - text: "Asking the sponsor to list every constraint at kickoff, and treating the list as complete"
+        why: "The sponsor can only name constraints they know about, and they may not know about retention rules."
+        misconception: "The sponsor knows all the constraints"
+      - text: "Running the privacy and records review after the prototype exists, so that reviewers have a concrete system to assess"
+        why: "A later review is the cause of the surprise; a concrete system was already built against the objection."
+        misconception: "Reviewers need working software before they can engage"
+    explanation: |
+      Stakeholder mapping should cover everyone who can block or constrain the work: legal, records, privacy, security and
+      IT, not only sponsor and users. Early conversations with them are cheaper than late surprises.
+
+  - id: D3-009
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    tags: [delivery.scoping]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      In a steering meeting, the customer's CEO, impressed by a demo of invoice triage, says: "Great, have it handling
+      all customer email by month end." The team estimates that is five months of work. The sponsor looks at the FDE.
+      What should the FDE do in the room?
+    options:
+      - text: "Affirm the goal, show the first slice that can land by month end, and ask what should give way for the rest"
+        correct: true
+        why: "Keeps the CEO's ambition, makes the trade-off visible, and puts the choice with the person entitled to make it."
+      - text: "Say you will look into it, then reset expectations with the sponsor privately so nobody is contradicted publicly"
+        why: "Avoids friction now, but leaves the CEO believing the date is feasible and the sponsor with an awkward correction to make."
+        misconception: "Never disagree with a senior person in public"
+      - text: "Explain that the request is not feasible in that time, listing the data, integration and evaluation steps that are involved"
+        why: "May be accurate, but a list of obstacles reads as a refusal and lands badly. It offers the CEO no route to progress."
+        misconception: "Detailing the constraints is the same as saying a useful no"
+      - text: "Accept the date and renegotiate scope as the work proceeds, since pushing back on a CEO in the meeting would cost goodwill"
+        why: "Commits the team to a date it will miss and moves the difficult conversation to a worse moment."
+        misconception: "Agree now, fix later"
+    explanation: |
+      Saying no to a senior executive works best as a yes to the goal with an explicit trade-off: what can be done by the
+      date, what the rest costs, and what would have to give. It keeps authority and information together.
+
+  - id: D3-010
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    tags: [comms.tradeoffs]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      At a steering meeting, the sponsor tells the group the assistant "will cut handling time by half". Pilot data show
+      20 to 25%. The next steering meeting is in two weeks, and the sponsor has been a strong ally. What should the FDE do?
+    options:
+      - text: "Meet the sponsor before the next steering meeting, share the pilot data, and agree a claim you can both stand behind"
+        correct: true
+        why: "Protects the sponsor's standing and resets the expectation before it hardens, using evidence."
+      - text: "Correct the figure in the meeting with the pilot data, since a wrong target left standing will become the FDE's failure"
+        why: "The risk is real, but a public correction of an ally damages the relationship when a private one achieves the same."
+        misconception: "Transparency requires immediate public correction"
+      - text: "Leave it, since the claim is the sponsor's and forecasts are their responsibility to the steering group"
+        why: "The FDE will be judged against the figure, and the data to correct it is theirs."
+        misconception: "Other people's claims are not our concern"
+      - text: "Circulate a written status note with the real pilot figures to the whole steering group, so the data speaks for itself"
+        why: "Goes around the sponsor and undermines them, which looks like a political move."
+        misconception: "Going around the sponsor is acceptable when the facts are on your side"
+    explanation: |
+      Expectation management is mostly private and early: align the sponsor on facts before a public setting forces the
+      issue. Silence lets the gap grow; a public correction or a bypass costs the relationship.
+
+  - id: D3-011
+    version: 1
+    type: multi
+    subtopic: comms.stakeholders
+    tags: [gov.identity, int.enterprise-devex]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      An FDE arrives at a customer whose IT organisation is openly sceptical of the vendor. Which actions are most
+      likely to build their trust?
+    options:
+      - text: "Share the architecture and data-flow diagram and invite review before building the parts that touch their systems"
+        correct: true
+        why: "Gives IT a say in the design while changes are still cheap."
+      - text: "Give their team read access to logs, evaluation results and audit trails from the first week"
+        correct: true
+        why: "Transparency turns IT from a gatekeeper who has to guess into a participant who can verify."
+      - text: "Use their change-management and ticketing process for deployments instead of a parallel path"
+        correct: true
+        why: "Respects their control process and shows that the FDE will not bypass it."
+      - text: "Ask for temporary administrator rights in the test environment so that integration issues can be fixed quickly"
+        why: "Speeds the work but asks for more access than needed, which is what a sceptical team fears most."
+        misconception: "Broad access in non-production is harmless to trust"
+      - text: "Open with a polished demonstration of the assistant's capabilities in the first meeting"
+        why: "A demo addresses what the product can do. IT's worries are about what it can reach and break."
+        misconception: "Capability wins over scepticism"
+      - text: "Ask the executive sponsor to instruct IT to cooperate, so no time is spent winning agreement"
+        why: "A mandate buys compliance but not cooperation, and IT retains many ways to slow the work."
+        misconception: "Authority from above is a substitute for earned trust"
+    explanation: |
+      Trust with resistant IT teams is earned with evidence and respect for their process: early design review, visibility
+      into what the system does, and no bypassing of controls.
+
+  - id: D3-012
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    tags: [discovery.environment, delivery.scoping]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      The customer's data owner has not delivered a promised extract for three weeks, and the build is blocked. The
+      relationship is friendly and no escalation path was agreed at kickoff. What is the best next step?
+    options:
+      - text: "Tell the data owner you are raising it, then give the sponsor the dated impact and a request"
+        correct: true
+        why: "Transparent with the data owner, and gives the sponsor a decision they can act on."
+      - text: "Keep following up with the data owner each day, since preserving their goodwill matters more than speed"
+        why: "Repeated nudges after three weeks show that the blocker is not about reminders; the delay keeps costing the project."
+        misconception: "Persistence with the same person eventually works"
+      - text: "Carry on with synthetic data and stub files so that the schedule holds, and mention the gap in the final report"
+        why: "Hides a risk and produces work that may not survive real data."
+        misconception: "Keeping the plan on track matters more than surfacing the blocker"
+      - text: "Contact the data owner's manager directly with the facts, so the sponsor is not troubled with a detail"
+        why: "Goes around both the data owner and the sponsor, and a three-week block is no longer a detail."
+        misconception: "Escalating sideways is more tactful than going up"
+    explanation: |
+      Good escalation is open and specific: tell the person you are raising it, quantify the impact in days, and ask the
+      right decision-maker for something concrete. Agree the path at kickoff so it is not a surprise.
+
+  - id: D3-013
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    tags: [gov.approvals, adoption.change]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A sales-operations VP wants AI-drafted customer emails sent automatically to keep response time under an hour.
+      Legal wants every message reviewed before it goes out. Both are senior and both have a legitimate point. What
+      should the FDE do?
+    options:
+      - text: "Bring both to the sponsor with a tiered option: auto-send low-risk categories, review high-risk ones"
+        correct: true
+        why: "Turns a binary conflict into a risk-based design that gives each side most of what it needs, with a decision from the right person."
+      - text: "Side with Legal, since a wrongly sent message carries legal exposure while a slow reply costs only a little goodwill"
+        why: "Plausible on risk, but a unilateral choice sacrifices the business goal and the FDE does not own that trade-off."
+        misconception: "The more conservative side should win by default"
+      - text: "Build both flows and let each department use its own, to avoid forcing a compromise that either would resist"
+        why: "Doubles the build and maintenance, and leaves the underlying disagreement about risk unresolved."
+        misconception: "Accommodating everyone is the same as resolving the conflict"
+      - text: "Ask the two leaders to settle it between themselves and report back, since they own their own functions"
+        why: "Neither has authority over the other, so the conflict stalls and the project waits."
+        misconception: "Peers can resolve a cross-functional conflict unaided"
+    explanation: |
+      Where stakeholders conflict on risk and speed, look for a design that tiers by risk, and take the trade-off to
+      the person with authority over both. Proportional human review is the usual shape of a workable compromise.
+
+  # ---------------------------------------------------------------- adoption.change
+  - id: D3-014
+    version: 1
+    type: single
+    subtopic: adoption.change
+    tags: [delivery.go-live]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      Three months after go-live, 35% of target users use the assistant weekly. Those who do finish tasks faster.
+      Interviews show managers still ask for the weekly report from the legacy tool, and the assistant sits in a separate
+      browser tab. What is the best next step?
+    options:
+      - text: "Embed the assistant in the system people already work in, and have managers take their report from its output"
+        correct: true
+        why: "Removes the reason for the old path and puts the new one where the work happens."
+      - text: "Run more training sessions, since non-users may not yet know how the assistant helps them"
+        why: "The users who tried it are productive. The barrier is workflow position, not knowledge."
+        misconception: "Low usage means users need more training"
+      - text: "Add the features that survey respondents asked for, since a more complete tool will draw people from the old one"
+        why: "Features add value only if people reach the tool. The old report requirement keeps pulling them back."
+        misconception: "Adoption follows capability"
+      - text: "Have the sponsor email a mandate to use the assistant from next month, with usage reported to managers"
+        why: "Mandates can lift numbers briefly, but do nothing about the competing report and tab friction that cause the behaviour."
+        misconception: "Policy alone changes habits"
+    explanation: |
+      Go-live is not adoption. Adoption follows when the new path is easier than the old and the old path is retired. Fit
+      into the existing workflow and align what managers ask for before reaching for training or mandates.
+
+  - id: D3-015
+    version: 1
+    type: single
+    subtopic: adoption.change
+    tags: [obs.slo]
+    difficulty: 1
+    level: apply
+    time_s: 60
+    stem: |
+      A contact-centre assistant has been given to 900 agents. The team wants one metric that shows whether the launch
+      is turning into real use during the first two weeks. Which is the best choice?
+    options:
+      - text: "Share of agents with access who complete a real customer case with the assistant within two weeks"
+        correct: true
+        why: "Measures completion of the core task, which is what activation means, relative to the people who could use it."
+      - text: "Number of licences assigned to agents compared with the number purchased"
+        why: "Measures rollout, not use; a licence can be assigned and never opened."
+        misconception: "Access equals adoption"
+      - text: "Share of agents who attended the training session in the first week after rollout"
+        why: "Measures effort invested, not behaviour changed."
+        misconception: "Training completion indicates adoption"
+      - text: "Average number of logins per agent per working day over the first two weeks"
+        why: "Logins can be high when users open the tool and abandon it; they do not show real work done with it."
+        misconception: "Activity counts equal value"
+    explanation: |
+      Activation is the share of users who reach the core value moment, such as completing a real task, within a window.
+      Licences, training attendance and logins are easier to count but are not measures of use.
+
+  - id: D3-016
+    version: 1
+    type: single
+    subtopic: adoption.change
+    tags: [comms.stakeholders]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      Claims adjusters passively resist a new triage assistant. A rumour says it will lead to job cuts, and adjusters
+      override its suggestions far more often than the pilot predicted. The VP of Operations says no layoffs are planned.
+      What is the most effective response?
+    options:
+      - text: "Have the VP state in writing what changes for roles, and make adjusters reviewers whose corrections shape the tool"
+        correct: true
+        why: "Addresses the fear at its source with a credible commitment and gives adjusters ownership of the tool's quality."
+      - text: "Present the productivity gains to the whole claims team in a town hall to show the tool makes their work better"
+        why: "Productivity gains are what make staff fear that fewer of them will be needed."
+        misconception: "Showing benefits to the company reassures employees"
+      - text: "Add usage targets to adjusters' performance goals so the incentive to use the tool is built into how they are measured"
+        why: "With fear present, targets produce compliance and gaming, and confirm the suspicion that the tool judges them."
+        misconception: "Incentives alone overcome fear"
+      - text: "Measure usage from logs and keep adjusters out of design talks until the tool is stable, to avoid feeding the rumours"
+        why: "Exclusion leaves the rumour unanswered and sends adjusters the message that the tool is being done to them."
+        misconception: "Silence prevents rumours from spreading"
+    explanation: |
+      Resistance driven by fear of replacement is a trust problem. Credible written commitments from someone with authority,
+      plus real involvement of the affected people, work better than selling benefits or imposing targets.
+
+  - id: D3-017
+    version: 1
+    type: single
+    subtopic: adoption.change
+    tags: [delivery.go-live]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A sponsor wants a new assistant live for all 2,000 agents of a contact centre on Monday to start realising
+      savings. It has not been tested at scale on real workloads, and several supervisors are lukewarm. What rollout
+      do you recommend?
+    options:
+      - text: "A cohort rollout from a representative group with willing supervisors, with exit criteria and rollback before each expansion"
+        correct: true
+        why: "Limits the cost of surprises, builds local advocates, and lets the team learn at scale gradually."
+      - text: "Launch to everyone on Monday with extra floor support, since one training and communications push is far cheaper than staging a rollout"
+        why: "Cheapest on paper, but any defect or confusion hits 2,000 agents at once with lukewarm supervisors."
+        misconception: "Staging costs more than it saves"
+      - text: "Start with the top-performing agents, since they will give the cleanest feedback and the best results to show the others"
+        why: "Top performers are unrepresentative, so results overstate the benefit and miss problems that ordinary agents will hit."
+        misconception: "A flattering pilot group gives a reliable signal"
+      - text: "Make the assistant optional for everyone indefinitely and let word of mouth decide how quickly use spreads"
+        why: "Gives the sponsor no control, no learning and no timeline, and rarely overcomes habit on its own."
+        misconception: "Voluntary use always spreads organically"
+    explanation: |
+      A gradual rollout with representative cohorts, willing local leaders, explicit exit criteria and rollback limits
+      risk and produces trustworthy evidence. It is the usual path for change that crosses many users.
+
+  - id: D3-018
+    version: 1
+    type: multi
+    subtopic: adoption.change
+    tags: [comms.stakeholders]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      An AI-assisted intake process spans Sales Operations, Legal and Finance. Usage is strong in two departments but
+      stalled in Finance, which cites other priorities. Which steps are most likely to restore adoption?
+    options:
+      - text: "Ask the sponsor to name one accountable executive for the end-to-end process and set a shared target across departments"
+        correct: true
+        why: "Cross-department change needs a single owner; otherwise each department optimises its own goals."
+      - text: "Align each department's own goals with the change, for example adding cycle time to Finance's targets"
+        correct: true
+        why: "Finance's priorities will shift only when the change counts in how Finance is measured."
+      - text: "Set up a regular cross-department review chaired by the sponsor, where blockers are escalated and decided"
+        correct: true
+        why: "Gives a place where blockers can be resolved with authority instead of lingering."
+      - text: "Add features requested by the Finance team, since the gap is probably due to missing capability"
+        why: "Finance cites priorities, not features. Building more does not change those priorities."
+        misconception: "Adoption problems are product gaps"
+      - text: "Negotiate separately with each department head and keep the sponsor out until there is something to report"
+        why: "Without the sponsor, the FDE lacks the authority to move priorities, and Finance learns it can wait."
+        misconception: "Quiet diplomacy replaces executive sponsorship"
+      - text: "Wait for usage in the other two departments to persuade Finance, since peers are the strongest influence"
+        why: "Peer pressure across departments is weak when the targets differ, and the stall may last for quarters."
+        misconception: "Organic spread resolves structural misalignment"
+    explanation: |
+      Cross-department adoption stalls when no one owns the end-to-end result and local incentives conflict. Executive
+      sponsorship, shared goals and a place to decide are the standard remedies.
+
+  # ---------------------------------------------------------------- adoption.handoff
+  - id: D3-019
+    version: 1
+    type: single
+    subtopic: adoption.handoff
+    tags: [delivery.go-live]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A contract ends in two weeks. Documentation is complete, but only the FDE has ever redeployed the system or re-run
+      its evaluation suite. The customer's team of three engineers has attended all the walkthroughs. How should the FDE
+      handle the handoff?
+    options:
+      - text: "Have the customer's team make a change, redeploy and re-run the evaluation with the FDE only watching, before sign-off"
+        correct: true
+        why: "Capability is shown by doing, so the sign-off rests on observed independence rather than on attendance."
+      - text: "Hand over complete documentation and a recorded walkthrough, so the team can learn at its own pace after the contract ends"
+        why: "Documentation is necessary but does not prove the team can operate the system, and the questions will arrive after the FDE has left."
+        misconception: "Complete documentation equals successful handoff"
+      - text: "Sign off on schedule and offer a retainer for questions, so that the customer has help whenever the need arises after the contract"
+        why: "A retainer turns an unfinished handoff into continuing dependence and a billing line."
+        misconception: "Ongoing support covers a capability gap"
+      - text: "Extend the FDE's involvement until the customer's team has run the system alone for a full quarter"
+        why: "Overshoots; independence can be shown in a supervised exercise, and open-ended extension creates dependence."
+        misconception: "Trust requires time rather than evidence"
+    explanation: |
+      Exit criteria should test that the customer can operate, change and troubleshoot the system without you. A supervised
+      exercise in which they do the work is stronger evidence than documents or attendance.
+
+  - id: D3-020
+    version: 1
+    type: single
+    subtopic: adoption.handoff
+    tags: [obs.troubleshooting]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      The customer's IT operations team, who have never run an LLM application, will own it after handoff. Which
+      runbook content will help them most on their first incident?
+    options:
+      - text: "Symptom-based playbooks for known failures such as stale index, provider outage and quality drop, with actions and contacts"
+        correct: true
+        why: "Operators under pressure need to go from a symptom to an action, not from theory to diagnosis."
+      - text: "An architecture overview of how embeddings and transformers work, so that operators understand the system they are being asked to support"
+        why: "Background knowledge helps over time but does not tell an operator what to do at 2 a.m."
+        misconception: "Understanding the theory is what enables operations"
+      - text: "The full text of every prompt, annotated with the intent behind each phrase, so operators can edit them safely"
+        why: "Prompt edits without evaluation are a risk, and they are not the first thing an operator needs in an incident."
+        misconception: "Operators should be able to tune the prompts"
+      - text: "The model provider's API documentation and rate-limit tables, since most incidents will originate there"
+        why: "Public documentation is available anyway, and it will not capture this deployment's failures and checks."
+        misconception: "Vendor documentation substitutes for a runbook"
+    explanation: |
+      Runbooks are for the person who is paged. Organise them by symptom, with checks, actions, escalation contacts and the
+      known failure modes of this deployment.
+
+  - id: D3-021
+    version: 1
+    type: single
+    subtopic: adoption.handoff
+    tags: [role.economics, role.productization]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A customer has two engineers. Leadership fears dependence on the vendor's agent platform that underlies the
+      solution, and asks the FDE to design the handoff accordingly. What is the best approach?
+    options:
+      - text: "Keep prompts, evaluation sets and configuration in the customer's repository, document the platform dependency, and agree an SLA"
+        correct: true
+        why: "The customer owns what differentiates its solution, while a bounded, explicit dependency on the platform is managed by contract."
+      - text: "Re-implement the solution on open-source components before handoff, so that no dependence on the vendor remains afterwards"
+        why: "Costly for a two-person team, and the customer would then have to maintain every component themselves."
+        misconception: "Eliminating a dependency is better than managing it"
+      - text: "Keep the vendor operating the solution day to day, and give the customer dashboards, since two engineers cannot run it alone and need time"
+        why: "Entrenches the dependency leadership wants to reduce and does not transfer capability."
+        misconception: "Visibility is the same as control"
+      - text: "Negotiate source-code escrow for the platform, so the customer can maintain it if the vendor fails"
+        why: "A common safeguard, but two engineers cannot maintain a platform; it addresses vendor failure, not everyday ownership."
+        misconception: "A legal safeguard resolves an operational dependency"
+    explanation: |
+      Avoiding vendor dependency in a handoff means the customer owns the assets that carry their logic and knowledge, and
+      the remaining dependence on the platform is explicit and contractually supported.
+
+  - id: D3-022
+    version: 1
+    type: single
+    subtopic: adoption.handoff
+    tags: [obs.tracing]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A customer help desk will take calls from users saying "the answers are wrong" after the FDE leaves. Which support
+      model best fits?
+    options:
+      - text: "Tiered support: help desk triage with trace IDs, the customer's app team owns fixes, the vendor takes platform defects"
+        correct: true
+        why: "Gives each level a defined job, a way to pass evidence upward, and keeps the vendor's role bounded."
+      - text: "A shared chat channel where the customer's staff can ask the original FDE directly, for fast answers"
+        why: "Fast at first, but it depends on one person's availability and keeps knowledge in their head."
+        misconception: "Informal access to the expert is a support model"
+      - text: "Route all issues to the vendor's ticket queue so there is a single place to look and the vendor's expertise applies from the first report"
+        why: "Simple, but it leaves the customer unable to resolve routine issues and makes every question a vendor cost."
+        misconception: "Centralised support avoids confusion"
+      - text: "Review support arrangements annually and handle issues ad hoc in between, so that cost follows actual need"
+        why: "Leaves users with no defined path when something fails and no accountability for response."
+        misconception: "Support planning can wait until problems appear"
+    explanation: |
+      A post-handoff support model defines who triages, who fixes, who escalates and what evidence moves between levels.
+      Trace identifiers and examples let a help desk pass useful detail rather than "it's wrong".
+
+  - id: D3-023
+    version: 1
+    type: multi
+    subtopic: adoption.handoff
+    tags: [gov.audit-compliance, eval.gates]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      Which evidence best shows that a customer's team can operate an AI application without the FDE?
+    options:
+      - text: "The customer's team handled a real or simulated incident end to end, with the FDE silent"
+        correct: true
+        why: "Demonstrates operational capability in the situation that matters."
+      - text: "Named roles own monitoring, alert response and evaluation re-runs, and the evaluation set is in the customer's repository"
+        correct: true
+        why: "Ownership assigned to people and artefacts held by the customer are what keep the system running after the handover."
+      - text: "The customer's project manager has reviewed and signed off the full handover documentation set"
+        why: "Shows the documents exist and were read, not that anyone can act on them."
+        misconception: "Signed documents prove capability"
+      - text: "The system met its uptime target for the previous 30 days while the FDE was handling the incidents themselves"
+        why: "Measures the FDE's operation of the system, not the customer's."
+        misconception: "Good service levels show readiness to hand over"
+      - text: "The customer engineers attended the training sessions delivered during the last month of the engagement"
+        why: "Attendance shows exposure, not competence."
+        misconception: "Training attendance indicates competence"
+    explanation: |
+      Exit criteria should be demonstrable: the customer has done the work, owns the assets and has assigned responsibility.
+      Documents, attendance and the FDE's own track record say little about the customer's ability.
+
+  # ---------------------------------------------------------------- numeric
+  - id: D3-024
+    version: 1
+    type: numeric
+    subtopic: adoption.change
+    tags: [role.economics, obs.cost]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      A support assistant is projected to save 1,000 handling hours per month if all 900 agents with access use it. Only
+      420 of them actually do, and each active agent contributes equally. A handling hour costs $38 fully loaded, and the
+      vendor fee is $20,000 per month. What is the monthly net benefit, in US dollars (negative if a loss)? Round to the
+      nearest dollar.
+    answer: {value: -2267, tolerance: 150, tolerance_type: abs, unit: "USD"}
+    work: |
+      Hours saved = 1,000 × 420 / 900 = 466.67.
+      Value = 466.67 × $38 = $17,733.
+      Net = 17,733 − 20,000 = −$2,267 per month.
+    explanation: |
+      Benefits scale with adoption, but the fee does not. Assuming full adoption would give +$18,000 (1,000 × 38 − 20,000),
+      the opposite sign. Adoption is part of the business case, not an afterthought.
+
+  # ---------------------------------------------------------------- open
+  - id: D3-025
+    version: 1
+    type: open
+    subtopic: comms.tradeoffs
+    tags: [llm.failure-modes, gov.responsible-ai]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 540
+    stem: |
+      Last week, an insurer's customer-facing assistant told a policyholder that water damage was covered, when it was
+      not. The customer called, complained and the Head of Claims has asked you for a written account: what happened, how
+      likely it is to recur, and what you are changing. You have confirmed that a policy document was missing from the
+      knowledge base, so the assistant answered from general knowledge. Write the reply, under 300 words.
+    rubric:
+      - criterion: "Bottom line first"
+        points: 2
+        guidance: "2 if the opening states what went wrong, its cause in a sentence, and that the immediate fix is in place; 1 if the facts appear but after a preamble; 0 if it opens with apology or background only."
+      - criterion: "Accurate, non-defensive account of cause"
+        points: 2
+        guidance: "2 if the cause (missing document, answer from general knowledge) is stated plainly without blame or excuses; 1 if accurate but evasive or technical; 0 if it blames the model or the customer."
+      - criterion: "Honest statement of residual risk"
+        points: 3
+        guidance: "3 if it says errors of this type can recur, quantifies or describes how often it will measure that, and does not promise zero; 2 if it acknowledges risk without a way to measure; 1 if vague; 0 if it promises it cannot happen again."
+      - criterion: "Concrete corrective actions with owners and dates"
+        points: 3
+        guidance: "3 if it lists specific fixes such as refusing to answer when no source is found, a coverage check of the knowledge base, a test for this question type, and a review of the affected policyholder, with owner or date; 2 if specific but no owner or date; 1 if generic; 0 if none."
+    model_answer: |
+      Subject: Incident summary: incorrect coverage answer, with fixes.
+
+      Last Tuesday the assistant told a policyholder that water damage was covered under policy type B. It is not. We
+      have contacted the policyholder through your team, and the immediate fix is live.
+
+      Cause: the policy document for type B was missing from the knowledge base, so the assistant answered from general
+      knowledge instead of from your wording. We should have caught that gap before launch.
+
+      Will it recur? Errors of this kind can recur, and I won't promise otherwise. What we can do is make them less
+      likely and visible. Since the fix, the assistant declines to answer coverage questions when it finds no matching
+      source, and we are measuring how often that happens.
+
+      Actions:
+      1. By Friday, we will check every policy type against the knowledge base and report any gaps (owner: me).
+      2. By next Wednesday, we will add 50 coverage questions to the regression set, run before every release (owner:
+      our evaluation lead).
+      3. Starting now, a weekly sample of 100 coverage answers is reviewed by your claims team, and I will report the
+      error rate to you each Monday.
+
+      I will update you Friday with the results of the coverage check.
+    max_chars: 2200
+
+  - id: D3-026
+    version: 1
+    type: open
+    subtopic: comms.stakeholders
+    tags: [discovery.framing, adoption.change]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: analyze
+    time_s: 540
+    stem: |
+      You start an engagement to automate loan-document intake at a regional bank. The sponsor is the COO. About 60
+      processors would use the system. You know little yet about IT, compliance, legal or data owners, and the COO says
+      "the processors are nervous". In the first week, describe your stakeholder plan: who you map, what each group
+      probably cares about, how you engage them, and where you expect resistance. Under 300 words.
+    rubric:
+      - criterion: "Maps beyond sponsor and users"
+        points: 3
+        guidance: "3 if it identifies IT/security, compliance/legal, data owners and a business-side owner (for example the processors' managers) as well as sponsor and users; 2 if it names three groups; 1 if only sponsor and users; 0 if missing."
+      - criterion: "Distinguishes interests per group"
+        points: 2
+        guidance: "2 if each group has a distinct concern (for example security: data exposure, compliance: auditability, processors: job security); 1 if generic; 0 if none."
+      - criterion: "Engagement actions are specific and early"
+        points: 3
+        guidance: "3 if there are concrete first-week actions (interviews, shadowing processors, early review sessions with security/compliance) and a cadence; 2 if concrete but vague on timing; 1 if generic; 0 if none."
+      - criterion: "Anticipates resistance and escalation"
+        points: 2
+        guidance: "2 if it names the likely sources of resistance and how it would address or escalate them via the sponsor; 1 if only one; 0 if neither."
+    model_answer: |
+      My aim in week one is to find everyone who can block, constrain or benefit from the system, and to understand what
+      each needs before I build.
+
+      Map. Sponsor (COO), processors and their team leads, IT and information security, compliance and legal (including
+      anyone responsible for model-risk or vendor reviews), and the data owners for the loan and customer systems. I
+      would also ask the COO who else has been burned by earlier automation.
+
+      Interests. Processors: job security, whether it makes their work harder, whether they are measured by it. Team
+      leads: queues and service levels. Security: where data goes, who can see it, access scope. Compliance and legal:
+      auditability, retention and explainability for regulators. Data owners: control over how their data is used.
+
+      Engagement. Shadow processors for a day or two; hold a 30-minute session with each team lead. Book early
+      meetings with security and compliance, bring a data-flow diagram and a list of questions, and agree what they
+      need in order to approve. Meet the COO weekly.
+
+      Resistance. Processors will resist if they see it as replacement; I would ask the COO for a clear statement on
+      roles and involve processors as reviewers. Security and compliance will resist late discoveries, so I would
+      get them in early. If anything stalls, I would take it to the COO with dates and a specific request.
+    max_chars: 2200
+
+  - id: D3-027
+    version: 1
+    type: open
+    subtopic: adoption.change
+    tags: [delivery.go-live, obs.slo]
+    competencies: [x.written-comms]
+    difficulty: 3
+    level: evaluate
+    time_s: 540
+    stem: |
+      An AI assistant for evidence review was launched two months ago at a manufacturer's internal-audit group. Only
+      18% of the intended users use it each week. The sponsor, the Chief Audit Executive, wants a diagnosis and a plan by
+      Friday and says "the tool is fine, people just need to use it". Write your response: how you will find out why
+      usage is low, what you will measure, and what you propose for the next 30 days. Under 300 words.
+    rubric:
+      - criterion: "Challenges the assumption with evidence-gathering"
+        points: 3
+        guidance: "3 if it politely questions 'the tool is fine' and proposes concrete diagnosis (usage data by user and task, interviews with users and non-users, observing real work); 2 if proposes diagnosis without challenging; 1 if jumps to solutions; 0 if accepts the sponsor's framing."
+      - criterion: "Defines adoption metrics"
+        points: 2
+        guidance: "2 if it defines activation or task-level usage among eligible users, and a target, rather than logins or licences; 1 if usage is mentioned loosely; 0 if no metrics."
+      - criterion: "30-day plan is specific and prioritised"
+        points: 3
+        guidance: "3 if it gives dated actions with owners (for example fix the top friction, embed in existing workflow, recruit champions, adjust manager expectations) and says what would be decided at day 30; 2 if specific but unprioritised; 1 if generic; 0 if none."
+      - criterion: "Appropriate use of sponsorship"
+        points: 2
+        guidance: "2 if it states what it needs from the sponsor (for example changing what managers ask for, naming champions); 1 if mentions the sponsor generically; 0 if none."
+    model_answer: |
+      Bottom line: 18% weekly use says the tool may be fine for some people and a poor fit for the way the rest work.
+      I can't tell which until I have looked, and I would rather know by next Friday than guess.
+
+      Diagnosis (this week). I'll pull usage by person and task to see who tried and dropped off, interview ten users and
+      ten non-users, and watch four auditors do real evidence reviews to see where the tool sits in their workflow.
+
+      Metric. I propose we track activation: the share of eligible auditors who complete a real evidence review with the
+      tool within their first two weeks, and weekly repeat use after that. Today's 18% is weekly use; I'd like a target
+      of 50% activation by day 60, to be confirmed with you.
+
+      Next 30 days. Week 1: diagnose. Week 2: remove the top two friction points we find, and put the tool in the system
+      auditors already use. Weeks 3 and 4: recruit three respected auditors as champions and run a short cohort with
+      them, measuring time saved. At day 30 we decide whether to widen or to change course.
+
+      From you: ask team leads to take their evidence summaries from the tool's output, and name champions. If the
+      diagnosis shows that the tool is not suited to some tasks, we should say so and focus where it works.
+    max_chars: 2200
+
+  - id: D3-028
+    version: 1
+    type: open
+    subtopic: adoption.handoff
+    tags: [obs.troubleshooting, gov.audit-compliance]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 540
+    stem: |
+      Your contract ends in six weeks. You built and run a support-ticket classification and drafting system for a
+      logistics customer. Their team of three engineers has been involved only from time to time. Write your handoff plan:
+      the exit criteria, the schedule, what you will deliver, and the support model afterwards. Under 300 words.
+    rubric:
+      - criterion: "Exit criteria are demonstrable"
+        points: 3
+        guidance: "3 if criteria are observable (customer team deploys a change, re-runs evaluation, handles an incident unaided); 2 if mixed with document-based criteria; 1 if only documents and training attendance; 0 if absent."
+      - criterion: "Schedule shifts ownership progressively"
+        points: 2
+        guidance: "2 if the plan moves from FDE-led to shadowing to customer-led within the six weeks; 1 if a single handover event; 0 if no schedule."
+      - criterion: "Deliverables cover operation, not only description"
+        points: 3
+        guidance: "3 if runbooks by symptom, evaluation set and procedure, monitoring and alert ownership, and access/credentials transfer are covered; 2 if two or three; 1 if only documentation; 0 if none."
+      - criterion: "Support model and dependencies"
+        points: 2
+        guidance: "2 if it defines tiers, escalation and what the vendor remains responsible for, and addresses single points of knowledge; 1 if partial; 0 if absent."
+    model_answer: |
+      Exit test: by week 6 the customer's engineers, with me observing, redeploy a change, re-run the evaluation suite,
+      and resolve a simulated incident from the runbook. I will not sign off on documents or attendance alone.
+
+      Schedule. Weeks 1-2: I lead, they shadow, and I involve the three engineers daily; we agree who owns what. Weeks
+      3-4: they drive, I advise; they make one prompt change and one routing change through the full release process.
+      Weeks 5-6: they run it alone, and I intervene only when asked. In week 6, a game-day exercise with a simulated
+      incident.
+
+      Deliverables. Symptom-based runbooks (wrong answers, stale data, provider outage, queue backlog) with checks and
+      escalation. The evaluation set and a one-page procedure for re-running and reading it. Dashboards and alerts with a
+      named owner each. Prompts, configuration and evaluation data in their repository. A transfer of credentials and
+      access, with my access removed.
+
+      Support. Their help desk triages with trace IDs; their app team fixes; the vendor takes platform defects against an
+      SLA. A monthly review for the first quarter. I will list single points of knowledge in week 2 and remove them.
+    max_chars: 2200
+
+  # ---------------------------------------------------------------- audio
+  - id: D3-029
+    version: 1
+    type: audio
+    subtopic: comms.tradeoffs
+    tags: [eval.gates, delivery.go-live]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 150
+    prep_s: 30
+    max_s: 120
+    stem: |
+      In the corridor, the sponsor asks: "In one minute: should we expand the pilot to all regions?" Pilot results are
+      strong in two regions and weak in three, mostly because of data quality in the three. Answer out loud, as you
+      would to her.
+    rubric:
+      - criterion: "Clear recommendation up front"
+        points: 3
+        guidance: "3 if a direct answer in the first sentence (for example: expand to the two strong regions, not yet to the other three); 1 if it appears late; 0 if no recommendation."
+      - criterion: "States evidence and uncertainty plainly"
+        points: 2
+        guidance: "2 if it cites the difference between regions, names data quality as the cause, and says what is not yet known; 1 if only one; 0 if none."
+      - criterion: "Gives a path and a date for the rest"
+        points: 2
+        guidance: "2 if it states what is needed in the three regions and when the decision will be revisited; 1 if vague; 0 if none."
+      - criterion: "Suits a sponsor in a hurry"
+        points: 1
+        guidance: "1 if jargon-free and concise; 0 if technical or rambling."
+    model_answer: |
+      Yes for two regions, not yet for the other three. The pilot works well in the north and the east: results there
+      meet the target. In the other three it falls short, and the reason is the quality of the data feeding it rather than
+      the tool itself, so rolling out there now would give those teams a poor first experience.
+
+      What I don't yet know is how fast the data can be fixed; that depends on their IT teams. So my suggestion is:
+      expand to the two strong regions now, start the data cleanup in the other three with a named owner in each, and
+      let me bring you an update in six weeks with a go or no-go for each. If you want a single sentence for your boss:
+      expanding where it works, and fixing the data where it doesn't.
+
+  - id: D3-030
+    version: 1
+    type: audio
+    subtopic: comms.stakeholders
+    tags: [adoption.change]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    prep_s: 30
+    max_s: 120
+    stem: |
+      In a review meeting, a team lead for the people using your assistant says: "This tool makes our job harder. It
+      adds a step, the drafts need rewriting, and I want it switched off." The sponsor is present. Respond out loud.
+    rubric:
+      - criterion: "Acknowledges and checks understanding"
+        points: 2
+        guidance: "2 if it acknowledges the concern specifically and asks a clarifying question rather than defending the tool; 1 if only acknowledges; 0 if defensive."
+      - criterion: "Treats the complaint as information"
+        points: 2
+        guidance: "2 if it proposes to look at real examples (rewritten drafts, the added step) and measure; 1 if it promises to improve in general terms; 0 if it argues with the claim."
+      - criterion: "Proposes a concrete and bounded next step"
+        points: 3
+        guidance: "3 if it offers something specific and time-boxed (for example sit with two agents this week, fix the added step, review in two weeks) and addresses the switch-off request honestly; 1 if vague; 0 if none."
+      - criterion: "Handles the sponsor in the room"
+        points: 1
+        guidance: "1 if it keeps the sponsor informed and does not escalate or play to them; 0 if it appeals to the sponsor to overrule the team lead."
+    model_answer: |
+      Thank you for saying that directly; if it's making your team's job harder, that's what I need to fix. Can I ask a
+      couple of questions? Which step does it add, and how many of the drafts need rewriting?
+
+      I'd like to see examples rather than argue about averages. Could two of your agents sit with me for an hour this
+      week, so I can watch the added step and the rewrites on real tickets? I'll measure how much time the tool takes
+      against doing it without. If the numbers show it's slowing you down, we should know that.
+
+      On switching it off: I don't want to push it on you. What I propose is that I come back in two weeks with a fix for
+      the extra step and the data on the drafts, and then we decide together whether it stays on for your team. In the
+      meantime I'm happy for you to carry on without it if that's easier. I'll keep the sponsor updated on what we find.
+
+  - id: D3-031
+    version: 1
+    type: audio
+    subtopic: adoption.handoff
+    tags: [obs.troubleshooting]
+    competencies: [x.written-comms]
+    difficulty: 3
+    level: evaluate
+    time_s: 150
+    prep_s: 30
+    max_s: 120
+    stem: |
+      You are leaving the engagement next week. The customer's new platform owner, who joined last month, asks: "What are
+      you handing me, and what do I need to be able to do on day one?" Answer out loud.
+    rubric:
+      - criterion: "Bottom line first"
+        points: 2
+        guidance: "2 if it starts with a short summary of what is handed over and what the owner must be able to do; 1 if it starts with background; 0 if disorganised."
+      - criterion: "Covers what the owner needs to operate"
+        points: 3
+        guidance: "3 if it names the runbooks, the evaluation set and how to re-run it, monitoring and alerts, access, and the known failure modes; 2 if three of these; 1 if one or two; 0 if none."
+      - criterion: "Is honest about risks and dependencies"
+        points: 2
+        guidance: "2 if it names what is fragile or still dependent on the vendor or on one person, and what to watch; 1 if generic; 0 if it claims no risks."
+      - criterion: "Support and next steps"
+        points: 1
+        guidance: "1 if it states who to call for what and gives a first-week action; 0 if absent."
+    model_answer: |
+      In short: you are getting a running system, the checks that tell you whether it is healthy, and a way to change it
+      safely. On day one you need to be able to read the dashboard, handle the three most common failures from the runbook,
+      and re-run the evaluation suite before any change.
+
+      Specifically: runbooks organised by symptom; the evaluation set and the one-page procedure for running it; alerts
+      with named owners; the prompts and configuration in your repository, not mine; and access, which I am transferring
+      this week.
+
+      What I would watch: the knowledge base goes stale if nobody owns refreshes, and quality can drift when the model
+      provider changes versions, so run the evaluation monthly. Today only I know the quirks of the document parser;
+      we'll write those down on Wednesday.
+
+      For support, your help desk triages, your team fixes, and the vendor's platform team takes platform defects under
+      the SLA. In your first week, I suggest you re-run the evaluation yourself with me watching.

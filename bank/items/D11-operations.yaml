@@ -1,0 +1,888 @@
+domain: D11
+items:
+  # ---------------------------------------------------------------- obs.tracing
+  - id: D11-001
+    version: 1
+    type: single
+    subtopic: obs.tracing
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A procurement agent at a manufacturer sometimes takes 40 seconds to answer. The only telemetry today is
+      API-gateway request logs and CPU graphs, so nobody can say whether the time goes to the model, the ERP lookup
+      or retries. What instrumentation answers the question most directly?
+    options:
+      - text: "One trace per run, with child spans for each model call and tool call recording model, tokens and latency"
+        correct: true
+        why: The span tree shows which step consumed the 40 seconds and how many steps ran.
+      - text: Request-level latency histograms per endpoint, with an alert when p95 exceeds the target for five minutes
+        why: Shows that requests are slow, but not which step inside the run is responsible.
+        misconception: Aggregate latency metrics are enough to locate a slow step
+      - text: "Verbose INFO logs containing the full prompt and response of every model call, searchable by request ID"
+        why: Unstructured logs lack timing relationships between steps and put sensitive content into the log store.
+        misconception: More logging of content equals more observability
+      - text: Auto-instrumented HTTP server and database spans only, since these cover the whole request path
+        why: "Misses the agent's own structure: which model call, which tool and how many loop iterations."
+        misconception: Generic APM spans capture what matters in LLM workflows
+    explanation: |
+      Agent behaviour is a tree of model and tool calls. A trace with one span per call, annotated with model, token
+      counts and latency, shows where time and cost go. Metrics show that something is slow; traces show where.
+    refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
+
+  - id: D11-002
+    version: 1
+    type: single
+    subtopic: obs.tracing
+    tags: [obs.cost, int.enterprise-devex]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      Three product teams at a client use three different LLM frameworks, and each records token usage under its own
+      custom field. The platform lead wants cross-team cost and latency dashboards. What is the best approach?
+    options:
+      - text: Emit OpenTelemetry GenAI attributes for operation, model and token usage, pinned to one convention version
+        correct: true
+        why: A vendor-neutral standard lets any OTel backend read model and token fields from all teams without custom mapping.
+      - text: "Publish a shared log-field schema on the internal wiki and ask each team to map its own keys onto it"
+        why: A convention that depends on each team's discipline drifts; nothing enforces or tooling-supports it.
+        misconception: Documented naming conventions are as good as a shared standard
+      - text: "Let each team keep its framework's native dashboard and join the exports in the data warehouse once a month"
+        why: Monthly joins are late and custom, and every new framework adds another mapping job.
+        misconception: Federated dashboards can be reconciled afterwards
+      - text: Reconcile cost from the provider's monthly invoice, allocating it by each team's request counts
+        why: Request counts ignore token volume and model mix, and give no latency view at all.
+        misconception: Invoices are an adequate source of attribution
+    explanation: |
+      OpenTelemetry's GenAI semantic conventions define shared attribute names for operations, models and token
+      usage, so telemetry from different frameworks lands in one schema. They are still marked as in development,
+      so pin the convention version and plan upgrades.
+    refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
+
+  - id: D11-003
+    version: 1
+    type: multi
+    subtopic: obs.tracing
+    tags: [gov.audit-compliance]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      A hospital group wants full traces of its clinical-documentation assistant for debugging, but prompts and
+      outputs contain patient data. Which practices resolve the tension?
+    options:
+      - text: Leave message content off spans by default, and enable capture per environment with redaction before export
+        correct: true
+        why: Content is the sensitive and bulky part, so it should be opt-in, scoped and scrubbed.
+      - text: Always record metadata such as model, token counts, tool names, latency and a content identifier
+        correct: true
+        why: Most diagnosis needs structure and timing, not text, and none of that is sensitive.
+      - text: Keep full message bodies, when needed, in an access-controlled store and put only a reference on the span
+        correct: true
+        why: Authorised engineers can still replay a case, and the general telemetry backend stays free of patient data.
+      - text: Log everything in production and rely on the observability vendor's retention settings for compliance
+        why: Retention settings do not fix who can read the data or where it is stored.
+        misconception: A retention window is the same as a privacy control
+      - text: Hash every prompt and response so nothing readable is stored anywhere, including the debug store
+        why: Hashes support matching but not inspection or replay, which removes the main debugging value.
+        misconception: Hashing preserves debuggability
+      - text: Turn tracing off in production and debug from staging with synthetic data only
+        why: Production-only failures, such as real data shapes and permissions, become undiagnosable.
+        misconception: Telemetry and privacy are mutually exclusive
+    explanation: |
+      Separate the structure of a run (always safe to keep) from its content (sensitive, opt-in). Redact before
+      export, keep any retained content in a restricted store referenced from the trace, and avoid options that
+      either leak data or make failures impossible to inspect.
+    refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
+
+  - id: D11-004
+    version: 1
+    type: single
+    subtopic: obs.tracing
+    tags: [int.async]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A webhook handler enqueues documents, and workers process them with several LLM calls. Traces break at the
+      queue: the handler's trace ends at enqueue and each worker starts a separate trace, so no one can follow a
+      request end to end. What fixes this?
+    options:
+      - text: Propagate W3C trace context in the message headers and start the worker's spans as children of it
+        correct: true
+        why: The context travels with the message, so handler and worker spans join one trace across the async hop.
+      - text: Log the request ID on every line and join log lines by ID in the search tool during incidents
+        why: Gives a manual join without span timing or hierarchy, so it does not show where latency accrues.
+        misconception: A shared ID in logs is equivalent to a distributed trace
+      - text: Start a fresh trace in the worker and match it to the webhook trace by timestamp proximity
+        why: Timestamp matching is ambiguous under concurrency and breaks whenever the queue backs up.
+        misconception: Time proximity can reconstruct causality
+      - text: Run the worker in-process with the webhook handler so that one trace covers the whole request
+        why: Removes the reason for the queue, such as retries, backpressure and isolation, to fix a telemetry problem.
+        misconception: Simplify the architecture to simplify tracing
+    explanation: |
+      Asynchronous hops need explicit context propagation: inject the trace context into the message and extract it in
+      the consumer, creating child or linked spans. Otherwise each side produces an isolated trace.
+
+  - id: D11-005
+    version: 1
+    type: single
+    subtopic: obs.tracing
+    tags: [obs.troubleshooting, llm.failure-modes]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      A compliance agent produced a wrong filing summary for one customer last Tuesday. Rerunning the same request
+      today gives a correct answer. The client wants the root cause, and the failure cannot be seen again on demand.
+      What should the tracing design capture so such runs can be reproduced?
+    options:
+      - text: "Capture each step's model version, parameters, inputs and tool results, then replay with recorded tool outputs"
+        correct: true
+        why: Nondeterminism comes from the model and the world; recorded inputs and tool outputs let you hold the world fixed.
+      - text: "Store only the final answer and the user's rating, then sample many more runs until the failure shows up again"
+        why: Without step data you can see that it failed but not why, and rare failures may not recur on demand.
+        misconception: Enough re-sampling reproduces any failure
+      - text: "Re-run the user's original request today at temperature 0 in the staging environment and compare it with production's"
+        why: Retrieved documents and tool results have changed since Tuesday, so the re-run is a different experiment.
+        misconception: Temperature 0 makes a run reproducible
+      - text: Fix a random seed on every model call so that a failing run can later be reproduced exactly
+        why: Seeds are best-effort at most and do not freeze the retrieved context or tool outputs.
+        misconception: A seed makes LLM runs deterministic
+    explanation: |
+      To reproduce a nondeterministic agent failure, record what it saw: exact model identifier and parameters, the
+      assembled prompt, retrieved context and every tool result. Replay with tool calls stubbed from the recording
+      to isolate whether the fault lies in the model or in the data.
+
+  # ---------------------------------------------------------------- obs.troubleshooting
+  - id: D11-006
+    version: 1
+    type: single
+    subtopic: obs.troubleshooting
+    tags: [gov.identity, rag.retrieval]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      A RAG assistant for a law firm answers "I could not find anything" to about 40% of questions in production but
+      behaves in staging, which has the same document snapshot. Failures cluster among associates; partners are
+      rarely affected. Staging queries run under a service account with full read access, while production
+      passes each user's identity to the search filter. What do you check first?
+    options:
+      - text: Replay failing queries in staging under the same user identity and inspect what the permission filter removes
+        correct: true
+        why: The clustering by user role and the identity difference point at document-level trimming that staging never exercises.
+      - text: "Compare the model alias and snapshot in the two environments, since a silent change could explain weaker answers"
+        why: A weaker model would produce poor answers, not systematic "nothing found" responses concentrated on one user group.
+        misconception: Any production-only symptom is a model-version issue
+      - text: Rebuild the production index from scratch, since a partly failed ingestion explains empty results
+        why: Same snapshot in both environments and partner queries succeed, so the index content is not the common cause.
+        misconception: Missing results mean a broken index
+      - text: Lower the production similarity threshold to staging's more permissive default
+        why: Plausible config drift, but it would not split cleanly by user role; check the identity path first.
+        misconception: Retrieval thresholds explain every empty result
+    explanation: |
+      Prod-versus-staging differences often live in data, permissions, configuration or model version. Use the
+      shape of the symptom (who is affected, which queries) to pick the layer, then reproduce under the production
+      identity before changing anything.
+
+  - id: D11-007
+    version: 1
+    type: single
+    subtopic: obs.troubleshooting
+    tags: [llm.structured-tools, llm.failure-modes]
+    difficulty: 3
+    level: analyze
+    time_s: 100
+    stem: |
+      Since Tuesday, 5% of an order-extraction service's responses fail JSON parsing. Nothing was deployed; prompts
+      and code are unchanged, and traces record model name, finish reason, input length and tenant. What is the best
+      first diagnostic step?
+    options:
+      - text: Segment failing and passing traces by model version, finish reason, input length and tenant
+        correct: true
+        why: Finds what separates failures from successes (for example truncation, a snapshot change or one tenant's inputs) before acting.
+      - text: Add a JSON-repair step with two retries on parse failure, which will push the error rate near zero
+        why: Masks the symptom and adds cost; the cause stays unknown and may worsen.
+        misconception: Retry and repair is root-cause analysis
+      - text: "Open a high-severity ticket with the provider and hold changes until their root-cause analysis arrives"
+        why: May be justified later, but without evidence of a provider-side change it delays your own diagnosis.
+        misconception: Unexplained behaviour is the provider's responsibility
+      - text: "Add a stricter instruction to return valid JSON to the system prompt and ship it as a hotfix"
+        why: An untested prompt change on a system that did not change; it risks new regressions and does not explain the shift.
+        misconception: Prompt wording fixes every formatting error
+    explanation: |
+      When behaviour changes without a deploy, look for what changed around the system: provider model snapshots,
+      traffic mix, input length, truncation by token limits. Segment good versus bad runs on every recorded
+      dimension; the discriminating variable tells you which layer to fix.
+
+  - id: D11-008
+    version: 1
+    type: multi
+    subtopic: obs.troubleshooting
+    tags: [deploy.delivery]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      An agent passes every check in staging but misbehaves in production at a client site. Which differences
+      between the environments are most worth checking?
+    options:
+      - text: Corpus content, volume and the access controls applied to documents
+        correct: true
+        why: Real data is larger, messier and permission-filtered, and staging snapshots rarely reproduce this.
+      - text: Rate-limit tiers, timeouts and retry settings for the model provider and downstream APIs
+        correct: true
+        why: Load and quotas in production trigger throttling and timeouts that staging traffic never reaches.
+      - text: Whether a floating model alias resolves to the same snapshot, with the same default parameters
+        correct: true
+        why: Aliases can move independently per environment or region, silently changing behaviour.
+      - text: The Python patch version of the runtime, which usually explains changes in model output
+        why: Minor runtime differences rarely alter LLM behaviour; changes in data, identity and model matter more.
+        misconception: Runtime versions are the usual culprit
+      - text: The prompt templates, which cannot differ because they are stored in version control
+        why: Environment configuration, feature flags and templating inputs can still change the final prompt.
+        misconception: Version control guarantees identical effective prompts
+      - text: Sampling randomness, which makes some failures expected and not worth investigating
+        why: Randomness can hide a systematic fault; a pattern that appears only in production needs a cause.
+        misconception: Nondeterminism excuses unexplained failures
+    explanation: |
+      Typical drivers of prod-versus-staging gaps are data (volume, quality, permissions), configuration (limits,
+      timeouts, flags), identity and model version. Check these before blaming randomness or minor runtime versions.
+
+  # ---------------------------------------------------------------- obs.cost
+  - id: D11-009
+    version: 1
+    type: single
+    subtopic: obs.cost
+    tags: [role.economics]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A client's monthly LLM bill has tripled. All features and tenants share one provider API key, and finance
+      wants per-tenant chargeback. What should you put in place?
+    options:
+      - text: "Tag each model call at the gateway with tenant, feature and run ID, and price it from recorded token usage"
+        correct: true
+        why: Gives attribution along every dimension finance needs, from data captured at call time.
+      - text: Issue a separate provider API key per feature and read each key's spend from the provider console
+        why: Splits by feature only, not tenant, and multiplies keys to rotate and secure.
+        misconception: One API key per cost centre is sufficient attribution
+      - text: Allocate the invoice to tenants in proportion to request counts from the load-balancer logs
+        why: Ignores that requests differ hugely in tokens and model used, so heavy tenants are undercharged.
+        misconception: Request count is a proxy for cost
+      - text: "Move the highest-volume features to a cheaper model first and check whether the bill returns to normal levels"
+        why: Optimising before knowing where the cost comes from may cut the wrong feature and hurt quality.
+        misconception: Act on cost before measuring it
+    explanation: |
+      Cost attribution needs per-call records with token counts and identifiers for tenant, feature and run, priced
+      against the model used. With that you can answer who and what drives spend before deciding what to optimise.
+
+  - id: D11-010
+    version: 1
+    type: single
+    subtopic: obs.cost
+    tags: [llm.fundamentals]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      After enabling prompt caching for a support agent, the cost has not changed and the cache hit rate is about
+      3%. Each request has a 6,000-token block of instructions and tool definitions followed by a 300-token user
+      turn. The system prompt begins with the current timestamp and the user's name. What should change?
+    options:
+      - text: Move the timestamp and user name after the static content so the cached prefix is identical every time
+        correct: true
+        why: Caching matches on an exact prefix, and a changing first line makes every request a miss.
+      - text: Lengthen the cache lifetime so entries survive between requests from different users
+        why: Lifetime is not the problem; entries are never reused because each prefix differs from the first token.
+        misconception: Low hit rates mean the cache expires too early
+      - text: Cache complete responses keyed on a hash of the user message instead of caching the prompt prefix
+        why: A different technique with a low hit rate for free-text questions, and it ignores the per-user context.
+        misconception: Response caching is a drop-in alternative to prefix caching
+      - text: Split the static instructions into smaller blocks so each one is cached independently
+        why: Block boundaries do not help while the volatile text at the start still changes the prefix.
+        misconception: More cache blocks produce more hits
+    explanation: |
+      Provider prompt caches reuse a request's exact leading tokens. Put stable content (instructions, tool
+      definitions, reference documents) first and volatile content (timestamps, user data, the question) last.
+    refs: [https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching]
+
+  - id: D11-011
+    version: 1
+    type: single
+    subtopic: obs.cost
+    tags: [llm.model-selection, eval.gates]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      An FAQ assistant sends every question to a large model. About 70% of questions look simple, so the team wants
+      a cascade: a small model answers first and escalates to the large model when the answer looks unreliable.
+      How should the escalation rule be chosen?
+    options:
+      - text: Choose the threshold from cost-versus-quality curves on a labelled set, per slice, and monitor the escalation rate
+        correct: true
+        why: Makes the cost-quality trade-off explicit and verifiable, and notices when live traffic shifts.
+      - text: Escalate when the small model states low confidence, using a 0.7 cutoff taken from a published blog post
+        why: Verbalised confidence is poorly calibrated and the cutoff was never validated on this client's questions.
+        misconception: Self-reported confidence is a reliable routing signal
+      - text: Route by prompt length, sending short questions to the small model since they are probably simple
+        why: Length is a weak proxy for difficulty; short questions can need careful reasoning.
+        misconception: Input size predicts difficulty
+      - text: Keep the large model for everything but cap output length, which saves cost without routing risk
+        why: Truncating answers risks cutting needed content and leaves the main cost, large-model input, untouched.
+        misconception: Output caps are a risk-free substitute for routing
+    explanation: |
+      Cascades and routers need an evaluated decision rule: measure quality and cost at different thresholds on
+      labelled data, check each slice, and watch escalation rate in production. Unvalidated signals such as stated
+      confidence or prompt length can save money while silently degrading answers.
+
+  - id: D11-012
+    version: 1
+    type: single
+    subtopic: obs.cost
+    tags: [agents.state, gov.guardrails]
+    difficulty: 1
+    level: apply
+    time_s: 80
+    stem: |
+      Over a weekend, an agent stuck in a tool-retry loop spent about $4,000 for one tenant before anyone noticed.
+      Which control would have stopped it?
+    options:
+      - text: Per-run caps on steps, tokens and cost in the harness, plus per-tenant spend limits that halt work
+        correct: true
+        why: Stops the loop at the source and bounds each tenant's exposure automatically, without a human present.
+      - text: Send finance a daily spend summary and add a dashboard so anomalies are noticed the next morning
+        why: Alerts report after the money is spent and depend on someone reading them over a weekend.
+        misconception: Reporting is a control
+      - text: Set a hard monthly spend cap on the provider account so that total spend can never exceed budget
+        why: A single runaway tenant exhausts the cap and takes every other tenant down with it.
+        misconception: An account-wide cap is sufficient protection
+      - text: Reduce the maximum output tokens on every model call so that a single call cannot become expensive
+        why: The cost came from the number of iterations, not the size of one call.
+        misconception: Per-call limits bound per-run cost
+    explanation: |
+      Budget circuit breakers belong where work is scheduled: cap steps, tokens and spend per run, and per tenant
+      or feature, with automatic halt and alert. Dashboards and provider-wide caps are complements, not substitutes.
+
+  # ---------------------------------------------------------------- obs.slo
+  - id: D11-013
+    version: 1
+    type: single
+    subtopic: obs.slo
+    tags: [eval.online]
+    difficulty: 1
+    level: analyze
+    time_s: 80
+    stem: |
+      A knowledge assistant met its 99.9% availability objective all quarter. Yet after a faulty index rebuild it gave
+      wrong answers for three days, users complained, and every dashboard stayed green. What is the right change
+      to the objectives?
+    options:
+      - text: Add a quality SLO measured on sampled, graded responses next to availability and latency
+        correct: true
+        why: Wrong answers delivered quickly with HTTP 200 are invisible to uptime metrics; sampled grading makes them visible.
+      - text: Tighten the availability target to 99.99% so that any degradation of the service shows up as a breach
+        why: Availability counts successful responses, not correct ones; a higher target stays green during bad answers.
+        misconception: Higher uptime targets catch quality regressions
+      - text: Return HTTP 5xx whenever the model hedges, so low-confidence answers count as errors
+        why: Hedging is not wrongness, and this degrades user experience while still missing confident wrong answers.
+        misconception: Error codes can stand in for quality
+      - text: Rely on the quarterly CSAT survey to catch quality problems, since users are the final judge
+        why: A quarterly signal detects a three-day incident months after the fact.
+        misconception: Lagging satisfaction scores are an adequate quality monitor
+    explanation: |
+      AI systems need separate objectives for availability, latency and quality. Quality SLIs come from sampled and
+      graded production traffic, which is what lets an error budget cover wrong-but-fast answers.
+
+  - id: D11-014
+    version: 1
+    type: multi
+    subtopic: obs.slo
+    tags: [eval.online]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      You are defining service level indicators for a streaming customer-support assistant. Which are good SLIs?
+    options:
+      - text: p95 time to first token for streamed answers, measured at the client edge
+        correct: true
+        why: Tail latency to first visible output is what users feel in a streamed interface.
+      - text: Share of sampled responses rated grounded by calibrated reviewers or a validated judge
+        correct: true
+        why: A user-facing quality measure that can carry a target and an error budget.
+      - text: Fraction of tool calls that complete successfully within their timeout
+        correct: true
+        why: Tool failures cause visible task failures and are measurable from traces.
+      - text: Mean end-to-end latency across all requests in a rolling hour
+        why: Means hide the slow tail that frustrated users experience.
+        misconception: Average latency represents user experience
+      - text: GPU utilisation of the inference fleet serving the model
+        why: A resource metric that explains causes, not a user outcome; it also does not exist for a hosted API.
+        misconception: Resource saturation metrics are SLIs
+      - text: Average output tokens per response for each day
+        why: Describes response size and cost, not whether users got a timely or correct answer.
+        misconception: Volume metrics indicate service quality
+    explanation: |
+      Good SLIs describe what users experience: tail latency, correctness and task completion. Resource and volume
+      metrics are useful for diagnosis and capacity but are not objectives to promise.
+
+  - id: D11-015
+    version: 1
+    type: single
+    subtopic: obs.slo
+    tags: [int.resilience, deploy.delivery]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      A service has a 99.5% monthly success-rate SLO. A model-provider outage in week one consumed 70% of the
+      month's error budget. A prompt rework and a model upgrade are scheduled for next week. What does an
+      error-budget policy say to do?
+    options:
+      - text: Slow risky launches such as prompt or model changes, and invest in fallback and retry behaviour
+        correct: true
+        why: With little budget left, further risk is deferred and effort goes into resilience to similar outages.
+      - text: Claim the provider's SLA credit and carry on with the launch plan, as the outage was outside the team's control
+        why: Credits compensate money, not users; the budget is spent regardless of whose fault it was.
+        misconception: Blame-shifting to a vendor resets the budget
+      - text: Exclude the outage from the SLI this month, since users cannot hold the team responsible for a provider
+        why: Users experienced the failures; excluding them hides a dependency risk the team can mitigate.
+        misconception: Dependency failures should not count against your SLO
+      - text: Relax the target to 99% for the rest of the month so that the remaining budget is not exhausted
+        why: Moving the goalposts after a miss removes the signal the budget exists to provide.
+        misconception: SLOs can be adjusted to fit results
+    explanation: |
+      An error budget links reliability to release decisions: when it is mostly spent, favour work that reduces risk
+      over feature launches. Provider outages count if users see them, and mitigation (fallback providers, retries,
+      graceful degradation) is the team's job.
+
+  - id: D11-016
+    version: 1
+    type: single
+    subtopic: obs.slo
+    tags: [gov.guardrails, gov.audit-compliance]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      At 2 a.m. the on-call engineer sees a customer report that the assistant quoted excerpts from another
+      tenant's documents. Traces show a retrieval filter was bypassed after yesterday's release. What is the right
+      first move?
+    options:
+      - text: Cut off the affected retrieval path with a kill switch, keeping logs and traces for the investigation
+        correct: true
+        why: Contain the exposure now; evidence is preserved so impact and cause can be established afterwards.
+      - text: Reproduce the bug in staging first so that the fix is verified before touching production
+        why: Leaves a live data exposure running while a fix is developed.
+        misconception: Verify before acting, even when harm is ongoing
+      - text: Roll the model back to the previous version, as model changes are the most frequent trigger of regressions
+        why: The trace points at a retrieval filter, not the model; a rollback would not stop the leak.
+        misconception: Model change is the default suspect
+      - text: Notify every affected customer first so that they hear about it from you before they notice themselves
+        why: Notification matters, but sending it before containment and scope known risks inaccurate statements.
+        misconception: Communication comes before containment
+    explanation: |
+      Incident response order: stabilise and contain (disable the faulty path), preserve evidence, assess impact,
+      communicate with accurate facts, fix the root cause, and hold a blameless review that produces tests and
+      runbook updates.
+
+  # ---------------------------------------------------------------- numeric
+  - id: D11-017
+    version: 1
+    type: numeric
+    subtopic: obs.cost
+    tags: [llm.fundamentals]
+    competencies: [x.estimation]
+    difficulty: 1
+    level: apply
+    time_s: 120
+    stem: |
+      A support agent sends 8,000 cacheable prefix tokens, 500 non-cached input tokens and receives 400 output
+      tokens per request, with 10,000 requests a day. Pricing: input $3.00 per million tokens, cached-prefix reads
+      cost 10% of the input price, output $15.00 per million. Assume every request after warm-up hits the cache and
+      ignore cache-write premiums. What is the daily model cost with caching, in USD?
+    answer: {value: 99.0, tolerance: 1.0, tolerance_type: abs, unit: "USD"}
+    work: |
+      Cached prefix: 8,000 x $0.30/M = $0.0024. Fresh input: 500 x $3/M = $0.0015. Output: 400 x $15/M = $0.0060.
+      Per request $0.0099; x 10,000 = $99.00 per day.
+    explanation: |
+      Without caching it would be (8,500 x $3/M + $0.006) x 10,000 = $315. Common mistakes: omitting output tokens
+      ($39), charging the cached prefix at full price, or applying the 10% factor to the whole input.
+
+  - id: D11-018
+    version: 1
+    type: numeric
+    subtopic: obs.cost
+    tags: [llm.model-selection]
+    competencies: [x.estimation]
+    difficulty: 1
+    level: apply
+    time_s: 120
+    stem: |
+      In a cascade, every request first goes to a small model costing $0.002 per request. 30% of requests are judged
+      unreliable and also go to the large model at $0.020 per request. What is the expected cost per 1,000 requests,
+      in USD?
+    answer: {value: 8.0, tolerance: 0.05, tolerance_type: abs, unit: "USD"}
+    work: |
+      Every request pays the small model: $0.002. Thirty percent additionally pay $0.020: 0.3 x 0.020 = $0.006.
+      Expected cost per request $0.008; per 1,000 requests $8.00.
+    explanation: |
+      Escalated requests pay twice. Treating the large model as a replacement (0.7 x 0.002 + 0.3 x 0.020 = $7.40 per
+      1,000) understates cost. Compare with sending everything to the large model: $20 per 1,000.
+
+  - id: D11-019
+    version: 1
+    type: numeric
+    subtopic: obs.tracing
+    tags: [agents.patterns]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: analyze
+    time_s: 150
+    stem: |
+      A trace shows an agent run with 5 sequential model calls of 1.8 s each. Between them it runs four tool calls:
+      tool A (0.6 s) then tool B (0.6 s) in sequence, followed by tools C (0.9 s) and D (0.7 s) running
+      concurrently. Ignoring all other overhead, what is the end-to-end latency of the run, in seconds?
+    answer: {value: 11.1, tolerance: 0.05, tolerance_type: abs, unit: "s"}
+    work: |
+      Model calls: 5 x 1.8 = 9.0 s. Tools A and B in sequence: 0.6 + 0.6 = 1.2 s. Tools C and D in parallel: max(0.9, 0.7) = 0.9 s.
+      Total 9.0 + 1.2 + 0.9 = 11.1 s.
+    explanation: |
+      Critical-path latency adds sequential steps and takes the maximum of parallel ones. Summing every tool call
+      gives 11.8 s and overstates the run; this is the arithmetic a trace waterfall shows visually.
+
+  - id: D11-020
+    version: 1
+    type: numeric
+    subtopic: obs.slo
+    competencies: [x.estimation]
+    difficulty: 3
+    level: analyze
+    time_s: 150
+    stem: |
+      A service has a 99.5% success-rate SLO over a 30-day window and expects 2,400,000 requests in the window. On
+      day 12, 9,100 requests have failed. Burn rate is the fraction of error budget consumed divided by the fraction
+      of the window elapsed. What is the burn rate, rounded to one decimal?
+    answer: {value: 1.9, tolerance: 0.05, tolerance_type: abs}
+    work: |
+      Budget = 0.5% x 2,400,000 = 12,000 failed requests. Consumed fraction = 9,100 / 12,000 = 0.758. Elapsed
+      fraction = 12 / 30 = 0.40. Burn rate = 0.758 / 0.40 = 1.9.
+    explanation: |
+      A burn rate above 1 means the budget runs out before the window ends (here around day 16 of 30). Quoting the 76%
+      consumed alone ignores how far into the window you are; the same 76% on day 25 would be burn rate 0.9.
+
+  - id: D11-021
+    version: 1
+    type: numeric
+    subtopic: obs.slo
+    tags: [int.resilience]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: analyze
+    time_s: 150
+    stem: |
+      A request needs three layers in series: an API gateway (99.95% available), the model layer, and a vector
+      database (99.95%). The model layer uses a primary provider at 99.9% with an independent fallback provider at
+      99.5%; assume failover is instant and perfect, so the layer fails only if both are down. What is the composite
+      availability, in percent, rounded to two decimals?
+    answer: {value: 99.9, tolerance: 0.01, tolerance_type: abs, unit: "%"}
+    work: |
+      Model layer = 1 - (0.001 x 0.005) = 0.999995. Composite = 0.9995 x 0.999995 x 0.9995 = 0.998995, i.e. 99.90%.
+    explanation: |
+      Serial dependencies multiply; redundant ones multiply failure probabilities. Without the fallback the product
+      is 0.9995 x 0.999 x 0.9995 = 99.80%. Taking the average of the three availabilities (about 99.8%) or the
+      minimum are common wrong shortcuts. Real failover is imperfect, so treat this as an upper bound.
+
+  - id: D11-022
+    version: 1
+    type: numeric
+    subtopic: obs.cost
+    tags: [int.async, llm.model-selection]
+    competencies: [x.estimation]
+    difficulty: 1
+    level: apply
+    time_s: 120
+    stem: |
+      A nightly enrichment job processes 200,000 documents, each with 1,500 input tokens and 200 output tokens.
+      Prices are $1.00 per million input tokens and $5.00 per million output tokens; asynchronous batch processing
+      costs 50% less for both. What does the nightly job cost in batch mode, in USD?
+    answer: {value: 250.0, tolerance: 1.0, tolerance_type: abs, unit: "USD"}
+    work: |
+      Input: 200,000 x 1,500 = 300M tokens -> $300. Output: 200,000 x 200 = 40M tokens -> $200. Standard total
+      $500; batch 50% -> $250.
+    explanation: |
+      Forgetting output tokens gives $150; forgetting the discount gives $500. Batch suits work that can wait for
+      completion within a window, not interactive requests.
+
+  # ---------------------------------------------------------------- open
+  - id: D11-023
+    version: 1
+    type: open
+    subtopic: obs.cost
+    tags: [comms.stakeholders, agents.state]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 540
+    stem: |
+      Monday morning: over the weekend a retry loop in your deployed agent burned about $18,000 in model spend for a
+      single tenant. The client's CFO and CTO are on the thread and the CFO is angry. Write the message you would
+      send, covering what happened, what you are changing and what you need from them.
+    rubric:
+      - criterion: Opens with impact and ownership
+        points: 2
+        guidance: 2 if the first lines state the amount, the cause category and that the team owns the fix; 1 if the facts are there but buried or defensive; 0 if it opens with excuses or jargon.
+      - criterion: Plain-language cause
+        points: 2
+        guidance: 2 if it explains that a failing tool call made the agent retry without a limit and there was no spend cap or alert; 1 if vague ("a bug"); 0 if absent or blaming the provider.
+      - criterion: Concrete controls with owners and dates
+        points: 3
+        guidance: 3 if it lists per-run step and cost caps, per-tenant spend limits that halt work, alerts and a kill switch, each with an owner or date; 2 if controls are named without dates; 1 if only monitoring; 0 if none.
+      - criterion: Financial and follow-up handling
+        points: 2
+        guidance: 2 if it addresses the cost (credit or review with the provider, how the tenant is treated) and promises a written post-incident review by a date; 1 if one; 0 if neither.
+      - criterion: Tone and audience fit
+        points: 1
+        guidance: 1 if calm, direct and appropriate for a CFO and CTO, with no blame; 0 otherwise.
+    model_answer: |
+      Subject: Weekend overspend ($18k) - what happened and what we are changing
+
+      We are responsible for this. Between Saturday 02:00 and Monday 06:00 one agent run on the Acme tenant retried
+      a failing ERP call without any limit and spent about $18,000. It is stopped, and no customer data was involved.
+
+      Cause: the ERP lookup began returning errors and the agent kept retrying. We had no per-run limit on steps or
+      cost, and our spend alerts reported daily rather than as it happened, so nobody was paged.
+
+      What we are changing (owners and dates):
+      1. Per-run caps on steps, tokens and cost that stop the run: Tuesday.
+      2. Per-tenant spend limits that pause work automatically, with an alert at 50% and 80%: Thursday.
+      3. A kill switch your operations team can use and a paging alert on abnormal spend rate: next Monday.
+      4. Failed tool calls will use bounded retries with backoff and escalate to a human.
+
+      Money: we are reviewing the provider usage with them and will propose how to handle the cost in our call tomorrow.
+      
+      Next steps: a short written post-incident review by Friday. From you: the on-call contact for after-hours escalation and
+      agreement on a monthly budget per tenant.
+    max_chars: 2000
+
+  - id: D11-024
+    version: 1
+    type: open
+    subtopic: obs.tracing
+    tags: [obs.slo, gov.audit-compliance]
+    competencies: [x.decomposition]
+    difficulty: 3
+    level: evaluate
+    time_s: 540
+    stem: |
+      You are deploying a multi-tenant agent platform for an insurer. Leadership asks what you will monitor before
+      go-live. Constraints: prompts contain personal data, the on-call team is small, and the CFO wants cost per tenant.
+      Describe your observability design and the alerts you would page on.
+    rubric:
+      - criterion: Structured telemetry across the run
+        points: 3
+        guidance: 3 if it describes traces with spans per model and tool call, metrics, and structured logs correlated by IDs, with token usage, model and tenant on the data; 2 if traces and metrics but thin on attributes; 1 if generic logging; 0 if none.
+      - criterion: Privacy handling
+        points: 2
+        guidance: 2 if message content is off or redacted by default, with controlled access to any retained content; 1 if mentioned without mechanism; 0 if ignored.
+      - criterion: Cost attribution and limits
+        points: 2
+        guidance: 2 if cost per tenant and feature comes from token records and there are budget caps with alerts; 1 if reporting only; 0 if absent.
+      - criterion: SLOs and paging discipline
+        points: 3
+        guidance: 3 if it defines separate availability, latency and sampled quality objectives and pages only on user-impacting or fast-burn conditions, with runbooks; 2 if SLOs without paging discipline; 1 if a flat list of alerts; 0 if none.
+    model_answer: |
+      Design in four layers.
+
+      Telemetry: OpenTelemetry traces with one span per model call and tool call, using GenAI conventions for model
+      and token usage, plus tenant, feature and run ID on every span. Metrics for request rate, errors, latency and
+      tokens; structured logs carry the trace ID.
+
+      Privacy: prompt and output content is not captured by default. A redacting pipeline plus an opt-in, access-controlled
+      store holds content for debugging, with short retention. Spans keep references, not text.
+
+      Cost: spend per tenant, feature and model computed from recorded tokens and a price table, with per-run caps
+      on steps and cost, per-tenant limits that halt work, and a daily review of the top spenders.
+
+      SLOs: availability, time-to-first-token p95, and a quality SLI from weekly sampled, graded conversations. Page
+      only on fast error-budget burn (for example 14x over one hour), safety incidents and cost-rate spikes;
+      everything else creates tickets. Each page links to a runbook with a kill switch for retrieval and tools.
+      
+      Before go-live: a game day where we break a tool, spike cost and verify that the alerts fire.
+    max_chars: 2000
+
+  # ---------------------------------------------------------------- audio
+  - id: D11-025
+    version: 1
+    type: audio
+    subtopic: obs.slo
+    tags: [comms.stakeholders, gov.audit-compliance]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 150
+    prep_s: 30
+    max_s: 120
+    stem: |
+      Two hours into an incident, your client's COO calls: the assistant has been giving some customers wrong
+      policy information since this morning. You have disabled the affected feature, you do not yet know the root
+      cause, and roughly 300 conversations may be affected. Give her a status update out loud.
+    rubric:
+      - criterion: Leads with status and impact
+        points: 2
+        guidance: 2 if it starts with what is happening, the scope (about 300 conversations) and that the feature is disabled; 1 if facts are present but disorganised; 0 if it starts with technical detail.
+      - criterion: Honest about what is unknown
+        points: 2
+        guidance: 2 if it clearly separates what is known from what is unknown, without speculating about the cause; 1 if partially; 0 if it guesses or hides uncertainty.
+      - criterion: Actions in progress
+        points: 3
+        guidance: 3 if it covers containment, evidence preservation, identifying affected customers from logs and the plan to correct their information; 2 if two of these; 1 if one; 0 if none.
+      - criterion: Next update and asks
+        points: 3
+        guidance: 3 if it commits to a specific next update time and asks for a decision or contact (customer communication owner, compliance contact); 2 if only the time; 1 if vague; 0 if none.
+    model_answer: |
+      Here is where we stand. Since about eight this morning, the assistant gave some customers incorrect policy
+      information. We have switched that feature off, so it is no longer happening, and customers are being routed
+      to the standard support queue.
+
+      What we know: roughly 300 conversations may be affected, and we can list them from our logs. We kept the
+      logs and traces so nothing is lost. What we do not know yet is why it happened. I do not want to guess; our
+      engineers are comparing today's behaviour with yesterday's, and I will tell you the cause when we have evidence.
+
+      What we are doing now: finding every affected conversation, classifying which ones contained a wrong statement,
+      and preparing a corrected message for those customers for your approval.
+
+      What I need from you: someone from compliance who can approve the customer wording, and a decision on whether
+      to alert the account managers. My next update will be at three o'clock, whether or not we have the cause.
+    
+  # ---------------------------------------------------------------- sql
+  - id: D11-026
+    version: 1
+    type: sql
+    subtopic: obs.cost
+    tags: [data.sql]
+    competencies: [x.sql]
+    difficulty: 2
+    level: apply
+    time_s: 480
+    stem: |
+      Tables `llm_calls(call_id, tenant_id, model, input_tokens, output_tokens)` and
+      `prices(model, in_per_mtok, out_per_mtok)` (USD per million tokens). For each tenant return `tenant_id`,
+      `cost_usd` (total cost over all its calls, rounded to 4 decimals) and `share_pct` (its percentage of the
+      total cost across all tenants, rounded to 1 decimal). Order by `cost_usd` descending, then `tenant_id`.
+    sql:
+      setup: |
+        CREATE TABLE llm_calls(call_id INT, tenant_id TEXT, model TEXT, input_tokens INT, output_tokens INT);
+        CREATE TABLE prices(model TEXT, in_per_mtok REAL, out_per_mtok REAL);
+        INSERT INTO prices VALUES ('small',0.5,2.0),('large',3.0,15.0);
+        INSERT INTO llm_calls VALUES
+        (1,'acme','large',12000,800),(2,'acme','small',5000,300),(3,'acme','large',9000,500),
+        (4,'globex','small',20000,1500),(5,'globex','small',18000,1200),
+        (6,'initech','large',30000,2500),(7,'initech','large',25000,2000),(8,'initech','small',4000,100),
+        (9,'umbrella','small',1000,100);
+      reference: |
+        WITH t AS (
+          SELECT c.tenant_id,
+                 SUM(c.input_tokens * p.in_per_mtok + c.output_tokens * p.out_per_mtok) / 1000000.0 AS cost
+          FROM llm_calls c JOIN prices p ON p.model = c.model
+          GROUP BY c.tenant_id
+        )
+        SELECT tenant_id,
+               ROUND(cost, 4) AS cost_usd,
+               ROUND(100.0 * cost / SUM(cost) OVER (), 1) AS share_pct
+        FROM t
+        ORDER BY cost DESC, tenant_id
+      order_matters: true
+      float_round: 4
+    explanation: |
+      Join to prices on model, aggregate cost per tenant in a CTE, then use a window `SUM(cost) OVER ()` for the
+      grand total so the share can be computed in the same pass. Dividing by 1,000,000.0 avoids integer division.
+
+  - id: D11-027
+    version: 1
+    type: sql
+    subtopic: obs.slo
+    tags: [data.sql, obs.tracing]
+    competencies: [x.sql]
+    difficulty: 3
+    level: analyze
+    time_s: 600
+    stem: |
+      Table `llm_calls(call_id, model, latency_ms, status)`. For each `model`, compute the nearest-rank p95
+      latency over calls with `status = 'ok'`: sort latencies ascending, let n be the count, and take the value
+      at rank `(95 * n + 99) / 100` (integer division). Return `model`, `n` and `p95_ms`, ordered by `model`.
+    sql:
+      setup: |
+        CREATE TABLE llm_calls(call_id INT, model TEXT, latency_ms INT, status TEXT);
+        INSERT INTO llm_calls VALUES
+        (1,'small',210,'ok'),(2,'small',250,'ok'),(3,'small',230,'ok'),(4,'small',900,'ok'),(5,'small',240,'ok'),
+        (6,'small',260,'ok'),(7,'small',220,'ok'),(8,'small',270,'ok'),(9,'small',215,'ok'),(10,'small',225,'ok'),
+        (11,'small',235,'ok'),(12,'small',245,'ok'),(13,'small',255,'ok'),(14,'small',265,'ok'),(15,'small',275,'ok'),
+        (16,'small',285,'ok'),(17,'small',295,'ok'),(18,'small',305,'ok'),(19,'small',315,'ok'),(20,'small',325,'ok'),
+        (21,'small',5000,'error'),
+        (22,'large',1200,'ok'),(23,'large',1500,'ok'),(24,'large',1100,'ok'),(25,'large',4000,'ok'),
+        (26,'large',1300,'ok'),(27,'large',1400,'ok'),(28,'large',1250,'ok'),(29,'large',1350,'ok'),
+        (30,'large',9000,'timeout');
+      reference: |
+        WITH ranked AS (
+          SELECT model, latency_ms,
+                 ROW_NUMBER() OVER (PARTITION BY model ORDER BY latency_ms) AS rn,
+                 COUNT(*) OVER (PARTITION BY model) AS n
+          FROM llm_calls
+          WHERE status = 'ok'
+        )
+        SELECT model, n, latency_ms AS p95_ms
+        FROM ranked
+        WHERE rn = (95 * n + 99) / 100
+        ORDER BY model
+      order_matters: true
+      float_round: 2
+    explanation: |
+      Filter to successful calls before ranking, then number rows per model with `ROW_NUMBER()` and count rows per
+      model with a window `COUNT(*)`. Nearest-rank p95 is the row whose rank equals `ceil(0.95 n)`; integer
+      arithmetic `(95 * n + 99) / 100` computes the ceiling without a math function.
+
+  - id: D11-028
+    version: 1
+    type: sql
+    subtopic: obs.troubleshooting
+    tags: [data.sql, agents.tools-mcp]
+    competencies: [x.sql]
+    difficulty: 2
+    level: apply
+    time_s: 480
+    stem: |
+      Table `tool_calls(run_id, tool_name, status, error_type)` records agent tool invocations; `status` is `'ok'` or
+      `'error'`. Considering only tools with at least 5 calls, return the 3 tools with the highest failure rate:
+      `tool_name`, `calls`, `failures` and `failure_rate` (failures divided by calls, rounded to 3 decimals).
+      Order by `failure_rate` descending, then `tool_name`.
+    sql:
+      setup: |
+        CREATE TABLE tool_calls(run_id TEXT, tool_name TEXT, status TEXT, error_type TEXT);
+        INSERT INTO tool_calls VALUES
+        ('r1','search_kb','ok',NULL),('r2','search_kb','ok',NULL),('r3','search_kb','error','timeout'),('r4','search_kb','ok',NULL),('r5','search_kb','ok',NULL),('r6','search_kb','ok',NULL),
+        ('r1','create_ticket','error','http_500'),('r2','create_ticket','error','http_500'),('r3','create_ticket','ok',NULL),('r4','create_ticket','error','timeout'),('r5','create_ticket','ok',NULL),('r6','create_ticket','error','http_500'),
+        ('r1','get_customer','ok',NULL),('r2','get_customer','error','auth'),('r3','get_customer','error','auth'),('r4','get_customer','ok',NULL),('r5','get_customer','ok',NULL),('r6','get_customer','ok',NULL),('r7','get_customer','ok',NULL),
+        ('r1','send_email','error','http_500'),('r2','send_email','error','http_500'),('r3','send_email','error','http_500'),
+        ('r1','calc_refund','ok',NULL),('r2','calc_refund','ok',NULL),('r3','calc_refund','ok',NULL),('r4','calc_refund','ok',NULL),('r5','calc_refund','error','validation');
+      reference: |
+        SELECT tool_name,
+               COUNT(*) AS calls,
+               SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS failures,
+               ROUND(1.0 * SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) / COUNT(*), 3) AS failure_rate
+        FROM tool_calls
+        GROUP BY tool_name
+        HAVING COUNT(*) >= 5
+        ORDER BY failure_rate DESC, tool_name
+        LIMIT 3
+      order_matters: true
+      float_round: 3
+    explanation: |
+      Group by tool, use conditional aggregation for failures and `HAVING` for the minimum-volume filter, which
+      keeps a three-call tool such as `send_email` from topping the list on thin evidence. Multiply by 1.0 to avoid
+      integer division.

@@ -1,0 +1,42 @@
+{% macro feedback_button(item_id=None, item_version=None, session_id=None, position=None, label='Feedback', cls='btn ghost small') -%}
+<button type="button" class="{{ cls }}" data-feedback
+  {% if item_id %}data-item-id="{{ item_id }}"{% endif %}
+  {% if item_version %}data-item-version="{{ item_version }}"{% endif %}
+  {% if session_id %}data-session-id="{{ session_id }}"{% endif %}
+  {% if position %}data-position="{{ position }}"{% endif %}
+  title="Send feedback about this item">
+  <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  <span>{{ label }}</span>
+</button>
+{%- endmacro %}
+
+{% macro verdict_badge(v) -%}
+{% set labels = {'correct': 'Correct', 'incorrect': 'Incorrect', 'partial': 'Partly correct', 'ungraded': 'Needs grading', 'skipped': 'Skipped', 'unanswered': 'Not answered'} %}
+<span class="badge v-{{ v }}">{{ labels.get(v, v) }}</span>
+{%- endmacro %}
+
+{% macro status_badge(s) -%}
+{% set labels = {'never_seen': 'Never seen', 'right': 'Last right', 'wrong': 'Last wrong', 'seen': 'Seen'} %}
+<span class="badge s-{{ s }}">{{ labels.get(s, s) }}</span>
+{%- endmacro %}
+
+{% macro meter(right, wrong, seen, total) -%}
+{% set t = total if total else 1 %}
+<div class="meter" role="img" aria-label="{{ right }} right, {{ wrong }} wrong, {{ seen }} seen without result, {{ total - right - wrong - seen }} never seen of {{ total }}">
+  <span class="m-right" style="width: {{ 100 * right / t }}%"></span>
+  <span class="m-wrong" style="width: {{ 100 * wrong / t }}%"></span>
+  <span class="m-seen" style="width: {{ 100 * seen / t }}%"></span>
+</div>
+{%- endmacro %}
+
+{% macro result_table(res) -%}
+{% if res.error %}
+<p class="sql-error">{{ res.error }}</p>
+{% elif res.columns %}
+<div class="table-wrap"><table class="data">
+  <thead><tr>{% for c in res.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for r in res.rows %}<tr>{% for v in r %}<td>{{ 'NULL' if v is none else v }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+</table></div>
+<p class="muted small">{{ res.rows|length }} row{{ '' if res.rows|length == 1 else 's' }}</p>
+{% endif %}
+{%- endmacro %}

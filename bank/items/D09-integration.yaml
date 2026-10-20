@@ -1,0 +1,347 @@
+domain: D9
+items:
+  - id: D9-001
+    version: 1
+    type: single
+    subtopic: int.apis
+    tags: [gov.guardrails]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      Your service receives GitHub-style webhooks and verifies the `X-Hub-Signature-256` HMAC. The check passes in
+      local tests but fails for roughly 1 in 20 production deliveries, always for payloads containing non-ASCII
+      text or unusual spacing. The handler first parses the JSON body, then re-serialises it with the framework's
+      JSON encoder to compute the digest. What should change?
+    options:
+      - text: Compute the HMAC over the raw request bytes exactly as received, before any parsing
+        correct: true
+        why: The sender signed the bytes it sent, so any re-encoding that changes whitespace, escaping or key order breaks the digest.
+      - text: Re-serialise the parsed JSON with sorted keys and no whitespace and sign that canonical form
+        why: The sender did not canonicalise before signing, so a canonical form will still differ from what was signed.
+        misconception: Canonicalising JSON on the receiving side makes signatures comparable
+      - text: Drop the signature check and accept only requests from the provider's published IP ranges
+        why: Source addresses are not payload authentication, and ranges change; this removes integrity and authenticity checks.
+        misconception: Network origin is an adequate substitute for a signature
+      - text: Put a long random token in the webhook URL query string and require it on each delivery
+        why: A static URL token is a bearer secret that appears in logs and proxies, and it does not protect payload integrity.
+        misconception: A secret in the URL is equivalent to a signed payload
+    explanation: |
+      Webhook signatures are computed over the exact bytes the sender transmitted. Capture the raw body before
+      the framework parses it, verify with a constant-time comparison, and only then deserialise. Anything that
+      reformats the payload first (parsing, re-encoding, trimming) can invalidate valid signatures.
+    refs: [https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries]
+
+  - id: D9-002
+    version: 1
+    type: multi
+    subtopic: int.apis
+    tags: [gov.identity]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      A security review of your webhook receiver notes that it verifies an HMAC signature on every request, yet an
+      attacker who captures one valid delivery (body and signature) could resend it later and trigger the action
+      again, such as opening a deployment ticket. Which changes close this gap?
+    options:
+      - text: Include a timestamp in the signed content and reject deliveries outside a short tolerance window
+        correct: true
+        why: A captured request goes stale after a few minutes, and the attacker cannot alter the timestamp without breaking the signature.
+      - text: Record each delivery id for the length of the window and ignore ids that have been seen
+        correct: true
+        why: It blocks replays inside the tolerance window, and it also absorbs the provider's own redelivery of the same event.
+      - text: Move from SHA-256 to SHA-512 for the signature
+        why: A stronger hash makes forgery harder, but a replayed request carries a genuine signature of either kind.
+        misconception: A stronger algorithm prevents replay
+      - text: Switch the signature comparison to a constant-time function
+        why: This is good practice against timing attacks, but a replayed request is bit-for-bit valid and still passes.
+        misconception: Timing-safe comparison also addresses replay
+      - text: Allow only the provider's published IP ranges to reach the endpoint
+        why: A replay through a compromised or shared egress address, or from captured traffic inside the network, still passes the filter.
+        misconception: Network filtering stops replayed requests
+    explanation: |
+      A signature proves origin and integrity, not freshness. Replay protection needs a signed timestamp with a short
+      tolerance and, for exactness inside that window, a record of delivery ids. Both also make the handler safe
+      against provider retries.
+
+  - id: D9-003
+    version: 1
+    type: single
+    subtopic: int.apis
+    tags: [rag.ingestion]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A nightly job exports about 300,000 tickets from a vendor API using `?offset=N&limit=100`, sorted by
+      `updated_at` descending. Tickets are edited while the job runs, and the resulting export contains duplicates
+      and misses tickets that the vendor's own UI shows. What is the best remedy?
+    options:
+      - text: Page with an opaque cursor, or with keyset paging on `(updated_at, id)`, and checkpoint it after each page
+        correct: true
+        why: A cursor anchors the position to a stable key rather than a row count, so edits no longer shift pages.
+      - text: Raise the limit to the maximum page size so that fewer pages are fetched while the data moves
+        why: Fewer pages shrink the exposure window, but every offset boundary can still shift when rows change.
+        misconception: Bigger pages remove the offset drift problem
+      - text: Sort by `created_at` ascending and keep using offsets so that new tickets land at the end
+        why: Inserts then land at the end, but deleted or re-sorted rows still shift offsets, and edits to older tickets are missed.
+        misconception: An insert-only ordering makes offset paging safe
+      - text: Schedule the export for the quietest hour and keep using offset paging
+        why: A quiet window lowers the error rate without removing it, and it breaks when volumes grow or time zones overlap.
+        misconception: Low traffic makes offset paging reliable
+    explanation: |
+      Offset pagination is unstable when the underlying set changes between requests. Cursor or keyset pagination
+      uses the last seen position (with a unique tiebreaker such as `id`), and persisting it lets a failed job resume.
+      Prefer a provider's `updated_since` filter for incremental syncs where available.
+
+  - id: D9-004
+    version: 1
+    type: single
+    subtopic: int.apis
+    tags: [int.resilience, agents.state]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      Clients call `POST /runs` to start an expensive agent run. When the response is lost to a network timeout,
+      clients retry and the platform starts a second run, billing the customer twice. The API owner wants retries
+      to remain possible. What should the endpoint support?
+    options:
+      - text: An `Idempotency-Key` header, with the server storing the first result per key and returning it for repeats
+        correct: true
+        why: A retry carrying the same key resolves to the original run instead of creating another, with no change to client retry logic.
+      - text: Rejecting a new run with 409 whenever the same user has any run in progress
+        why: It blocks legitimate parallel runs from one user and does nothing for a retry that arrives after the first run has finished.
+        misconception: A concurrency lock is the same as idempotency
+      - text: Treating requests with identical request bodies within five minutes as duplicates
+        why: Two intentional runs with the same prompt would collapse into one, and the window is arbitrary.
+        misconception: Identical payloads always mean a retry
+      - text: Telling clients not to retry `POST` calls and to poll for the run afterwards
+        why: There is no run id to poll for when the response never arrived, and it removes the safety net clients need.
+        misconception: POST is unsafe to retry, so retries should not be offered
+    explanation: |
+      `POST` is not idempotent by definition, so retried creates need a client-supplied idempotency key that the server
+      stores with the outcome. Scope keys per client, expire them after a day or so, and return the original response
+      (or a conflict if the same key arrives with a different body).
+    refs: [https://docs.stripe.com/api/idempotent_requests]
+
+  - id: D9-005
+    version: 1
+    type: multi
+    subtopic: int.apis
+    tags: [gov.guardrails, int.resilience]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A platform team exposes a public GraphQL API so partners can fetch runs, steps and tool calls in whatever shape
+      they like. Last week one partner's deeply nested query (runs, steps, tool calls, then runs again) saturated the
+      database. The API already limits each partner to 600 requests per minute. Which measures address this risk?
+    options:
+      - text: Reject queries beyond a maximum depth and a computed complexity score
+        correct: true
+        why: Cost is a property of the query shape, and a static analysis of depth and breadth stops the nested pattern before execution.
+      - text: Allow only pre-registered (persisted) queries for production partners
+        correct: true
+        why: Known queries can be load-tested and costed in advance, so unexpected shapes never reach the database.
+      - text: Charge each request against the partner's quota in proportion to its computed cost
+        correct: true
+        why: One expensive query then consumes much more of the allowance than a cheap one, which the flat request limit ignores.
+      - text: Lower the request limit from 600 to 60 per minute for every partner
+        why: One heavy query can still do the damage within a single request, and well-behaved partners are throttled for no reason.
+        misconception: Request count is a good proxy for load in GraphQL
+      - text: Disable schema introspection so that partners cannot see how to nest types
+        why: Partners know their data model from documentation, and hiding the schema does not constrain the queries they can write.
+        misconception: Obscuring the schema is access control
+      - text: Add a CDN cache in front of the endpoint to absorb repeated requests
+        why: Heavy queries arrive as POST bodies that vary per partner, so they bypass shared caches and still reach the database.
+        misconception: HTTP caching works for GraphQL traffic the way it does for REST
+    explanation: |
+      GraphQL moves query-shape control to the client, so cost has to be bounded on the server: depth and complexity
+      limits, persisted queries for known clients, and cost-based rate limiting. Per-request limits alone cannot
+      distinguish a cheap lookup from a fan-out query.
+    refs: [https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html]
+
+  - id: D9-006
+    version: 1
+    type: single
+    subtopic: int.async
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A queue delivers `case.created` events at least once to a consumer that inserts a row into the platform's
+      own Postgres database and then acknowledges the message. After a worker crash between insert and
+      acknowledge, the broker redelivers the event and the case appears twice. How should the consumer be made safe?
+    options:
+      - text: Insert with a unique constraint on the producer's event id and treat a conflict as already processed
+        correct: true
+        why: The event id is stable across redeliveries, and the database enforces it atomically with the insert.
+      - text: Turn on the broker's exactly-once mode and remove the duplicate handling from the consumer
+        why: Broker-side settings cannot cover a crash between the consumer's external write and its acknowledgement.
+        misconception: Exactly-once delivery by the broker gives exactly-once effects in the consumer
+      - text: Key de-duplication on the receipt handle the broker issues with each delivery
+        why: A redelivery gets a new receipt handle, so the second copy would look new and be inserted again.
+        misconception: Any identifier attached to a message is a stable de-duplication key
+      - text: Skip events whose timestamp is within one second of an event already stored
+        why: Distinct cases can be created in the same second, so valid events are dropped while duplicates arriving later pass.
+        misconception: Time proximity identifies duplicates
+    explanation: |
+      Most brokers guarantee at-least-once delivery, so consumers must be idempotent. Use an identifier fixed by
+      the producer and record it atomically with the side effect (unique constraint, or an upsert). Identifiers
+      generated by the transport, such as receipt handles, change with each delivery.
+
+  - id: D9-007
+    version: 1
+    type: single
+    subtopic: int.async
+    difficulty: 1
+    level: apply
+    time_s: 70
+    stem: |
+      A document-processing queue feeds LLM workers. One uploaded file is corrupt, and the worker throws on it
+      every time. The broker redelivers the message immediately, one shard of the queue is stuck behind it, and
+      other customers' documents are delayed. What is the best fix?
+    options:
+      - text: Cap delivery attempts, then move the message to a dead-letter queue with an alert and a redrive tool
+        correct: true
+        why: The bad message stops blocking others, remains available for diagnosis, and can be replayed after a fix.
+      - text: Increase the visibility timeout so that the message is not redelivered as quickly
+        why: This only slows the redelivery loop; the message still fails every attempt and holds the shard longer.
+        misconception: Slower redelivery resolves a deterministic failure
+      - text: Catch every exception in the worker and acknowledge the message so it leaves the queue
+        why: Failures disappear silently and the customer's document is lost with no trace or retry path.
+        misconception: Acknowledging on error is graceful handling
+      - text: Pause consumption until an engineer inspects the message and removes it by hand
+        why: Everyone's documents wait on a manual action, turning one poison message into an outage.
+        misconception: Stopping the line is the safe response to a bad message
+    explanation: |
+      A message that always fails (a poison message) must not block the stream. Bound retries, then park it in a
+      dead-letter queue, alert on its depth and keep a way to redrive messages once the cause is fixed.
+
+  - id: D9-008
+    version: 1
+    type: single
+    subtopic: int.async
+    tags: [agents.state, deploy.compute]
+    difficulty: 1
+    level: apply
+    time_s: 70
+    stem: |
+      An agent that reviews contracts takes between 2 and 10 minutes per request. The existing synchronous REST
+      endpoint sits behind a gateway with a 60-second timeout, so long requests fail with 504 even though the work
+      itself succeeds. What is the right API change?
+    options:
+      - text: Return 202 with a job id at once, run the agent in the background, and expose status and result endpoints
+        correct: true
+        why: Decoupling submission from completion removes the dependency on the gateway timeout, and clients can poll or receive a callback.
+      - text: Raise the gateway timeout to 15 minutes for this route
+        why: Long-held connections are fragile to client, proxy and load-balancer limits, and they tie up capacity while waiting.
+        misconception: A longer timeout makes a long synchronous call reliable
+      - text: Send periodic keep-alive bytes on the open connection until the agent finishes
+        why: Intermediaries and clients may still cut idle or slow connections, and a disconnect loses the result with no way to recover it.
+        misconception: Keep-alives make a long-lived HTTP request durable
+      - text: Split each request into 50-second pieces that the client must call in sequence
+        why: It pushes orchestration and state onto every client, and the agent's work does not divide cleanly into timed pieces.
+        misconception: A long task can be sliced by wall-clock time
+    explanation: |
+      For work that outlasts a request, use an asynchronous job pattern: accept, return an identifier, process in the
+      background, and let clients poll a status resource or receive a webhook. Results survive client disconnects.
+
+  - id: D9-009
+    version: 1
+    type: single
+    subtopic: int.async
+    tags: [agents.state]
+    difficulty: 2
+    level: analyze
+    time_s: 95
+    stem: |
+      A Jira sync service processes issue events from a topic with 12 parallel consumers. For some issues, an
+      `updated` event is applied after the `closed` event that followed it, leaving the mirrored issue open.
+      Overall throughput must stay high. What is the best change?
+    options:
+      - text: Use the issue key as the partition key so each issue's events go to one consumer in order
+        correct: true
+        why: Order is preserved where it matters (per issue) while different issues are still processed in parallel.
+      - text: Run a single consumer for the whole topic so that events are handled in arrival order
+        why: It restores order but gives up the parallelism and throughput the service needs.
+        misconception: Global ordering is required to keep per-entity order
+      - text: Retry each failed update a few times in case the earlier event has not landed yet
+        why: The events succeed out of order rather than failing, so a retry never triggers.
+        misconception: Retries fix ordering problems
+      - text: Keep the parallel consumers and sort each batch by event timestamp before applying it
+        why: A late event arriving in a later batch still gets applied after the closure, and clocks across producers can disagree.
+        misconception: Sorting within a batch gives a total order
+    explanation: |
+      Ordering guarantees are per partition (or per message group), not per topic. Choose a key that matches the
+      entity whose events must stay ordered and let consumers scale across keys. A version or sequence check in the
+      consumer guards against the remaining edge cases such as reprocessing after a failure.
+
+  - id: D9-010
+    version: 1
+    type: single
+    subtopic: int.async
+    tags: [agents.state, int.enterprise-devex]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      An onboarding agent provisions a customer workspace by creating a GitHub repository, a Jira project, and a
+      Slack channel in that order. When the Slack call fails permanently (the workspace is at its channel quota),
+      the first two resources remain and the customer is half onboarded. These are three independent SaaS APIs.
+      Which approach is the most appropriate?
+    options:
+      - text: Model the steps as a saga with a compensating action for each, run by a durable workflow that records progress
+        correct: true
+        why: Each completed step can be undone or retried idempotently, and the recorded state survives restarts and tells operators where it stopped.
+      - text: Wrap the three calls in a distributed transaction using two-phase commit
+        why: Public SaaS APIs do not take part in a transaction coordinator, so atomic commit across them is not available.
+        misconception: Distributed transactions can span arbitrary external APIs
+      - text: Retry the Slack call indefinitely with backoff until it succeeds
+        why: A permanent quota failure never succeeds, so the customer waits forever and the partially built workspace stays inconsistent.
+        misconception: Persistent retrying converges on success
+      - text: Log the failure and have an engineer clean up the leftover resources each week
+        why: It leaves customers half onboarded for days, depends on manual work, and does not scale with volume.
+        misconception: Manual cleanup is an acceptable consistency model
+    explanation: |
+      Across independent systems, atomic transactions are unavailable; a saga replaces them with local steps and
+      compensations (archive the repo, close the project). Run it on durable state so progress survives crashes, and
+      make every step and every compensation idempotent so they can be retried safely.
+
+  - id: D9-011
+    version: 1
+    type: multi
+    subtopic: int.async
+    tags: [int.resilience, obs.cost]
+    difficulty: 2
+    level: evaluate
+    time_s: 110
+    stem: |
+      An ingestion service enqueues thousands of document-summarisation jobs per hour. Workers call an LLM API with a
+      shared tokens-per-minute limit that interactive users also depend on. During bulk loads the queue grows, 429
+      errors rise, and workers autoscaled by queue depth make it worse. Which measures help?
+    options:
+      - text: Cap worker concurrency with a limiter shared by all workers and sized from the token budget
+        correct: true
+        why: Total call rate is held under the provider limit regardless of how many workers exist, so 429s fall.
+      - text: Reserve part of the budget for interactive traffic and run bulk jobs at lower priority
+        correct: true
+        why: Users stay responsive during loads, and bulk work uses whatever capacity remains.
+      - text: Let the queue absorb bursts, and alert on the age of the oldest message rather than on depth
+        correct: true
+        why: Age reflects the delay customers actually see, and the queue is designed to buffer a backlog safely.
+      - text: Autoscale workers on queue depth so the backlog clears sooner
+        why: More workers send more requests into the same rate limit, which multiplies the 429s and retries.
+        misconception: More consumers drain a queue faster whatever the downstream limit is
+      - text: Discard the oldest messages once the queue passes a fixed length
+        why: Dropped summaries are lost work, and the same customers submit them again, adding load.
+        misconception: Shedding queued work is free for batch jobs
+      - text: Remove retries from the workers so failed calls stop adding load
+        why: Transient errors then become permanent failures, and the lost jobs need manual replay.
+        misconception: Turning off retries is the right response to rate limiting
+    explanation: |
+      Backpressure should hold the system under the scarcest downstream limit. Control concurrency with that limit
+      in mind, protect latency-sensitive traffic with reserved capacity and priorities, and use the queue as a buffer
+      while monitoring how long work waits.

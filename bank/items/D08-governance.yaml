@@ -837,7 +837,7 @@ items:
       At awareness level: HIPAA requires a business associate agreement before a vendor handles PHI on behalf of a
       covered entity, and it applies to specific services, not the vendor in general. Other safeguards, such as
       minimum necessary access, audit logging and de-identification where feasible, apply in addition.
-    refs: [https://www.hhs.gov/hipaa/for-professionals/covered-entities/guidance-business-associates/index.html]
+    refs: [https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/business-associates/index.html]
 
   - id: D8-028
     version: 1
@@ -1137,3 +1137,4 @@ items:
       It is not much slower. The sign-in connection to your identity system is a standard piece of work, usually a
       couple of weeks. To keep momentum, we can start with one department and one data source, show it working
       with real permissions, and expand from there. I'd suggest we agree that pilot scope this week.
+

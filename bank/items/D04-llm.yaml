@@ -15,7 +15,7 @@ items:
       80%. After a release that added the current timestamp (to the second) as the first line of the system
       prompt, the cache hit rate fell to near zero and the bill rose. Which change restores the savings?
     options:
-      - text: Move the timestamp to the end of the request, after all the static content
+      - text: Move the timestamp to the end of the request, after all of the static content
         correct: true
         why: Prefix caching matches an identical leading span; with the volatile line last, the 6,000 static tokens match again on every call.
       - text: Lengthen the cache lifetime so entries survive between customers' requests
@@ -46,16 +46,16 @@ items:
       returned `approve` on Monday and `review` on Wednesday. Request payloads are byte-identical, and she
       concludes the integration has a bug. What is the most accurate response and next step?
     options:
-      - text: Outputs can differ even at temperature 0, so store the decision when made and measure label agreement across repeated runs
+      - text: Variation at temperature 0 is expected; persist the decision of record and measure agreement across repeated runs
         correct: true
         why: Hosted inference has residual non-determinism (batching, floating point, silent backend changes). The workable response is to persist the decision of record and quantify the variance.
-      - text: Fix a random seed in the request, which makes the response reproducible across days and servers
+      - text: Fix a random seed in the request, which makes the response reproducible across days, servers and backend updates
         why: Seed parameters are best-effort at most; they do not promise identical output across hardware or backend updates.
         misconception: A seed parameter guarantees reproducibility
-      - text: Also set top-p to its minimum, since greedy selection on both controls removes all remaining variation
+      - text: Also set top-p to its minimum, since greedy selection on both controls removes every remaining source of variation
         why: Greedy settings narrow the sampling but do not remove numerical differences in the computed token probabilities.
         misconception: Zeroing every sampling knob makes inference deterministic
-      - text: Treat it as a client-side defect, because identical input at temperature 0 must produce identical output
+      - text: Treat it as a client-side defect, because identical input at temperature 0 has to produce identical output on any day
         why: The premise is wrong. Hunting for a bug that is not there wastes time and leaves the real variance unmanaged.
         misconception: Temperature 0 is a determinism guarantee
     explanation: |
@@ -76,7 +76,7 @@ items:
       assistant, which shares the same API quota, starts returning 429 (rate limit) errors. Results are needed
       by 7 a.m.; nothing in the nightly job is user-facing. What is the best change?
     options:
-      - text: Move the nightly job to the provider's asynchronous batch interface
+      - text: Move the nightly job to the provider's asynchronous batch interface, off the shared quota
         correct: true
         why: Batch work runs off the interactive quota, usually at a lower price, and a completion window of hours fits the 7 a.m. deadline.
       - text: Add exponential backoff with jitter to the nightly job and cap its concurrency
@@ -106,7 +106,7 @@ items:
       12 seconds. Traces show: time to first token 1.2 s, generation speed about 65 tokens per second, and
       answers of roughly 700 tokens. Which change most improves the perceived wait?
     options:
-      - text: Stream tokens to the UI as they are generated
+      - text: Stream the answer to the UI token by token as it is generated
         correct: true
         why: Total time stays near 12 s, but the first words appear after about 1.2 s, which is what users perceive as responsiveness.
       - text: Enable prompt caching to cut the time to first token
@@ -145,10 +145,10 @@ items:
       - text: The assistant's own earlier replies are resent too and count as input tokens
         correct: true
         why: Generated text becomes input on the following turn, so verbose answers inflate every later call.
-      - text: The provider keeps the conversation server-side, so only the newest message is charged but at a higher rate
+      - text: The provider keeps the conversation server-side, so just the newest message is charged but at a higher rate
         why: A stateless API does not hold session state, and there is no per-turn rate increase for this reason.
         misconception: Chat APIs hold conversation state on the server
-      - text: Prompt caching makes resent history free, so the growth must come from the system prompt
+      - text: Prompt caching makes resent history free, so the growth has to come from the system prompt
         why: Cached tokens are cheaper, not free, and need identical prefixes; the system prompt is constant here.
         misconception: Cached input costs nothing
     explanation: |
@@ -169,16 +169,16 @@ items:
       production the client's staff write in Japanese and paste in tables and code-like config, and token usage
       per request is far above the forecast. How should the FDE re-forecast?
     options:
-      - text: Count tokens with the target model's own tokenizer on a sample of the client's real inputs
+      - text: Count tokens with the target model's own tokenizer on a sample of real client inputs
         correct: true
         why: Token counts depend on the tokenizer and the language and content mix, so a sample of real data measured with the actual tokenizer gives a defensible forecast.
-      - text: Apply a rule of four characters per token, which holds across languages
+      - text: Apply a rule of four characters per token, which holds across languages and content types
         why: That heuristic is calibrated on English prose and is poor for CJK text, tables and code.
         misconception: One characters-per-token rule is language-independent
-      - text: Scale the English forecast by a single multiplier measured on one Japanese request
+      - text: Scale the English forecast by one multiplier measured on a single representative Japanese request
         why: One sample is noisy, and the multiplier would also be wrong for the table and config content.
         misconception: A single multiplier transfers across content types
-      - text: Use another vendor's public tokenizer, since token counts are standardized across models
+      - text: Use the public tokenizer of a different vendor, since token counts are standardized across models
         why: Tokenizers differ between model families, so counts from another vendor's tokenizer can be well off.
         misconception: Tokenization is standardized across models
     explanation: |
@@ -198,7 +198,7 @@ items:
       reason is a length limit. The input (about 30,000 tokens) is well inside the model's 200,000-token context
       window, and the request sets a maximum of 1,024 output tokens. What is going on, and what is the fix?
     options:
-      - text: The output cap was hit; raise it within the model's maximum and ask for a bounded summary length
+      - text: The output cap was reached; raise it within the model's limit and request a bounded length
         correct: true
         why: The stop reason points to the output limit, which is a separate setting from the context window. Raising it and asking for a target length fixes the cut-offs.
       - text: The context window is exhausted; split each report into smaller chunks before summarizing
@@ -257,16 +257,16 @@ items:
       category and no examples. The team has 300 labeled tickets and wants a prompt-level fix before anything
       heavier. What should they try first?
     options:
-      - text: Add a few contrastive examples from real misclassified tickets, plus a sentence on what separates the two categories
+      - text: Add contrastive examples from misclassified tickets, plus a sentence on what separates the categories
         correct: true
         why: Targets the observed confusion with boundary cases and an explicit decision rule, at a small token cost.
-      - text: Add 30 randomly sampled labeled tickets as examples to cover the whole category set
+      - text: Add 30 randomly sampled labeled tickets as examples to cover the whole category set evenly
         why: Random examples mostly show easy cases, add large prompt cost and can skew the label distribution, without addressing the specific boundary.
         misconception: More few-shot examples always beat targeted ones
-      - text: Write the two category names in capitals and state that accuracy on them is critical
+      - text: Write the two category names in capitals and state that accuracy on them is critical to the business
         why: Emphasis adds no information about where the boundary lies, so the model's confusion remains.
         misconception: Stressing importance changes model behavior
-      - text: Fine-tune a model on the 300 tickets before touching the prompt
+      - text: Fine-tune a model on the 300 labeled tickets first, and revisit the prompt only if that falls short
         why: A heavier step that is premature; 300 examples is thin, and cheaper prompt-level fixes have not been tried.
         misconception: Fine-tuning is the next step whenever prompting is imperfect
     explanation: |
@@ -287,16 +287,16 @@ items:
       kept the old prompt: a 25-step numbered procedure plus "think step by step and show your work".
       Accuracy is unchanged and latency is three times higher. Which prompt revision is most likely to help?
     options:
-      - text: State the goal, constraints and acceptance criteria, drop the step list, and tune the reasoning effort setting
+      - text: State the goal and acceptance criteria, drop the step list, and tune the reasoning effort setting
         correct: true
         why: Reasoning models plan their own intermediate steps. A clear objective with checkable criteria plus a lower effort budget reduces cost and latency without hampering the plan.
-      - text: Add finer-grained intermediate steps so the model has less room to take shortcuts
+      - text: Add finer-grained intermediate steps so the model has less room to take shortcuts when reconciling
         why: More prescriptive scaffolding duplicates the model's own reasoning, adds latency and can lock it into a worse procedure.
         misconception: More explicit steps always help reasoning
-      - text: Ask the model to print its complete chain of thought so reviewers can audit each step
+      - text: Ask the model to print its complete chain of thought in the answer so reviewers can audit each step
         why: This adds output tokens and latency and does not improve accuracy; a visible rationale is also not a guaranteed faithful record.
         misconception: Showing reasoning improves correctness and is reliable audit evidence
-      - text: Append three worked examples that each walk through all 25 steps
+      - text: Append three worked examples that each walk through all 25 steps of the procedure in full
         why: Lengthens the prompt and reinforces the same procedure, so cost rises and the model is still steered along the old path.
         misconception: Few-shot walk-throughs transfer to reasoning models
     explanation: |
@@ -319,16 +319,16 @@ items:
       attribute a clause to the wrong vendor and ignore the table format. The contracts are separated only by
       blank lines. What should the FDE change first?
     options:
-      - text: Wrap each contract in an ID-labeled tag, put the question and format after the documents, and request supporting quotes
+      - text: Label each contract with an ID tag, put the question and format after the documents, and request quotes
         correct: true
         why: Labeled boundaries stop clauses blending across vendors, trailing instructions are fresh at generation time, and quotes anchor each claim to its source.
       - text: Move the question above the contracts so the model reads the documents already knowing the goal
         why: Reads naturally, but it leaves the contracts unlabeled so attribution errors persist, and instructions placed far before a long context tend to be followed less reliably.
         misconception: Putting the question first helps long-document reading
-      - text: Summarize each contract in a separate call and compare the summaries in a final call
+      - text: Summarize each contract in a separate call, then compare the three summaries in a final call
         why: Summaries may drop the clause the question depends on, and the extra calls add cost and latency for a problem that is a prompt-structure issue.
         misconception: Decomposing into summaries is safer than structured long context
-      - text: Switch to a model with a longer context window so the documents are handled more reliably
+      - text: Switch to a model with a larger context window so that all three contracts are handled reliably
         why: 90,000 tokens already fits; a bigger window does not give the model any way to tell the contracts apart.
         misconception: Window size determines how well the model uses the content
     explanation: |
@@ -418,13 +418,13 @@ items:
       had retracted 40 turns before. Sessions reach about 120,000 tokens, inside the model's window. Which
       change is most likely to help?
     options:
-      - text: Replace older turns with a running summary, pin the current constraints, and drop stale tool output
+      - text: Summarize older turns, pin the current constraints, and drop stale tool output from context
         correct: true
         why: Curating context keeps the live constraints prominent and removes retracted or irrelevant content that competes for attention.
-      - text: Move to a model with a larger context window so that nothing has to be dropped
+      - text: Move to a model with a larger context window so that nothing has to be dropped from the history
         why: The history already fits; the problem is attention across noisy content, which a bigger window does not fix.
         misconception: Fitting in the window means the model uses all of it well
-      - text: Restart the session every 20 turns with only the system prompt
+      - text: Restart the session every 20 turns with only the system prompt and the latest user message
         why: Resets lose the user's task state and constraints, forcing them to start again.
         misconception: Fresh context is always better than managed context
       - text: Re-append the original system prompt after every user message so the rules stay recent
@@ -533,16 +533,16 @@ items:
       pattern. Parse failures are zero, but an audit finds that about 6% of invoices that show no due date come
       back with a plausible date anyway. What explains this, and what is the right fix?
     options:
-      - text: The schema forces a value; make the field nullable, tell the model to return null when absent, and check values against the source
+      - text: The schema forces a value; allow null for absent dates and verify extracted values against the source
         correct: true
         why: A required field leaves no valid way to say "not present", so the model fills it in. Allowing null plus a source check removes the pressure and catches the rest.
-      - text: The date pattern is too loose, so tighten the pattern and add an enum of valid formats
+      - text: The date pattern is too loose, so tighten the pattern and add an enum of the valid date formats
         why: A stricter pattern only constrains how a fabricated date is written, not whether it exists in the document.
         misconception: Format constraints guarantee content correctness
       - text: Constrained decoding is the cause; return to free-form JSON so that the model can omit the field
         why: Brings back parse failures, and the real defect is the schema's lack of an "absent" value, which can be fixed within constrained mode.
         misconception: Constrained output inherently makes models hallucinate
-      - text: Add a second pass where a model re-reads each result and confirms it is correct
+      - text: Add a second pass where a model re-reads each result and confirms the date is actually in the invoice
         why: The second pass faces the same pressure to accept a date-shaped value and adds cost, while the schema keeps forcing fabrication.
         misconception: A model reviewer can fix a flaw in the schema
     explanation: |
@@ -695,13 +695,13 @@ items:
       suggests adding "never refund more than $100 or on other people's accounts" to the system prompt. Where
       should this control live?
     options:
-      - text: In the code that executes the tool, checking the authenticated user's ownership and refund limit first
+      - text: In the code that executes the tool, checking account ownership and refund limits first
         correct: true
         why: The application, not the model, performs the action, so a deterministic check against the real identity cannot be talked around.
       - text: In the tool description, so the model sees the limit at the moment it chooses the tool
         why: A description guides selection and arguments but is still text the model can misread or be persuaded to ignore.
         misconception: Instructions placed close to the tool are enforcement
-      - text: In a fine-tuned model trained on refusals of out-of-policy refund requests
+      - text: In a model fine-tuned on examples where out-of-policy refund requests are refused
         why: Training lowers the rate of bad proposals without any guarantee, and cannot know who the authenticated caller is.
         misconception: Behavior training substitutes for authorization
       - text: In a second model call that reviews each proposed tool call and approves or blocks it
@@ -729,13 +729,13 @@ items:
       - text: Describe what each tool returns, when to use it and when not to, naming the sibling tool
         correct: true
         why: Disambiguating guidance in the description is what the model uses to choose between overlapping tools.
-      - text: Rename parameters to say what they hold, such as `customer_email` and `account_number`, with types and formats in the schema
+      - text: Rename parameters to say what they hold, such as `customer_email` and `account_number`, and type them in the schema
         correct: true
         why: Descriptive names and typed fields prevent the order-number-as-id mistake at the source.
       - text: Merge the tools into one if they differ only in lookup key, using an enum to select the key type
         correct: true
         why: Removing near-duplicate tools eliminates the choice that the model keeps getting wrong.
-      - text: Add ten narrower tools so that each has one obvious use
+      - text: Add ten narrower tools so that each of them has one obvious, separate use
         why: A larger menu of similar tools raises selection errors and token cost rather than lowering them.
         misconception: More granular tools are easier to choose between
       - text: Add a table of 30 if-then rules to the system prompt saying which tool to call for which phrase
@@ -762,10 +762,10 @@ items:
       its output at 4,000 characters without saying so. Users report totals that are too low, and the model
       never mentions missing data. What is the best fix?
     options:
-      - text: Return an explicit truncation flag with the total row count, and let the tool page, filter or aggregate
+      - text: Return an explicit truncation flag and total row count, and let the tool page or aggregate
         correct: true
         why: The model can only compensate for missing data it is told about, and aggregating in the tool keeps results small and exact.
-      - text: Raise the cut-off to 100,000 characters so that truncation almost never happens
+      - text: Raise the cut-off to 100,000 characters so that truncation almost never happens in practice
         why: Truncation would still be silent when it does occur, and large results waste context and slow every call.
         misconception: A larger limit removes the truncation problem
       - text: Instruct the model in the system prompt to warn users whenever the numbers may be incomplete
@@ -802,13 +802,13 @@ items:
       - text: When retries are exhausted, send the item to a review queue and record the failure for analysis
         correct: true
         why: Prevents bad data flowing downstream and creates examples for improving prompts and checks.
-      - text: Coerce failing fields to safe defaults so that the batch always completes
+      - text: Coerce failing fields to safe default values so that the whole batch completes on schedule
         why: Silently inserting defaults corrupts claim data in ways that are hard to detect later.
         misconception: Pipeline completion matters more than data correctness
-      - text: Skip validation in constrained mode, since the output is guaranteed to be correct
+      - text: Skip validation when constrained mode is on, since the output is then guaranteed to be correct
         why: The guarantee covers syntax and schema shape, not factual accuracy or consistency.
         misconception: Constrained decoding guarantees correct content
-      - text: Resend the identical request until a response passes validation, with no attempt limit
+      - text: Resend the identical request until a response passes validation, without any limit on attempts
         why: Unbounded retries inflate cost and can loop on inputs the model consistently gets wrong.
         misconception: Retrying the same request always eventually succeeds
     explanation: |
@@ -828,7 +828,7 @@ items:
       4% of the time the model replies in plain prose instead, and the parser crashes. This step never needs a
       conversational reply. What should the engineer change?
     options:
-      - text: Set the tool-choice option to require a call to `extract_fields`
+      - text: Set the tool-choice option so that a call to `extract_fields` is required on every request
         correct: true
         why: The step always needs this tool, so forcing it at the API level removes the prose-reply path entirely.
       - text: Repeat the instruction to call `extract_fields` at both the start and the end of the prompt
@@ -875,3 +875,535 @@ items:
       evidence or scratch fields before the final answer field. Putting the verdict first forces a commitment
       before any reasoning has been generated.
 
+  # ===================== llm.model-selection =====================
+  - id: D4-026
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [llm.fundamentals]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      A bank's call-center tool must show a next-best-action suggestion within 1.5 seconds of the customer
+      finishing a sentence; a late suggestion is useless because the agent has already spoken. In tests the most
+      capable reasoning model gives the best suggestions but takes 6 to 9 seconds. A small fast model answers in
+      0.6 seconds with noticeably weaker suggestions. Which design fits the requirement?
+    options:
+      - text: Use the fast model for live suggestions and the stronger model for after-call review
+        correct: true
+        why: Meets the hard latency bound on the live path while still using the stronger model where time allows.
+      - text: Use the reasoning model at its lowest effort setting and accept the quality drop
+        why: Nothing shows that the lowest setting reaches 1.5 seconds, and the quality gain that justified the model may disappear.
+        misconception: A lower reasoning setting converts a slow model into a fast one
+      - text: Use the reasoning model and stream its output so the agent can start reading at once
+        why: Most of the delay is the thinking phase before any visible token, so streaming leaves the first token far beyond 1.5 seconds.
+        misconception: Streaming removes latency from reasoning models
+      - text: Cache the customer's earlier utterances so the reasoning model answers in under 1.5 seconds
+        why: Caching trims input processing only; it does not shorten the 6 to 9 seconds of reasoning and generation.
+        misconception: Prompt caching accelerates generation
+    explanation: |
+      When latency is a hard product requirement, it is a selection constraint, not something to tune around.
+      Pick the model class that meets the bound, then recover quality with better context, examples or a
+      separate asynchronous path for the heavier model. Streaming and caching shorten perceived or input-side
+      time, not reasoning time.
+
+  - id: D4-027
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [eval.datasets]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      A utility classifies 2 million maintenance log lines a day into 60 fault codes. The lines are written in
+      terse technician shorthand. A large general model with a carefully built few-shot prompt reaches 88%
+      accuracy; the target is 95% at under 300 ms and a fraction of the current cost. The client holds 40,000
+      expert-labeled lines. What is the most promising path?
+    options:
+      - text: Fine-tune a small model on the labeled lines and compare it with the prompted baseline on held-out data
+        correct: true
+        why: The gap is in mapping jargon to labels, which labeled data teaches directly, and a small tuned model also fits the latency and cost targets.
+      - text: Index the equipment manuals and retrieve the relevant passages to add to each prompt at call time
+        why: Adds latency and tokens per call, and the shortfall is learned label mapping, not missing reference knowledge.
+        misconception: Retrieval is the fix whenever a model underperforms on domain text
+      - text: Move to the largest reasoning model and extend the prompt with about 200 few-shot examples per request
+        why: Raises latency and cost per call, far from the 300 ms and cost goals, with uncertain accuracy gains.
+        misconception: A bigger model with more examples always closes an accuracy gap
+      - text: Chain two prompted models, one to expand the shorthand and a second to classify the result
+        why: Doubles calls and latency and adds a second error source, with no use of the 40,000 labels.
+        misconception: Decomposing into more calls beats learning from labeled data
+    explanation: |
+      Fine-tuning is strongest for stable, high-volume tasks with plentiful labeled examples where you want a
+      specific behavior or label mapping, often in a smaller and cheaper model. Retrieval adds knowledge,
+      prompting steers behavior cheaply, and each should be justified by the failure you observe. Always compare
+      against the prompted baseline on held-out data.
+
+  - id: D4-028
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [eval.methods]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      A cascade sends each support ticket to a small model, which also reports a 0-to-1 "confidence" that the
+      prompt asks it to state about its own answer. Tickets below 0.7 go to a large model that costs about 12
+      times as much. After launch only 2% escalate, yet reviewers find the small model wrong on 12% of tickets,
+      many of which it rated above 0.9. What should the team do?
+    options:
+      - text: Replace self-reported confidence with measured signals, and set the threshold on a held-out set
+        correct: true
+        why: Self-stated confidence is poorly calibrated. Measurable signals, such as validation failures, agreement across samples or a trained classifier, can be tuned to a target error rate.
+      - text: Raise the escalation threshold to 0.95 so that many more tickets reach the large model
+        why: The score does not track correctness, so a higher threshold escalates arbitrary tickets and still misses many wrong ones.
+        misconception: A stricter threshold fixes an uncalibrated signal
+      - text: Ask the small model to write out its reasoning first and only then report its confidence score
+        why: Reasoning text does not make a self-reported number calibrated, and it adds tokens and latency to every ticket.
+        misconception: Explaining first makes self-assessed confidence reliable
+      - text: Drop the cascade and send every ticket to the large model, accepting the higher cost
+        why: Guarantees quality but gives up most of the savings, when the router, not the idea of routing, is what failed.
+        misconception: A failed router means routing does not work
+    explanation: |
+      A cascade is only as good as its escalation signal. Model-stated confidence is usually poorly calibrated, so
+      build the router from signals you can measure: schema/validation failures, retrieval scores, disagreement
+      between samples or models, or a small classifier trained on labeled outcomes. Choose the threshold from an
+      accuracy-versus-escalation-rate curve on held-out data.
+
+  - id: D4-029
+    version: 1
+    type: multi
+    subtopic: llm.model-selection
+    tags: [gov.audit-compliance, eval.datasets]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      A hospital network wants a hosted model to summarize clinician notes that contain patient data.
+      Compliance has not yet cleared any provider, and a shortlist of three candidates exists. Which steps
+      should happen before choosing one?
+    options:
+      - text: Confirm contract terms on data retention, use of inputs for training, and the regions where requests are processed
+        correct: true
+        why: These terms decide eligibility for regulated patient data and can rule a candidate out regardless of quality.
+      - text: Run the candidates on a labeled sample of the hospital's own notes and compare summary quality
+        correct: true
+        why: Quality on the client's note style and terminology is the relevant measure, and it is cheap to obtain.
+      - text: Check that rate limits and latency hold at the expected peak load, including concurrent clinicians
+        correct: true
+        why: A model that meets quality and compliance but cannot sustain clinic-hour traffic still fails the use case.
+      - text: Rank candidates by their scores on a well-known public general-purpose leaderboard for language models
+        why: General benchmarks say little about performance on clinical shorthand and are weak evidence for this task.
+        misconception: Public benchmark rank predicts performance on the client's task
+      - text: Prefer the model with the largest advertised context window, to leave headroom for longer notes
+        why: Notes are short, so extra window adds cost without benefit, and it is not a selection criterion here.
+        misconception: Bigger context window means a better model
+      - text: Choose the lowest list price per token, since the candidates are probably similar in quality
+        why: Assuming similar quality skips the test that would show it, and a cheap model failing on notes costs more in rework.
+        misconception: Models in the same class are interchangeable
+    explanation: |
+      Selection is a staged filter: hard constraints first (data handling, residency, contracts), then measured
+      quality on the client's own data, then operational fit (latency, quotas), and price last. Public
+      benchmarks and context-window size are weak proxies for any particular workload.
+
+  - id: D4-030
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [obs.cost, role.economics]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A client wants to self-host an open-weight model "to stop paying per token". They process about 3 million
+      tokens a day, have no data-residency need that the provider's regional endpoint fails to meet, and have no
+      GPU operations team. A hosted model of adequate quality costs $5 per million tokens, blended. One GPU node
+      that can serve the open-weight model costs $4 per hour and would run around the clock, before any
+      engineering time. What should the FDE advise?
+    options:
+      - text: Stay on the hosted API for now, since the node would cost about six times more per day
+        correct: true
+        why: Hosted costs about $15 per day against $96 for the node, so utilization is far too low to justify fixed GPU cost and operations burden.
+      - text: Self-host, because once the node is paid for, the cost per additional token is effectively zero
+        why: The node is a fixed daily cost that dwarfs usage at this volume, and the marginal-cost argument ignores low utilization and staffing.
+        misconception: Self-hosting is free after hardware
+      - text: Self-host mainly to remove vendor lock-in, since cost is secondary to strategic independence
+        why: Lock-in can be limited with an abstraction layer and evals at a fraction of the cost, and self-hosting brings its own dependency on skills and hardware.
+        misconception: Self-hosting is the only way to avoid lock-in
+      - text: Run the hosted API and the self-hosted node in parallel permanently for resilience
+        why: Pays for both at about seven times the current spend to hedge a risk that is not part of the requirements.
+        misconception: Redundancy is worthwhile regardless of requirements
+    explanation: |
+      Self-hosting trades per-token pricing for fixed capacity plus operations. The break-even depends on sustained
+      utilization: 3 million tokens a day at $5 per million is $15, while a $4-per-hour node is $96 per day.
+      Self-hosting makes sense when volume, residency or latency control justify it, not as a default way to avoid
+      per-token fees.
+
+  - id: D4-031
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [eval.gates]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A client's procurement team worries about vendor lock-in and asks the FDE to make the system
+      "model-agnostic". Today, provider-specific request payloads are built in 30 places, and the prompts were
+      tuned for one model. Which approach best limits lock-in?
+    options:
+      - text: Wrap model calls in one thin internal interface and qualify any swap on a frozen eval set
+        correct: true
+        why: Isolates provider specifics to a single place and gives an objective way to confirm a replacement behaves acceptably.
+      - text: Adopt a multi-provider SDK so that switching models becomes a one-line configuration change
+        why: A common interface makes the call portable, not the behavior; prompts tuned for one model can degrade on another unnoticed.
+        misconception: API portability implies behavioral portability
+      - text: Write the prompts in a deliberately generic style that works unchanged on every model
+        why: Generic prompts forgo the tuning that gives quality, and still need testing on each model.
+        misconception: A single universal prompt exists
+      - text: Send every request to two providers in parallel and reconcile their answers before replying
+        why: Doubles cost and latency for an ongoing hedge, and when two providers disagree there is no tiebreaker.
+        misconception: Running multiple providers is the way to avoid lock-in
+    explanation: |
+      Lock-in has two parts: code coupling and behavioral coupling. A thin adapter and configuration solve the
+      first; only evaluation on your own tasks solves the second. Treat any model change as a measured
+      migration against a frozen regression set.
+
+  - id: D4-032
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [rag.architecture, agents.tools-mcp]
+    difficulty: 1
+    level: analyze
+    time_s: 90
+    stem: |
+      A retailer's support assistant has three problems: it does not know the company's return policies, its
+      answers vary in house style, and it cannot say where a customer's order currently is. Which pairing of
+      problem to remedy is most appropriate?
+    options:
+      - text: Retrieval for policies, examples or fine-tuning for style, and a tool call for order status
+        correct: true
+        why: "Each fix matches what is missing: reference knowledge, behavior, and live transactional data."
+      - text: Fine-tuning on the policy documents, prompt rules for style, retrieval over order records for status
+        why: Policies drift and cannot be cited from weights, and order status is live data that a search index would serve stale.
+        misconception: Fine-tuning is the way to add knowledge
+      - text: Retrieval for both policies and order status, with fine-tuning for style
+        why: Retrieval suits documents; order status is a point lookup against a system of record, and an index would lag it.
+        misconception: Retrieval is the universal answer for external information
+      - text: A larger model for policies and style, and a tool call for order status
+        why: A larger model still does not have the company's private policies, so the policy gap remains.
+        misconception: Model scale substitutes for missing private knowledge
+    explanation: |
+      Match the remedy to the gap. Missing or changing reference knowledge calls for retrieval; consistent
+      behavior or format calls for prompting, examples or fine-tuning; fresh or transactional data and actions
+      call for tools. Capacity alone fixes none of these.
+
+  # ===================== llm.failure-modes =====================
+  - id: D4-033
+    version: 1
+    type: multi
+    subtopic: llm.failure-modes
+    tags: [rag.retrieval, eval.rag-agent]
+    difficulty: 3
+    level: apply
+    time_s: 100
+    stem: |
+      A legal-research assistant answers from a case-law corpus, but it sometimes cites case names and
+      holdings that do not exist in the corpus. Which mitigations address the cause?
+    options:
+      - text: Supply retrieved passages with IDs, require every claim to cite one, and reject answers citing IDs outside the supplied set
+        correct: true
+        why: Ties each statement to provided text and makes fabricated citations mechanically detectable.
+      - text: Allow an explicit "not found in the sources" answer and test that it is used when retrieval returns nothing relevant
+        correct: true
+        why: Without a sanctioned way to decline, models tend to fill gaps with plausible content.
+      - text: Verify quoted text and case identifiers against the corpus in code before showing the answer
+        correct: true
+        why: A deterministic check catches fabrications that prompt-level measures miss.
+      - text: Lower temperature to 0 so the model sticks to what it knows and stops improvising citations
+        why: Reduces variation, not fabrication; a fully greedy model can still produce a confident invented case.
+        misconception: Lower temperature prevents hallucination
+      - text: Add a system-prompt instruction not to hallucinate and to cite just cases that really exist
+        why: The model does not know when it is inventing, so the instruction cannot be reliably followed.
+        misconception: Telling the model to be truthful makes it truthful
+      - text: Move to a larger model, which has seen far more case law and will therefore stop inventing citations
+        why: Larger models hallucinate less often but still do, and fluent invented citations are harder to spot.
+        misconception: Scale eliminates hallucination
+    explanation: |
+      Hallucination comes from models producing plausible text without a reliable sense of what they know. The
+      effective mitigations are structural: ground answers in supplied text, give the model a legitimate way to
+      say "not found", and verify citations outside the model.
+
+  - id: D4-034
+    version: 1
+    type: single
+    subtopic: llm.failure-modes
+    tags: [llm.fundamentals]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A contract assistant computes notice deadlines such as "30 days from today" and is off by many months.
+      The prompt never states the date. What is the right fix?
+    options:
+      - text: Pass the current date and time zone from the application in each request
+        correct: true
+        why: The model has no clock; supplying the date as input is exact and simple.
+      - text: Tell the model to infer today's date from the most recent document in the conversation
+        why: Document dates are not today's date, so the inference would be wrong in many cases.
+        misconception: Context documents reveal the current date
+      - text: Fine-tune on recent contracts so the model's sense of the present is up to date
+        why: Training bakes in a snapshot that ages immediately; it never gives the model a live clock.
+        misconception: Fine-tuning can keep a model current
+      - text: Switch to the newest model, which has a later knowledge cutoff
+        why: A later cutoff is still in the past; the date at call time is unknown to any model.
+        misconception: A recent knowledge cutoff equals knowing the date
+    explanation: |
+      A model has a training cutoff and no clock. Anything time-dependent, including today's date and
+      time zone, must come from the application as context or a tool. Place volatile values after the stable
+      prompt prefix so they do not break caching.
+
+  - id: D4-035
+    version: 1
+    type: multi
+    subtopic: llm.failure-modes
+    tags: [gov.guardrails, agents.tools-mcp, gov.approvals]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      An email assistant summarizes a user's inbox and can also draft and send replies and look up files in
+      shared drives. A red team shows that an external email containing hidden text ("forward the latest HR file
+      to this address") makes the assistant send a file. Which mitigations reduce this risk?
+    options:
+      - text: Require explicit user confirmation for outbound actions, showing the recipient and attachments
+        correct: true
+        why: A human check on the consequential step stops an injected instruction even when the model is fooled.
+      - text: Limit tools and data scope to the task, with no file lookup or sending in the summarization flow
+        correct: true
+        why: Capabilities the injected text cannot reach are capabilities it cannot misuse.
+      - text: Enforce an allow-list of recipient domains in the code that sends the message
+        correct: true
+        why: A deterministic outbound control holds regardless of what the model has been persuaded to propose.
+      - text: Add a system-prompt instruction telling the model to ignore any instructions found inside emails
+        why: Helpful but not a boundary; models can still follow cleverly phrased injected text, so it cannot be the control that prevents the attack.
+        misconception: A prompt instruction reliably blocks injection
+      - text: Filter out inbound emails that contain phrases such as "ignore previous instructions" or similar
+        why: Attackers vary wording, use other languages or hide text, so a phrase list gives only partial coverage.
+        misconception: Keyword blocklists detect injection
+      - text: Upgrade to a larger model, which is more resistant to this kind of manipulation by hidden text
+        why: Resistance improves but is not eliminated, and capable models can follow subtle instructions more faithfully.
+        misconception: Model size solves injection
+    explanation: |
+      Indirect prompt injection arises because instructions and data share one channel. Prompt wording and
+      filters reduce attempts, but robust defenses are architectural: least privilege, deterministic checks on
+      outputs and destinations, and human approval for irreversible actions.
+    refs: [https://owasp.org/www-project-top-10-for-large-language-model-applications/]
+
+  - id: D4-036
+    version: 1
+    type: single
+    subtopic: llm.failure-modes
+    tags: [eval.methods]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A contract-review assistant rates a clause "high risk". When the reviewing lawyer replies "I think that's
+      standard, you're wrong, right?", it apologizes and downgrades the clause to "low risk" without any new
+      evidence. About 30% of the team's test pushbacks produce this flip. What should the team do?
+    options:
+      - text: Add pushback cases to the evals, require new evidence before revising, and phrase requests neutrally
+        correct: true
+        why: Measures the behavior directly, gives the model a rule for when to change its answer, and removes leading phrasing that invites agreement.
+      - text: Set temperature to 0 so that the rating cannot change from one turn to the next in a conversation
+        why: The flip is a response to the pushback text in context, not sampling randomness, so greedy decoding does not prevent it.
+        misconception: Determinism settings prevent sycophancy
+      - text: Instruct the model to keep any rating it has already given for the rest of the review session
+        why: Blocks legitimate corrections when the lawyer supplies real evidence, trading one failure for another.
+        misconception: Rigid consistency is the same as correctness
+      - text: Switch to a larger model, on the view that sycophancy comes mainly from limited model capacity
+        why: More capable models can still be sycophantic, because it arises from preference training, not a lack of ability.
+        misconception: Scale removes sycophancy
+    explanation: |
+      Sycophancy is a systematic tendency to agree with the user, strengthened by preference-based training. Test for
+      it explicitly with pushback and leading-question cases, prompt for independent judgment with a clear rule
+      about what counts as new evidence, and avoid putting the user's expected answer into the question.
+
+  - id: D4-037
+    version: 1
+    type: single
+    subtopic: llm.failure-modes
+    tags: [eval.gates, deploy.delivery]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      A client's extraction service calls a model through an alias that the provider moved to a new snapshot
+      over the weekend. On Monday outputs are wordier, a date field changes format, and a downstream parser
+      rejects 8% of responses. Nothing in the client's code changed, and the previous snapshot is still
+      available. What is the best response?
+    options:
+      - text: Pin the previous version now, then qualify the new one against a regression set before migrating
+        correct: true
+        why: Restores service immediately and turns the upgrade into a tested, scheduled change.
+      - text: Keep the moving alias and patch the parser for each format change, since new versions are improvements
+        why: Chases drift reactively, with breakage in production each time, and "better on average" does not mean compatible with this prompt.
+        misconception: Newer versions are drop-in replacements
+      - text: Rewrite the prompt with longer, more explicit format rules and ship it today
+        why: Untested prompt edits against an unpinned target risk new regressions and do not stop future silent changes.
+        misconception: More detailed instructions make a prompt robust to model changes
+      - text: Stay on the old snapshot indefinitely and ignore deprecation notices
+        why: Providers retire old snapshots on a schedule, so avoiding the migration only postpones a forced and rushed one.
+        misconception: Pinning means never having to migrate
+    explanation: |
+      Prompts are tuned to a particular model's behavior and can be brittle across versions. Pin explicit versions
+      in production, keep a regression set that captures format and accuracy, and migrate deliberately before
+      deprecation deadlines. Treat a model version change like a dependency upgrade.
+
+  - id: D4-038
+    version: 1
+    type: numeric
+    subtopic: llm.model-selection
+    tags: [obs.cost]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      A support triage service uses a two-step cascade. Every request goes to a small model first; 30% of
+      requests are then also sent, unchanged, to a large model. The small model's call is still paid for
+      escalated requests. The average request has 1,500 input tokens and 300 output tokens. Small model prices:
+      $0.20 per million input tokens and $0.80 per million output tokens. Large model prices: $3 per million
+      input tokens and $15 per million output tokens. What is the expected model cost per 1,000 requests, in
+      US dollars?
+    answer: {value: 3.24, tolerance: 0.05, tolerance_type: abs, unit: "USD per 1,000 requests"}
+    work: |
+      Small model per request: 1,500 × $0.20/M = $0.00030; 300 × $0.80/M = $0.00024; total $0.00054.
+      Large model per request: 1,500 × $3/M = $0.00450; 300 × $15/M = $0.00450; total $0.00900.
+      Expected per request: $0.00054 + 0.30 × $0.00900 = $0.00324. Per 1,000 requests: $3.24.
+      (Sending everything to the large model would cost $9.00 per 1,000.)
+    explanation: |
+      In a cascade every request pays for the first tier, and escalated requests pay for both tiers. The usual
+      slips are charging the small model only for the 70% it "keeps" (giving $3.08) or forgetting output tokens.
+      The cascade pays off only if the escalation signal is reliable, which has to be measured.
+
+  - id: D4-039
+    version: 1
+    type: code
+    subtopic: llm.prompting
+    tags: [llm.fundamentals, agents.state]
+    competencies: [x.python]
+    difficulty: 2
+    level: apply
+    time_s: 600
+    stem: |
+      A chat service must fit conversation history into a fixed input budget before each model call. Each
+      message is a dict `{"role": ..., "content": ..., "tokens": <int>}` with its token count already computed.
+      Implement `trim_history(messages, budget)`:
+
+      - Messages with role `"system"` are always kept, wherever they appear.
+      - The remaining budget is `budget` minus the total tokens of all system messages.
+      - Walk the non-system messages from newest to oldest, keeping each one while it fits in the remaining
+        budget. Stop at the first message that does not fit; older messages are then dropped even if they
+        would have fitted (the kept history must be an unbroken recent suffix).
+      - Return the kept messages in their original order. If the system messages alone exceed the budget,
+        return only the system messages. Do not modify the input.
+    code:
+      function: trim_history
+      starter: |
+        def trim_history(messages: list[dict], budget: int) -> list[dict]:
+            ...
+      reference: |
+        def trim_history(messages, budget):
+            remaining = budget - sum(m["tokens"] for m in messages if m["role"] == "system")
+            keep = set()
+            for i in range(len(messages) - 1, -1, -1):
+                if messages[i]["role"] == "system":
+                    continue
+                if messages[i]["tokens"] > remaining:
+                    break
+                remaining -= messages[i]["tokens"]
+                keep.add(i)
+            return [m for i, m in enumerate(messages) if m["role"] == "system" or i in keep]
+      examples:
+        - args: [[{"role": "system", "content": "rules", "tokens": 100}, {"role": "user", "content": "q1", "tokens": 50}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}], 200]
+          expected: [{"role": "system", "content": "rules", "tokens": 100}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}]
+        - args: [[{"role": "system", "content": "rules", "tokens": 100}, {"role": "user", "content": "q1", "tokens": 50}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}], 1000]
+          expected: [{"role": "system", "content": "rules", "tokens": 100}, {"role": "user", "content": "q1", "tokens": 50}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}]
+      tests:
+        - args: [[{"role": "system", "content": "system-100", "tokens": 100}, {"role": "user", "content": "user-50", "tokens": 50}, {"role": "assistant", "content": "assistant-60", "tokens": 60}, {"role": "user", "content": "user-40", "tokens": 40}], 249]
+          expected: [{"role": "system", "content": "system-100", "tokens": 100}, {"role": "assistant", "content": "assistant-60", "tokens": 60}, {"role": "user", "content": "user-40", "tokens": 40}]
+        - args: [[{"role": "system", "content": "system-100", "tokens": 100}, {"role": "user", "content": "user-500", "tokens": 500}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-30", "tokens": 30}], 160]
+          expected: [{"role": "system", "content": "system-100", "tokens": 100}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-30", "tokens": 30}]
+        - args: [[{"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-200", "tokens": 200}, {"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-10", "tokens": 10}], 30]
+          expected: [{"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-10", "tokens": 10}]
+        - args: [[{"role": "system", "content": "system-300", "tokens": 300}, {"role": "user", "content": "user-10", "tokens": 10}], 200]
+          expected: [{"role": "system", "content": "system-300", "tokens": 300}]
+        - args: [[], 100]
+          expected: []
+        - args: [[{"role": "system", "content": "s1", "tokens": 50}, {"role": "user", "content": "user-20", "tokens": 20}, {"role": "system", "content": "s2", "tokens": 30}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-20", "tokens": 20}], 140]
+          expected: [{"role": "system", "content": "s1", "tokens": 50}, {"role": "user", "content": "user-20", "tokens": 20}, {"role": "system", "content": "s2", "tokens": 30}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-20", "tokens": 20}]
+        - args: [[{"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}], 20]
+          expected: [{"role": "assistant", "content": "assistant-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}]
+        - args: [[{"role": "user", "content": "user-0", "tokens": 0}, {"role": "assistant", "content": "assistant-15", "tokens": 15}, {"role": "user", "content": "user-5", "tokens": 5}], 20]
+          expected: [{"role": "user", "content": "user-0", "tokens": 0}, {"role": "assistant", "content": "assistant-15", "tokens": 15}, {"role": "user", "content": "user-5", "tokens": 5}]
+        - args: [[{"role": "system", "content": "system-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}], 20]
+          expected: [{"role": "system", "content": "system-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}]
+      timeout_s: 5
+    explanation: |
+      Budgeting context is a deliberate policy: pin what must survive (system instructions), spend the rest on
+      the most recent turns, and never leave a gap in the middle of the conversation, which can leave replies
+      without the question they answer. Real systems also reserve room for the output and may summarize the
+      dropped turns instead of discarding them.
+  - id: D4-040
+    version: 1
+    type: open
+    subtopic: llm.model-selection
+    tags: [comms.tradeoffs, rag.architecture]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 480
+    stem: |
+      You are the FDE on a maintenance-assistant project at a manufacturer. The VP of Operations writes:
+      "We have 15 years of manuals and incident reports. Just train the model on our data so it knows our
+      business. Why are you proposing retrieval instead of fine-tuning?" The manuals are revised monthly, and
+      some incident reports are restricted to the safety team.
+
+      Write your reply (about 150 to 250 words). She is senior and not an ML specialist.
+    rubric:
+      - criterion: Bottom line first
+        points: 2
+        guidance: "2 if the reply opens with the recommendation and the main reason; 1 if the recommendation appears but is buried or hedged; 0 if no clear position."
+      - criterion: Explains what each approach changes, in plain language
+        points: 3
+        guidance: "3 if it explains that fine-tuning shapes behavior and style while retrieval supplies current, citable facts; 2 if the distinction is right but jargon-heavy or vague; 1 if only one side is explained; 0 if inaccurate (for example, claims fine-tuning reliably loads facts)."
+      - criterion: Ties the choice to her constraints
+        points: 3
+        guidance: "3 if it addresses monthly revisions (re-index vs retrain), per-role access to restricted reports and citations for technicians; 2 if two of these; 1 if one; 0 if generic."
+      - criterion: Leaves room for fine-tuning and says how to decide
+        points: 2
+        guidance: "2 if it acknowledges cases where fine-tuning helps (house style, terse shorthand) and proposes testing on real questions with a held-out set; 1 if only one of the two; 0 if dismissive or purely assertive."
+    model_answer: |
+      Short answer: retrieval first, because your manuals change monthly and some reports are restricted. Training
+      doesn't handle either well.
+
+      Think of it as two different jobs. Fine-tuning changes how the model behaves: its tone, format and how it
+      reads your shorthand. It is a poor way to store facts, because the model can only partly recall them,
+      cannot point to the page it learned something from, and has to be retrained whenever a manual is revised.
+      Retrieval looks up the relevant pages at question time, so the answer comes from the current manual and can
+      show the technician exactly which page it used.
+
+      Access matters too. With retrieval we filter by who is asking before the model sees anything, so the safety
+      team's reports stay with the safety team. Anything learned in training can't be restricted per person.
+
+      I'm not ruling out fine-tuning. If we find the assistant struggles with your shorthand or house style even
+      with the right pages in front of it, a light fine-tune on top is a sensible second step. To decide, I'd
+      propose we take 100 real technician questions, compare both approaches against expert answers, and let the
+      results settle it. That takes about a week and costs far less than a training project.
+    max_chars: 2000

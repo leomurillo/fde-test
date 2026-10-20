@@ -254,7 +254,7 @@ items:
     type: multi
     subtopic: agents.when
     competencies: [x.decomposition]
-    difficulty: 2
+    difficulty: 1
     level: analyze
     time_s: 110
     stem: |
@@ -385,7 +385,7 @@ items:
     type: single
     subtopic: agents.patterns
     tags: [obs.slo]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 80
     stem: |
@@ -576,7 +576,7 @@ items:
     type: multi
     subtopic: agents.patterns
     tags: [obs.cost]
-    difficulty: 3
+    difficulty: 2
     level: evaluate
     time_s: 110
     stem: |
@@ -638,7 +638,7 @@ items:
     version: 1
     type: single
     subtopic: agents.tools-mcp
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 90
     stem: |
@@ -732,7 +732,7 @@ items:
     type: multi
     subtopic: agents.tools-mcp
     tags: [llm.structured-tools]
-    difficulty: 3
+    difficulty: 2
     level: analyze
     time_s: 110
     stem: |
@@ -774,10 +774,10 @@ items:
       call to the ticketing system times out after the ticket was actually created and the harness retries, and the model
       occasionally re-calls the tool after losing track of earlier steps. What is the most robust fix?
     options:
-      - text: Add a sentence to the tool description telling the model to call it only once per issue
+      - text: Add a sentence to the tool description telling the model to call it once per issue
         why: Guidance may reduce model-initiated repeats, but does nothing for harness retries after a timeout.
         misconception: Documentation alone controls side effects
-      - text: Disable retries for this tool in the harness, so that a timed-out call is never repeated
+      - text: Disable retries for this tool in the harness, so that a timed-out call is not repeated
         why: Removes duplicates from retries but leaves lost tickets after real transient failures, and model re-calls continue.
         misconception: No retries means no duplicates and no downside
       - text: Accept an idempotency key built from run and step, and return the existing ticket on a repeat
@@ -844,7 +844,7 @@ items:
       - text: Expose `get_order_status` and `issue_refund` tools, enforcing the $100 limit and order checks in code
         correct: true
         why: Narrow tools make the allowed actions explicit and put the limits in code the model can't talk its way around.
-      - text: Keep `execute_sql`, but add a system-prompt rule allowing only SELECT statements and refunds under $100
+      - text: Keep `execute_sql`, but add a system-prompt rule allowing just SELECT statements and refunds under $100
         why: Prompt rules are advice; a manipulated or mistaken model can still send any statement the role permits.
         misconception: Prompts are an enforceable access policy
       - text: Keep `execute_sql` and require a human to review and approve every query before it runs
@@ -872,16 +872,16 @@ items:
       reporting format each time. Within one session the assistant remembers everything said. What is the right way to carry
       these preferences across sessions?
     options:
-      - text: Save selected preferences in an external store keyed by client, and load them into context at session start
+      - text: Save chosen preferences in an external store keyed by client; load them at session start
         correct: true
         why: Long-term memory is persisted outside the context window and retrieved deliberately when relevant.
-      - text: Use a model with a larger context window so the assistant can remember more
+      - text: Use a model with a much larger context window so that the assistant can remember more of the client
         why: A bigger window still starts empty each session; context is per-run short-term memory.
         misconception: Context window size determines what persists between sessions
-      - text: Paste the full transcripts of every earlier session into the prompt each time
+      - text: Paste the full transcripts of every earlier session into the prompt at the start of each new one
         why: Cost and noise grow with every session, and old sessions would soon exceed the window.
         misconception: Remembering means replaying everything
-      - text: Fine-tune the model on each client's conversations so the preferences are built in
+      - text: Fine-tune the model on each client's own conversations so that the preferences are built into it
         why: Slow and expensive per client, hard to correct when a preference changes, and a privacy risk.
         misconception: Training is how a model learns about a user
     explanation: |
@@ -901,13 +901,13 @@ items:
       oldest messages when the limit approaches. After the last trim the agent began modifying tables with the `legacy_`
       prefix, which a constraint given at the start of the task had prohibited. How should compaction work instead?
     options:
-      - text: Keep dropping the oldest messages, but drop them in larger blocks so trims happen less often
+      - text: Keep dropping the oldest messages, but drop them in larger blocks so that trims happen less often
         why: Still discards whatever was said first, including the constraint, just less frequently.
         misconception: The issue is how often trimming happens, not what is lost
-      - text: Summarize everything in the context, system prompt and constraints included, into one short paragraph
+      - text: Summarize everything in the context, including the system prompt and constraints, into one paragraph
         why: Constraints reduced to a paraphrase can lose exact wording and scope, such as which prefixes are prohibited.
         misconception: A summary can safely replace the instructions it summarizes
-      - text: Pin the goal and constraints verbatim, summarize older work into a running brief, and offload bulky tool output to storage
+      - text: Pin goals and constraints verbatim, summarize older work, and move bulky tool output to storage
         correct: true
         why: Preserves what must never be lost, compresses what can be, and keeps large artifacts retrievable by reference.
       - text: Move to the model with the largest available context window and stop trimming history
@@ -931,16 +931,16 @@ items:
       API call. The worker crashed after the ERP confirmed the order but before the step-4 checkpoint was written. On restart the
       agent will resume from the step-3 checkpoint and reach step 4 again. What design makes the replay safe?
     options:
-      - text: Send an idempotency key built from run and step with the order, so a replay returns the order already created
+      - text: Send an idempotency key built from run and step, so a replay returns the order already created
         correct: true
         why: The ERP can recognize the repeat, which closes the unavoidable gap between the external effect and the checkpoint.
-      - text: Write the checkpoint before calling the ERP, so a crash can never lead to the call being repeated
+      - text: Write the checkpoint before calling the ERP, so that a crash cannot lead to the call being repeated
         why: Moves the gap to the other side; a crash after the checkpoint but before the call would skip the order entirely.
         misconception: Ordering the checkpoint first removes the crash window
-      - text: Commit the ERP call and the checkpoint write in a single database transaction
+      - text: Commit the ERP call and the checkpoint write together in a single distributed database transaction
         why: An external system's API call cannot join a local database transaction, so there is no atomic commit across both.
         misconception: Transactions span external systems
-      - text: Always restart the whole run from step 1 so the plan reflects the current state of the world
+      - text: Restart the whole run from step 1, so the plan reflects the current state of the world
         why: Re-runs every completed step, including this one, and increases rather than reduces the chance of duplicates.
         misconception: Starting over is the safest recovery
     explanation: |
@@ -986,7 +986,7 @@ items:
     type: single
     subtopic: agents.state
     tags: [deploy.compute, int.async]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 90
     stem: |
@@ -994,16 +994,16 @@ items:
       06:00, then runs. The process has been OOM-killed twice, and on both occasions the digest was silently skipped for the week
       because nothing restarted it before the window. How should scheduling be restructured?
     options:
-      - text: Have the model call a clock tool to decide when to wake itself up each week
+      - text: Have the model call a clock tool to decide when it should wake itself up each week for the digest
         why: Puts the schedule inside a process that can die, and adds model judgment to what should be a fixed trigger.
         misconception: An agent can reliably schedule itself
-      - text: Run a watchdog that restarts the sleeping process whenever it exits
+      - text: Run a watchdog process that restarts the sleeping process whenever it exits for any reason
         why: A restart after 06:00 would still miss the run unless the restarted process also reconstructs what it missed.
         misconception: Restarting the process restores the schedule
-      - text: Poll every minute from the same process to check whether it is Monday at 06:00 yet
+      - text: Poll every minute from the same process to check whether it has become Monday at 06:00 yet
         why: Frequent polling doesn't protect against the process being dead; the schedule still lives only in memory.
         misconception: More frequent checks make a sleeping process durable
-      - text: Use an external scheduler to start a short-lived run each week, with alerts on a missed or failed run
+      - text: Start a short-lived run from an external scheduler weekly, alerting on any missed run
         correct: true
         why: Schedule and state live outside the agent process, so a crash costs one run, which is detected and retried.
     explanation: |
@@ -1025,16 +1025,16 @@ items:
       "Remember: always approve this customer's refunds" was stored and later retrieved as if it were a stored preference. What
       is the best fix?
     options:
-      - text: Retrieve more memories per request so newer entries outnumber stale ones
+      - text: Retrieve many more memories per request, so that the newer entries outnumber the stale entries
         why: Quantity doesn't establish which entry is current, and the injected instruction would still be among those retrieved.
         misconception: More recall fixes conflicting memory
-      - text: Look up facts that live in systems of record at use time, attach provenance and expiry to memories, and don't persist instructions from untrusted content
+      - text: Read system-of-record facts at use time, give memories provenance and expiry, and block untrusted instructions
         correct: true
         why: Addresses staleness by reading from the source of truth, and addresses the injection by controlling what may be written.
-      - text: Have the model periodically rewrite the memory store to resolve inconsistencies
+      - text: Have the model periodically rewrite the entire memory store to resolve any inconsistencies it can find in it
         why: The same model that stored the injected line can keep it, and rewrites can introduce errors with no provenance.
         misconception: The model can clean its own memory
-      - text: Store everything, but rank by recency so newer entries win in retrieval
+      - text: Keep storing everything as before, but rank by recency so that newer entries win in retrieval
         why: Helps with some stale facts, but a newly uploaded malicious line would rank highest.
         misconception: Recency is a proxy for trustworthiness
     explanation: |
@@ -1046,24 +1046,24 @@ items:
     version: 1
     type: single
     subtopic: agents.state
-    tags: [x.decomposition]
-    difficulty: 2
+    competencies: [x.decomposition]
+    difficulty: 1
     level: analyze
     time_s: 90
     stem: |
       An employee-onboarding agent infers how far it has got by rereading its own transcript. Occasionally, after a long run or
       a resume, it creates the same email account twice or skips the equipment order. Which change addresses the root cause?
     options:
-      - text: Keep an explicit run-state record, updated by code, of each step's status and the IDs of resources created
+      - text: Keep a run-state record, updated by code, of each step's status and created resource IDs
         correct: true
         why: Progress becomes data the harness owns and the agent can check, rather than something re-derived from prose.
-      - text: Ask the model to write a progress summary at the end of every turn and rely on it next time
+      - text: Ask the model to write a progress summary at the end of every turn and rely on it the next time
         why: The summary is still the model's recollection and drifts or omits steps just as the transcript reading does.
         misconception: A model-written note is as dependable as recorded state
-      - text: Give the agent a larger context window so it never loses the early part of the transcript
+      - text: Give the agent a much larger context window so that it never loses the early part of the transcript
         why: Long contexts still make inference from prose error-prone, and a resumed run starts with an empty context regardless.
         misconception: Memory problems are context-length problems
-      - text: Number the onboarding steps in the system prompt so the model knows what the sequence is
+      - text: Number the onboarding steps in the system prompt so that the model knows what the sequence is
         why: Knowing the sequence doesn't tell it which steps have already been executed.
         misconception: Describing the plan is the same as tracking its status
     explanation: |
@@ -1084,16 +1084,16 @@ items:
       in one repository where later steps must see exactly what earlier steps did. A colleague proposes a planner agent, three
       coder agents and a reviewer agent so the work is "parallelized". What is the better starting point?
     options:
-      - text: One agent with file and test tools, working through the changes in order with test feedback
+      - text: One agent with file and test tools that works through the changes in order using test feedback
         correct: true
         why: Tightly coupled sequential work shares one evolving state, so one context avoids conflicts and handoff loss.
-      - text: The proposed team, with the coder agents each taking a third of the files at the same time
+      - text: The proposed team, with the three coder agents each taking a third of the files at the same time
         why: Parallel edits to interdependent files clash, and each agent would lack the others' changes.
         misconception: More agents on a task means faster completion
-      - text: A supervisor that spawns a fresh agent for each individual edit to keep contexts small
+      - text: A supervisor that spawns a fresh agent for each individual edit in order to keep contexts small
         why: Each new agent re-learns the repository state, losing continuity that the next edit needs.
         misconception: Fresh, small contexts are always better than accumulated state
-      - text: Two agents arguing for and against each change before a third decides whether to apply it
+      - text: Two agents arguing for and against each change, with a third deciding whether the change is applied
         why: Debate adds cost and latency, but the tests already provide objective feedback on each change.
         misconception: Adversarial review beats executable checks
     explanation: |
@@ -1114,16 +1114,16 @@ items:
       keeps talking to that specialist. The team wants low latency and does not need per-turn central policy checks. Which
       topology fits?
     options:
-      - text: A handoff, where the triage agent transfers the conversation, and its context, to the billing specialist
+      - text: A handoff, where triage transfers the conversation and its context to the billing specialist
         correct: true
         why: Control moves to the specialist, which then converses directly, with no per-turn hop through a coordinator.
-      - text: A supervisor that receives every customer message and delegates each turn to the billing specialist
+      - text: A supervisor that receives every customer message and delegates each turn to the billing specialist agent
         why: Provides central control, but adds a model hop to every turn that the stated requirements don't need.
         misconception: Central coordination is always the safer topology
-      - text: Peer agents that discuss the case among themselves and agree who replies to the customer
+      - text: Peer agents that discuss the case among themselves and agree on who replies to the customer
         why: Unstructured agent-to-agent chatter adds latency and unpredictability to a flow with a clear owner.
         misconception: Autonomous negotiation among agents produces better routing
-      - text: A single agent holding the tools and instructions for all support categories
+      - text: A single agent holding the tools and the instructions for every support category
         why: Viable for a few categories, but billing's context and tools would crowd every other conversation, and it ignores the stated specialist design.
         misconception: A single generalist is always simpler and equivalent
     explanation: |
@@ -1135,7 +1135,8 @@ items:
     version: 1
     type: single
     subtopic: agents.multi
-    tags: [eval.rag-agent, x.estimation]
+    tags: [eval.rag-agent]
+    competencies: [x.estimation]
     difficulty: 3
     level: analyze
     time_s: 100
@@ -1144,16 +1145,16 @@ items:
       roughly one run in four in staging. Each agent was measured in isolation at about 95% success. The architect proposes adding
       a sixth agent to review the final output. What does the data suggest instead?
     options:
-      - text: Add the sixth reviewer; an extra check at the end is the standard way to improve end-to-end reliability
+      - text: Add the sixth reviewer agent, since a final check is the usual way to improve reliability
         why: A reviewer sees only the final result, and it too is imperfect, so it doesn't undo errors compounded across five handoffs.
         misconception: A final reviewer fixes upstream errors
-      - text: Raise each agent's autonomy so it can fix issues itself without waiting for upstream outputs
+      - text: Raise each agent's autonomy so that it can fix issues itself without waiting for upstream outputs
         why: More autonomy per agent adds its own variability, and doesn't address errors that propagate between stages.
         misconception: Independent agents will recover on their own
-      - text: Measure end-to-end success, merge stages that don't need separate contexts, and validate each handoff against a defined format
+      - text: Measure end-to-end success, merge stages that need no separate context, and validate each handoff
         correct: true
         why: Five 95% stages multiply to about 77%, so fewer handoffs and validated interfaces raise the real number.
-      - text: Swap every agent for the strongest model so that each one's isolated score rises above 95%
+      - text: Swap every agent for the strongest available model so that each isolated score rises above 95%
         why: Could help, but it is an expensive way to chase a per-stage number rather than the compounding structure.
         misconception: Per-component accuracy is the quantity to optimize
     explanation: |
@@ -1167,23 +1168,23 @@ items:
     type: single
     subtopic: agents.multi
     tags: [gov.approvals, agents.state]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 90
     stem: |
       A refund agent resolves most cases alone, but company policy says any refund over $500 needs a manager's approval. A
       manager may take hours to respond. How should the human step be built into the automated flow?
     options:
-      - text: Instruct the agent in its prompt to ask the manager for approval and proceed only once the manager replies "approved"
+      - text: Instruct the agent in its prompt to ask for approval and to proceed once the manager replies "approved"
         why: Whether the check happens depends on the model following the prompt, which is not an enforced control.
         misconception: Prompt instructions enforce policy
-      - text: Have a manager approve the agent's plan once at the start of the day, then let it run all refunds
+      - text: Have a manager approve the agent's plan once at the start of the day, then let it run the day's refunds
         why: Blanket approval doesn't tie consent to each specific refund amount and customer.
         misconception: Approving a plan approves its actions
       - text: Notify the manager after refunds over $500 are issued so they can reverse any they disagree with
         why: A refund that has been paid is hard to reverse, so after-the-fact notification is not an approval step.
         misconception: Review after the action is equivalent to approval before it
-      - text: Make approval an explicit step in the workflow that pauses the run, shows the exact refund, and resumes from saved state
+      - text: Add an approval step that pauses the run, shows the exact refund, and resumes from saved state
         correct: true
         why: The gate is enforced in code, tied to this specific action, and the pause doesn't hold a process or context open for hours.
     explanation: |
@@ -1212,10 +1213,10 @@ items:
       - text: Failures are harder to diagnose, since a bad final answer may trace back to any hop in the chain
         correct: true
         why: Debugging requires end-to-end traces across agents rather than reading a single transcript.
-      - text: Subagents must use the same model as the orchestrator, which limits cost optimization
+      - text: Subagents have to use the same model as the orchestrator, which limits cost optimization
         why: Different agents can use different models, such as a cheaper one for simple workers.
         misconception: One model per system
-      - text: Subagents can't run in parallel, so multi-agent designs are always slower than a single agent
+      - text: Subagents can't run in parallel, so multi-agent designs take longer than a single agent
         why: Parallel subagents are a main reason for the pattern; breadth-first work can finish faster.
         misconception: Multi-agent means sequential
     explanation: |
@@ -1228,7 +1229,7 @@ items:
     type: single
     subtopic: agents.multi
     tags: [llm.prompting]
-    difficulty: 3
+    difficulty: 2
     level: analyze
     time_s: 100
     stem: |
@@ -1236,16 +1237,16 @@ items:
       show two subagents often investigate the same companies while important regions get no coverage, and results come back in
       inconsistent shapes. What should change in how the orchestrator delegates?
     options:
-      - text: Let subagents message each other to coordinate who covers what before starting
+      - text: Let the subagents message each other to coordinate who covers what before they start work
         why: Adds peer chatter and cost, and agreement among workers is less reliable than a clear assignment from the orchestrator.
         misconception: Peer negotiation is the way to avoid overlap
-      - text: Spawn more subagents so overlapping coverage averages out across the extra attempts
+      - text: Spawn more subagents so that overlapping coverage averages out across the many extra attempts
         why: More workers with the same vague brief multiply duplication and spend.
         misconception: Redundancy substitutes for scoping
-      - text: Lower the temperature of subagents so they behave more consistently
+      - text: Lower the sampling temperature of the subagents so that they behave more consistently
         why: Consistency of wording doesn't produce non-overlapping scope or a shared output shape.
         misconception: Sampling settings fix task definition
-      - text: Give each subagent an objective, scope boundary, output format and guidance on tools and sources
+      - text: Give each subagent an objective, scope boundary, output format and source guidance
         correct: true
         why: A specific brief makes workers' tasks distinct and results comparable, and the orchestrator can combine them.
     explanation: |
@@ -1265,16 +1266,16 @@ items:
       slots with a supplier's separate agent, built by a different vendor, which the manufacturer cannot modify or inspect.
       Which description of the protocols involved is accurate?
     options:
-      - text: MCP connects the agent to its own tools and data sources; an agent-to-agent protocol such as A2A is for peer agents across organizations
+      - text: MCP links the agent to its tools and data; A2A links independent agents across organizations
         correct: true
         why: The two address different relationships, agent to tools versus one independent agent to another opaque agent.
-      - text: MCP should also be used between the two agents, with the supplier's agent exposed as one large tool
+      - text: MCP should be used between the two agents as well, with the supplier's agent exposed as one large tool
         why: Possible for simple calls, but it loses task lifecycle and negotiation semantics that agent-to-agent protocols are designed for.
         misconception: Every agent interaction is a tool call
-      - text: A2A replaces MCP, so the inventory and ERP connections should use it too
+      - text: A2A replaces MCP, so the inventory and ERP connections should move onto it as well
         why: A2A doesn't standardize tool and data access; it addresses interaction between agents.
         misconception: Newer agent protocols supersede tool protocols
-      - text: Neither protocol applies; the two agents must share one orchestrator that controls both
+      - text: Protocols are unnecessary, since the manufacturer can place both vendors' agents under one shared orchestrator
         why: Cross-vendor agents can't share an orchestrator, which is exactly what interoperability protocols avoid.
         misconception: Collaboration requires a single controlling runtime
     explanation: |
@@ -1283,3 +1284,473 @@ items:
       complementary; know the distinction at awareness level.
     refs: [https://a2a-protocol.org/latest/]
 
+  # ------------------------------------------------------- other formats (D6)
+  - id: D6-042
+    version: 1
+    type: numeric
+    subtopic: agents.patterns
+    tags: [obs.cost]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      A report generator uses an evaluator-optimizer loop. Each run makes 3 generator calls and 3 evaluator calls (the third
+      evaluation approves the draft).
+
+      - First generator call: 1,200 input tokens. Each later generator call re-sends those 1,200 tokens plus the previous draft
+        (500 tokens) and the evaluator's feedback (120 tokens).
+      - Every generator call returns a 500-token draft.
+      - Every evaluator call takes 1,700 input tokens and returns 120 output tokens.
+
+      Pricing is $3 per million input tokens and $15 per million output tokens. What do 1,000 runs cost, in US dollars? Round to
+      the nearest cent.
+    answer: {value: 57.72, tolerance: 0.5, tolerance_type: abs, unit: "USD"}
+    work: |
+      Generator input: 1,200 + 1,820 + 1,820 = 4,840 tokens; generator output: 3 × 500 = 1,500 tokens.
+      Evaluator input: 3 × 1,700 = 5,100 tokens; evaluator output: 3 × 120 = 360 tokens.
+      Input total 9,940 tokens × $3 / 1M = $0.02982. Output total 1,860 tokens × $15 / 1M = $0.0279.
+      Per run $0.05772, so 1,000 runs cost $57.72.
+    explanation: |
+      Common wrong methods: counting only the generator calls ($37.02), or ignoring that revision calls re-send the previous draft and
+      feedback ($54.00). Loops multiply cost by the number of rounds, and output tokens cost several times more than input tokens.
+
+  - id: D6-043
+    version: 1
+    type: open
+    subtopic: agents.when
+    tags: [discovery.framing]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 480
+    stem: |
+      A VP of Sales Operations at a B2B equipment maker wants "an autonomous agent for lead-to-quote". Today, inbound enquiry
+      emails are read by a sales coordinator, who picks products from a catalogue (compatibility rules are documented), prices
+      them from a rate table, gets manager sign-off for any discount above 15%, and sends the quote through the CPQ system's API.
+      Roughly 30% of enquiries are vague or unusual. Write the reply you would send recommending an architecture, in under 300 words.
+    rubric:
+      - criterion: Recommendation first
+        points: 2
+        guidance: Full marks if the reply opens with a clear recommendation (for example, a workflow with LLM steps and a narrow agentic path). One mark if the position is present but buried. Zero if there is no recommendation.
+      - criterion: Matches autonomy to where the work varies
+        points: 3
+        guidance: Full marks if it keeps deterministic code for catalogue rules, pricing and CPQ calls and places the model in understanding messy emails and asking clarifying questions. One mark for a generic hybrid statement. Zero for an all-agent or no-LLM answer.
+      - criterion: Controls on consequential actions
+        points: 2
+        guidance: Full marks if it keeps the 15% discount approval as an enforced human step, adds validation before quotes go out, and mentions auditability. One mark if only one of these appears. Zero if none.
+      - criterion: Trade-offs and cost of autonomy
+        points: 2
+        guidance: Full marks if it states what a free-roaming agent would add (flexibility on the unusual 30%) against its cost in unpredictability, price and testing effort. One mark if one side only. Zero if absent.
+      - criterion: Next step and success measure
+        points: 1
+        guidance: Full marks for a concrete proposal such as piloting on the structured 70% first with a measured accuracy and cycle-time target. Zero if vague.
+    model_answer: |
+      Recommendation: build this as a workflow with two model-assisted steps, not a free-roaming agent, and add agentic behavior
+      only for the unusual enquiries once we have data.
+
+      Why: most of the path is already known and rule-based. The catalogue compatibility rules, rate-table pricing, discount
+      approval and CPQ submission are deterministic, and they are where money moves, so I would keep them as ordinary code that
+      is fully testable and auditable. The model earns its place at the messy front end: reading the email, extracting
+      requirements into a structured request, and drafting a clarifying question when something is missing.
+
+      Controls: any discount over 15% pauses for a manager's approval, enforced in the workflow rather than by instruction. The
+      structured request is validated against the catalogue before a quote is created, and every step is logged so a quote can be
+      explained later.
+
+      Trade-off: a fully autonomous agent would handle odd requests more flexibly, but it would make pricing behavior harder to
+      predict and test, cost more per enquiry, and make approvals harder to guarantee.
+
+      Next step: pilot on the roughly 70% of straightforward enquiries, measure extraction accuracy, quote error rate and
+      turnaround against the coordinator baseline, and review the unusual 30% to see whether a bounded agentic path pays off.
+    max_chars: 2200
+
+  - id: D6-044
+    version: 1
+    type: open
+    subtopic: agents.state
+    tags: [int.resilience, gov.approvals]
+    competencies: [x.decomposition]
+    difficulty: 3
+    level: evaluate
+    time_s: 540
+    stem: |
+      A client wants an agent to process supplier-onboarding requests. A run takes two to five days: it gathers documents,
+      screens the supplier, waits for a compliance officer's approval, and then creates the supplier in the ERP and notifies
+      procurement. Deployments happen several times a week, and the first prototype lost work when a pod restarted mid-run. Describe how
+      you would design state, resumption and failure handling for this flow, including how you would prevent duplicate ERP records.
+    rubric:
+      - criterion: Durable state and checkpoints
+        points: 3
+        guidance: Full marks for persisting run state in an external store (step status, outputs, resource IDs) with resumption from the last checkpoint rather than in-process memory. Two marks if durable state is present but its contents or resume logic are vague. Zero if state stays in the process.
+      - criterion: Safe waiting for approval
+        points: 2
+        guidance: Full marks if the run pauses without holding a process or context open, resumes on an event or callback, and has timeouts or reminders and escalation. One mark if only pausing is described. Zero if absent.
+      - criterion: Idempotent side effects
+        points: 3
+        guidance: Full marks if the ERP create uses an idempotency key or check-before-create, and explains the crash window between the external effect and the checkpoint. Two marks if idempotency is named without that reasoning. Zero if absent.
+      - criterion: Retries and failure paths
+        points: 2
+        guidance: Full marks if transient failures are retried with backoff and caps while permanent failures go to a person via a dead-letter or review queue. One mark if only one of the two. Zero if absent.
+      - criterion: Deployments and visibility
+        points: 1
+        guidance: Full marks for handling in-flight runs across deploys (versioned steps or drain) and monitoring for stuck runs. Zero if absent.
+    model_answer: |
+      I would treat this as a durable workflow with model steps, not a long-lived agent process.
+
+      State: every run has a record in a database or workflow engine holding its current step, each step's status and output, and
+      identifiers of anything created externally. Workers are stateless. After a restart or deploy, a worker loads the record and
+      resumes from the last completed step, so a pod restart loses at most the step in progress.
+
+      Waiting: after screening, the run writes "awaiting compliance approval" and exits. The officer's decision arrives as an event
+      that resumes it. A timer sends reminders after a day and escalates after three, so a silent approver becomes visible.
+
+      Side effects: ERP creation is the dangerous step. A crash can happen after the ERP accepts the record but before I save the
+      checkpoint, so replay is expected. I send an idempotency key derived from run ID and step, or search by a stable supplier key
+      before creating, so a replay returns the existing record.
+
+      Failures: timeouts and 5xx responses retry with exponential backoff and jitter, capped. Validation or permission errors do not
+      retry; they go to a review queue with the run state attached.
+
+      Deploys: steps are versioned and in-flight runs finish on the version they started with or are migrated explicitly. A
+      dashboard alerts on runs stuck longer than expected in any state.
+    max_chars: 2500
+
+  - id: D6-045
+    version: 1
+    type: open
+    subtopic: agents.multi
+    tags: [eval.rag-agent, obs.tracing]
+    competencies: [x.decomposition, x.written-comms]
+    difficulty: 3
+    level: evaluate
+    time_s: 540
+    stem: |
+      You inherit a six-agent prototype for market-research briefs (planner, searcher, reader, analyst, writer, critic). It
+      demos beautifully but fails in about one run in four with wrong, missing or contradictory content, and nobody can say where
+      the failures begin. The sponsor expects production in six weeks and likes the multi-agent story. Write your plan for the
+      first two weeks, and say how you will decide whether the multi-agent design stays.
+    rubric:
+      - criterion: Establishes measurement before changing the design
+        points: 3
+        guidance: Full marks for building a labeled set of representative tasks, defining end-to-end success criteria, and instrumenting traces per agent and handoff. Two marks if measurement is mentioned without specifics. Zero if the plan jumps straight to redesign.
+      - criterion: Diagnoses where failures originate
+        points: 2
+        guidance: Full marks for classifying failures by stage and handoff, for example information lost in summaries or unvalidated outputs, and using that to target fixes. One mark for generic debugging. Zero if absent.
+      - criterion: Compares against a simpler baseline
+        points: 3
+        guidance: Full marks for proposing a single-agent or workflow baseline evaluated on the same set, with a decision rule based on quality, cost and latency. Two marks if a baseline is named without a decision rule. Zero if absent.
+      - criterion: Candid sponsor communication
+        points: 2
+        guidance: Full marks if it addresses the sponsor's attachment to the multi-agent story with a bottom-line message, trade-offs, and a date-bound decision point, framing it as evidence-led rather than a rejection. One mark if partial. Zero if ignored.
+    model_answer: |
+      Bottom line: in two weeks I will find out where the 25% of failures come from and whether six agents are earning their keep.
+      I will not redesign anything before I can measure it.
+
+      Week 1: assemble 40 to 60 representative briefs with agreed pass criteria (factual support, coverage of required sections,
+      no contradictions), including known failures. Add tracing so each agent call, its input and output, and every handoff are
+      recorded under one run ID. Then run the prototype end to end and label each failure by the first stage where the content went
+      wrong.
+
+      Week 2: use that breakdown to fix the biggest sources, likely candidates being lossy summaries between agents and unchecked
+      handoffs, by passing source passages through and validating outputs against a defined format at each boundary. In parallel I
+      build a baseline: a single agent with search and read tools, or a fixed workflow, scored on the same set.
+
+      Decision rule: keep the multi-agent design only if it beats the baseline on success rate by a margin that justifies its
+      extra tokens and latency, or it parallelizes breadth that the baseline cannot cover. Otherwise we simplify.
+
+      For the sponsor: the multi-agent demo showed the ambition; the next two weeks produce the numbers that tell us which design
+      reaches production quality in six weeks. I will bring the comparison at the end of week 2.
+    max_chars: 2500
+
+  - id: D6-046
+    version: 1
+    type: audio
+    subtopic: agents.when
+    tags: [discovery.framing]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 150
+    prep_s: 30
+    max_s: 120
+    stem: |
+      The COO of a retail chain, who is not technical, asks you in a meeting: "People keep saying AI agent versus workflow.
+      What's the difference, and which do we need for processing product returns?" Returns today follow a clear policy, with
+      photos and free-text reasons from customers, and refunds over a threshold need a store manager's approval. Answer out loud.
+    rubric:
+      - criterion: Clear answer first
+        points: 2
+        guidance: Full marks if it opens with a direct recommendation, such as a mostly fixed workflow with an AI step for reading reasons and photos. One mark if the answer arrives late. Zero if absent.
+      - criterion: Plain-language distinction
+        points: 2
+        guidance: Full marks for a jargon-free explanation, for example a workflow follows a set path with AI at certain steps, while an agent decides its own steps. One mark if accurate but technical. Zero if wrong or missing.
+      - criterion: Reasons tied to their process
+        points: 2
+        guidance: Full marks if it links the choice to the clear policy, the cost of wrong refunds, and the approval step. One mark if generic. Zero if absent.
+      - criterion: Honest trade-off and next step
+        points: 2
+        guidance: Full marks if it says when an agent would be worth considering and proposes a measured pilot. One mark if one of the two. Zero if absent.
+    model_answer: |
+      For returns, I'd recommend a workflow, with AI used for the parts that need judgment, not a free-running agent.
+
+      The difference is who decides the steps. In a workflow, we decide the steps in advance, like check the policy, assess the
+      case, issue the refund, and the AI helps inside specific steps. In an agent, the AI decides what to do next on its own, which
+      makes it flexible but also less predictable and more costly.
+
+      Your returns process already has a clear policy and a manager approval for larger refunds. That means the steps are known, and
+      a wrong refund costs real money. So I'd keep the policy checks and the approval as fixed steps, and use AI to read the
+      customer's reasoning and photos and suggest a category.
+
+      An agent would make sense later if we find a meaningful group of returns that don't fit the policy and need investigation.
+      I'd start with a pilot on one product category, measure how often the AI's suggestions match your staff, and expand from there.
+    
+  - id: D6-047
+    version: 1
+    type: code
+    subtopic: agents.tools-mcp
+    tags: [llm.structured-tools]
+    competencies: [x.python]
+    difficulty: 2
+    level: apply
+    time_s: 720
+    stem: |
+      An agent harness must validate every model-produced tool call before executing it. Implement
+      `validate_tool_call(call, schemas)`, which returns a sorted list of error strings (empty when the call is valid).
+
+      - `call` is `{"name": str, "arguments": dict}`; `arguments` may be missing or `None`, which counts as `{}`.
+      - `schemas` maps tool name to `{"properties": {arg: spec}, "required": [arg, ...]}`. A spec has a `"type"` of
+        `"string"`, `"integer"`, `"number"` or `"boolean"`, and optionally `"enum"` (list of allowed values), `"minimum"` and
+        `"maximum"` (inclusive; for integer and number only).
+      - Unknown tool name: return `["unknown_tool"]` and nothing else.
+      - Each required argument that is absent gives `"missing:<arg>"`.
+      - Each supplied argument not in `properties` gives `"unexpected:<arg>"`.
+      - For a known argument: a wrong type gives `"type:<arg>"` (booleans are not integers or numbers; integers are valid numbers),
+        otherwise a value not in `enum` gives `"enum:<arg>"`, otherwise a value outside `minimum`/`maximum` gives `"range:<arg>"`.
+        At most one error per argument.
+      - Return the errors sorted alphabetically.
+    code:
+      function: validate_tool_call
+      starter: |
+        def validate_tool_call(call: dict, schemas: dict) -> list[str]:
+            ...
+      reference: |
+        def validate_tool_call(call, schemas):
+            schema = schemas.get(call.get("name"))
+            if schema is None:
+                return ["unknown_tool"]
+            args = call.get("arguments") or {}
+            props = schema.get("properties", {})
+            errors = []
+            for name in schema.get("required", []):
+                if name not in args:
+                    errors.append(f"missing:{name}")
+            for name, value in args.items():
+                spec = props.get(name)
+                if spec is None:
+                    errors.append(f"unexpected:{name}")
+                    continue
+                t = spec.get("type")
+                if t == "string":
+                    ok = isinstance(value, str)
+                elif t == "boolean":
+                    ok = isinstance(value, bool)
+                elif t == "integer":
+                    ok = isinstance(value, int) and not isinstance(value, bool)
+                elif t == "number":
+                    ok = isinstance(value, (int, float)) and not isinstance(value, bool)
+                else:
+                    ok = True
+                if not ok:
+                    errors.append(f"type:{name}")
+                elif "enum" in spec and value not in spec["enum"]:
+                    errors.append(f"enum:{name}")
+                elif t in ("integer", "number") and (
+                    ("minimum" in spec and value < spec["minimum"])
+                    or ("maximum" in spec and value > spec["maximum"])
+                ):
+                    errors.append(f"range:{name}")
+            return sorted(errors)
+      examples:
+        - args:
+            - {name: "get_order", arguments: {order_id: "A-17"}}
+            - {get_order: {properties: {order_id: {type: string}}, required: [order_id]}}
+          expected: []
+        - args:
+            - {name: "refund", arguments: {order_id: "A-17", amount: 900}}
+            - {refund: {properties: {order_id: {type: string}, amount: {type: number, minimum: 0, maximum: 100}}, required: [order_id, amount]}}
+          expected: ["range:amount"]
+      tests:
+        - args:
+            - {name: "delete_everything", arguments: {}}
+            - {get_order: {properties: {order_id: {type: string}}, required: [order_id]}}
+          expected: ["unknown_tool"]
+        - args:
+            - {name: "get_order"}
+            - {get_order: {properties: {order_id: {type: string}}, required: [order_id]}}
+          expected: ["missing:order_id"]
+        - args:
+            - {name: "get_order", arguments: null}
+            - {get_order: {properties: {order_id: {type: string}}, required: []}}
+          expected: []
+        - args:
+            - {name: "set_qty", arguments: {count: true}}
+            - {set_qty: {properties: {count: {type: integer}}, required: [count]}}
+          expected: ["type:count"]
+        - args:
+            - {name: "set_qty", arguments: {count: 3}}
+            - {set_qty: {properties: {count: {type: number, minimum: 1.5}}, required: [count]}}
+          expected: []
+        - args:
+            - {name: "set_qty", arguments: {count: 2.5}}
+            - {set_qty: {properties: {count: {type: integer}}, required: [count]}}
+          expected: ["type:count"]
+        - args:
+            - {name: "ticket", arguments: {priority: "urgent", note: "x", extra: 1}}
+            - {ticket: {properties: {priority: {type: string, enum: [low, high]}, note: {type: string}}, required: [priority, note, owner]}}
+          expected: ["enum:priority", "missing:owner", "unexpected:extra"]
+        - args:
+            - {name: "ticket", arguments: {level: 0}}
+            - {ticket: {properties: {level: {type: integer, minimum: 1, maximum: 5}}, required: []}}
+          expected: ["range:level"]
+        - args:
+            - {name: "ticket", arguments: {level: 5}}
+            - {ticket: {properties: {level: {type: integer, minimum: 1, maximum: 5}}, required: []}}
+          expected: []
+        - args:
+            - {name: "flag", arguments: {enabled: "yes"}}
+            - {flag: {properties: {enabled: {type: boolean, enum: [true, false]}}, required: [enabled]}}
+          expected: ["type:enabled"]
+      timeout_s: 5
+    explanation: |
+      Validate arguments in the harness before any side effect runs, and return specific, machine-readable errors that can be
+      shown to the model for self-correction. Watch the Python trap that `bool` is a subclass of `int`, and check type before
+      enum and range so each argument yields at most one error.
+
+  - id: D6-048
+    version: 1
+    type: code
+    subtopic: agents.state
+    tags: [int.resilience]
+    competencies: [x.python]
+    difficulty: 3
+    level: apply
+    time_s: 720
+    stem: |
+      A workflow runner crashed and must decide what to do on restart. Implement `plan_resume(steps, completed, in_flight)`.
+
+      - `steps` is an ordered list of `{"id": str, "idempotent": bool}`.
+      - `completed` is a list of step ids whose completion was durably recorded; `in_flight` is the id of the step that had
+        started but whose completion was not recorded, or `None`.
+      - Walk the steps in order. Skip any step in `completed` (including `in_flight`, if it also appears there).
+      - A pending step is added to the `run` list. The exception is the `in_flight` step when it is not idempotent: its effect may
+        or may not have happened, so stop the walk there, report its id as `reconcile`, and add nothing after it.
+      - Ids in `completed` that are not in `steps` are ignored.
+      - Return `{"run": [ids to execute, in order], "reconcile": id or None}`.
+    code:
+      function: plan_resume
+      starter: |
+        def plan_resume(steps: list, completed: list, in_flight) -> dict:
+            ...
+      reference: |
+        def plan_resume(steps, completed, in_flight):
+            done = set(completed)
+            run = []
+            for step in steps:
+                sid = step["id"]
+                if sid in done:
+                    continue
+                if sid == in_flight and not step["idempotent"]:
+                    return {"run": run, "reconcile": sid}
+                run.append(sid)
+            return {"run": run, "reconcile": None}
+      examples:
+        - args:
+            - [{id: fetch, idempotent: true}, {id: charge, idempotent: false}, {id: notify, idempotent: true}]
+            - [fetch]
+            - null
+          expected: {run: [charge, notify], reconcile: null}
+        - args:
+            - [{id: fetch, idempotent: true}, {id: charge, idempotent: false}, {id: notify, idempotent: true}]
+            - [fetch]
+            - charge
+          expected: {run: [], reconcile: charge}
+      tests:
+        - args:
+            - [{id: a, idempotent: true}, {id: b, idempotent: true}, {id: c, idempotent: true}]
+            - []
+            - null
+          expected: {run: [a, b, c], reconcile: null}
+        - args:
+            - [{id: a, idempotent: true}, {id: b, idempotent: true}, {id: c, idempotent: true}]
+            - [a, b, c]
+            - null
+          expected: {run: [], reconcile: null}
+        - args:
+            - [{id: a, idempotent: true}, {id: b, idempotent: true}, {id: c, idempotent: true}]
+            - [a]
+            - b
+          expected: {run: [b, c], reconcile: null}
+        - args:
+            - [{id: a, idempotent: false}, {id: b, idempotent: false}, {id: c, idempotent: true}]
+            - [a]
+            - b
+          expected: {run: [], reconcile: b}
+        - args:
+            - [{id: a, idempotent: true}, {id: b, idempotent: false}, {id: c, idempotent: true}]
+            - [b, zzz]
+            - b
+          expected: {run: [a, c], reconcile: null}
+        - args:
+            - [{id: a, idempotent: true}, {id: b, idempotent: true}, {id: c, idempotent: false}, {id: d, idempotent: true}]
+            - [a]
+            - c
+          expected: {run: [b], reconcile: c}
+        - args:
+            - []
+            - []
+            - null
+          expected: {run: [], reconcile: null}
+        - args:
+            - [{id: a, idempotent: false}, {id: b, idempotent: true}]
+            - []
+            - null
+          expected: {run: [a, b], reconcile: null}
+      timeout_s: 5
+    explanation: |
+      After a crash, the safe move depends on whether a half-finished step can be repeated. Idempotent steps are simply re-run;
+      a non-idempotent step in flight must be reconciled against the external system (did the charge go through?) before anything
+      after it runs.
+
+  - id: D6-049
+    version: 1
+    type: single
+    subtopic: agents.when
+    tags: [gov.approvals, discovery.selection]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A bank's KYC onboarding runs on a coded rules workflow that clears about 85% of applications automatically. The remaining
+      15% hit exceptions such as mismatched names across documents, unusual ownership structures and missing registry entries.
+      Two engineers have grown the exception logic to hundreds of branches, and each new case type still breaks something.
+      Analysts resolve these cases by looking things up across several sources and deciding what to check next. What is the best
+      evolution of the system?
+    options:
+      - text: Keep the rules for clear cases; add a bounded, read-only agent that prepares exceptions for analysts
+        correct: true
+        why: The exceptions are open-ended investigations, which is where an agent's dynamic path pays off, while approvals stay with analysts.
+      - text: Keep extending the branching logic with a dedicated rule for each new type of exception as it appears
+        why: The maintenance burden is the stated problem, and each rule only handles the case already seen, not the next variation.
+        misconception: Enough rules will eventually cover every exception
+      - text: Replace the whole workflow with a single agent that handles every application and approves them directly
+        why: Throws away a reliable, auditable path that already clears 85% and gives a model decision authority in a regulated process.
+        misconception: If an agent can handle the hard cases, it should handle everything
+      - text: Move the exception handling into an RPA bot that records and replays what analysts do on screen
+        why: Analysts' steps vary with each case, so a recorded script has no fixed sequence to replay.
+        misconception: Automation of a manual task means recording the manual steps
+    explanation: |
+      Hybrid systems use deterministic workflows where the path is known and reserve agentic behavior for the open-ended tail, with
+      bounded tools and a human decision at the end. The exceptions here vary in what must be checked next, which is the property that
+      justifies an agent, while the high-volume clear cases are better left in code.
+    refs: [https://www.anthropic.com/engineering/building-effective-agents]

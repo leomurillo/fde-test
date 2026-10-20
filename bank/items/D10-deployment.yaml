@@ -1,0 +1,593 @@
+domain: D10
+items:
+  # ---------------------------------------------------------------- deploy.compute
+  - id: D10-001
+    version: 1
+    type: single
+    subtopic: deploy.compute
+    tags: [agents.state]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      A client's claims-processing agent runs 8 to 25 minutes per case, calling a model and several slow
+      back-office APIs. The team plans to deploy it as functions on a serverless platform that caps each
+      invocation at 15 minutes, with the timeout raised to the cap and retries on failure. What should you recommend?
+    options:
+      - text: "Queue-driven container workers that checkpoint progress, so a case can outlive one invocation"
+        correct: true
+        why: The platform no longer limits run length, and checkpoints let an interrupted case resume rather than restart.
+      - text: "Keep the functions, set the timeout to the cap, and have a failed case retry from the beginning each time"
+        why: A 25-minute case can never finish inside a 15-minute cap, so retries just repeat the same failure and the same cost.
+        misconception: Retries and the maximum timeout can absorb a hard platform limit
+      - text: "Have each function invoke the next one with the partial context shortly before it reaches the time cap"
+        why: Self-chaining can work, but it spreads state across invocations, complicates failure handling and still depends on each hop surviving.
+        misconception: Chaining invocations is equivalent to a durable long-running process
+      - text: "Stream partial output back to the caller so that the connection stays open beyond the platform limit"
+        why: The cap is on execution time, not on idle connections; the invocation is terminated regardless of the open stream.
+        misconception: Streaming extends the execution limit
+    explanation: |
+      Serverless functions suit short, stateless work. A run that exceeds the platform's maximum duration needs a
+      compute model without that cap, typically containers or jobs pulling work from a queue, plus checkpointing so
+      a restart resumes instead of repeating completed steps and their model cost.
+
+  - id: D10-002
+    version: 1
+    type: single
+    subtopic: deploy.compute
+    tags: [discovery.selection]
+    difficulty: 1
+    level: evaluate
+    time_s: 75
+    stem: |
+      A client's legal team forwards about 200 contract PDFs a day, mostly in office hours. A job classifies each
+      in 2 to 4 seconds using a hosted LLM and writes a label to a database. The client has no cluster and a
+      two-person platform team; an engineer proposes managed Kubernetes "for production readiness". What fits best?
+    options:
+      - text: "Event-triggered serverless functions that scale to zero; cold starts are minor next to the model call"
+        correct: true
+        why: Spiky, short, low-volume work matches pay-per-use compute, and the platform team has nothing new to run.
+      - text: "A managed Kubernetes cluster with autoscaling node pools, for consistency with the services planned later"
+        why: It adds cluster operations, upgrades and cost for a workload that needs none of it, and future needs are speculative.
+        misconception: Kubernetes is the production-grade default for any workload
+      - text: "A single always-on virtual machine under a process supervisor, to remove cold starts from the design"
+        why: It idles most of the day and needs patching and monitoring, while a few hundred milliseconds of startup are invisible here.
+        misconception: Cold starts matter for every latency-tolerant batch job
+      - text: "Containers on a fixed pool of reserved instances sized for peak load, to keep latency predictable"
+        why: Peak is tiny and latency is not critical, so reserved capacity buys nothing and the team still operates a fleet.
+        misconception: Reserved capacity is the safe choice for production
+    explanation: |
+      Choose compute from the workload shape. Short, event-driven, low-volume tasks fit serverless, where startup
+      time is dwarfed by the model call. Kubernetes pays off with many services, long-running workers or
+      custom networking, and its operating cost needs a team to carry it.
+
+  - id: D10-003
+    version: 1
+    type: single
+    subtopic: deploy.compute
+    tags: [int.resilience]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      An agent API on Kubernetes streams responses lasting up to three minutes. Users report answers cut off
+      mid-stream during every rolling deployment. The application ignores SIGTERM and the pods use default
+      termination settings. What fixes this?
+    options:
+      - text: "Drain on SIGTERM and fail readiness first, with a grace period longer than the longest stream"
+        correct: true
+        why: Traffic stops arriving at the old pod and active requests complete before it is killed.
+      - text: "Add more replicas so that each deployment step replaces a smaller fraction of the serving capacity"
+        why: Fewer users are affected per step, but each terminated pod still kills its in-flight streams.
+        misconception: Capacity headroom prevents interrupted requests
+      - text: "Tighten the liveness probe so that unhealthy pods are restarted faster while the rollout is running"
+        why: Faster restarts increase interruptions; the pods are being terminated by design, not failing health checks.
+        misconception: Liveness probes govern graceful shutdown
+      - text: "Switch to a Recreate strategy so that old and new versions never run at the same time in the cluster"
+        why: It stops the old pods all at once, causing downtime and still cutting every in-flight stream.
+        misconception: Avoiding version overlap avoids interruption
+    explanation: |
+      Kubernetes sends SIGTERM and, after the termination grace period, SIGKILL. A long-streaming service must stop
+      receiving new work (fail readiness or use a preStop hook), complete in-flight requests, then exit, with a grace
+      period longer than its longest request. For work longer than a deploy window, move it to a queue-based worker.
+    refs: [https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination]
+
+  - id: D10-004
+    version: 1
+    type: single
+    subtopic: deploy.compute
+    tags: [obs.slo, int.resilience]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      A service makes one slow LLM call per request and autoscales on CPU at 60%. At peak, p95 latency climbs
+      and requests queue, yet CPU stays near 15% because pods mostly wait on the model API. What should the
+      autoscaler use?
+    options:
+      - text: "In-flight requests or queue depth per pod, with replicas capped at the provider's rate limit"
+        correct: true
+        why: The scaling signal reflects the real bottleneck (concurrency), and the cap stops scale-out from hitting provider throttling.
+      - text: "A lower CPU target of 15%, so that the autoscaler starts adding replicas earlier in the ramp-up"
+        why: CPU does not rise with queued I/O waits, so even a low target is a poor proxy and flaps with unrelated load.
+        misconception: Tuning the threshold of the wrong metric fixes scaling
+      - text: "Larger CPU requests per pod, so that each pod can serve more simultaneous requests at peak time"
+        why: The pods are not CPU-bound; more CPU does not shorten waits on the model API.
+        misconception: Bigger instances fix an I/O-bound bottleneck
+      - text: "Scheduled scaling that adds replicas ahead of the known peak hours of the business day"
+        why: It helps with predictable peaks, but does not react to unplanned spikes or queue growth.
+        misconception: Time-based capacity replaces load-based signals
+    explanation: |
+      LLM-calling services are I/O-bound: scale on concurrency, queue depth or latency rather than CPU. Because the
+      model provider's quota is a shared ceiling, cap replicas (or use a queue with a concurrency limit) so scale-out
+      doesn't turn latency into 429 errors.
+
+  - id: D10-005
+    version: 1
+    type: multi
+    subtopic: deploy.compute
+    tags: [agents.state, obs.cost]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      To cut cost, a team plans to run long agent jobs on spot (preemptible) nodes that can be reclaimed with
+      about two minutes' notice. Which design choices make this acceptable?
+    options:
+      - text: Jobs are pulled from a durable queue and redelivered if a worker disappears
+        correct: true
+        why: A reclaimed node simply returns the job to the queue for another worker.
+      - text: Progress is checkpointed after each completed step so a retry resumes where it stopped
+        correct: true
+        why: Interruptions waste at most one step of model spend and time.
+      - text: Side-effecting steps carry idempotency keys derived from the job and step
+        correct: true
+        why: Queues deliver at least once, so a resumed step must not create a duplicate ticket or payment.
+      - text: Run state is held in worker memory, with the termination notice used to finish the current job
+        why: Two minutes is far shorter than a job that may run for twenty, so the work is lost.
+        misconception: Termination notices leave time to finish long work
+      - text: Each job is pinned to one node with sticky routing so its warm cache is retained
+        why: Pinning makes an interrupted job unrecoverable and defeats rescheduling onto healthy capacity.
+        misconception: Affinity improves resilience
+      - text: Queue redelivery is relied on to give exactly-once execution of side effects
+        why: Queues provide at-least-once delivery; exactly-once effects need idempotent operations.
+        misconception: Durable queues guarantee exactly-once processing
+    explanation: |
+      Interruptible compute is cheap because the platform may take it back. Make the workload tolerate that: durable
+      work queue, checkpointed progress and idempotent side effects.
+
+  # ---------------------------------------------------------------- deploy.delivery
+  - id: D10-006
+    version: 1
+    type: single
+    subtopic: deploy.delivery
+    tags: [eval.online, eval.gates]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A team swaps a support agent's model for a cheaper one. Offline evals pass, so they plan an instant
+      blue/green cutover gated only on the HTTP 5xx rate. Which addition best de-risks the switch?
+    options:
+      - text: "Send a small traffic share to the new model and compare quality signals, with automatic rollback"
+        correct: true
+        why: Quality regressions in LLM systems return 200 responses, so the gate needs live quality signals on a limited blast radius.
+      - text: "Keep the 5xx gate, but extend the post-cutover watch period from ten minutes to a full hour"
+        why: A longer look at the same error metric still cannot detect worse answers that return successfully.
+        misconception: Longer observation of availability metrics reveals quality regressions
+      - text: "Require a synthetic health-check prompt to return a valid answer before traffic is switched over"
+        why: A passing prompt shows the endpoint answers, not that answers are as good on real traffic.
+        misconception: A health check is a quality check
+      - text: "Add a product-owner sign-off, based on the offline eval report, before the cutover is allowed to proceed"
+        why: It repeats the evidence already available and adds a human step without any live signal.
+        misconception: Approval of offline results substitutes for production validation
+    explanation: |
+      Canary releases limit exposure and compare a candidate to the baseline on live traffic. For LLM changes the
+      comparison needs quality-sensitive metrics (task success proxies, escalation or thumbs-down rate, cost, latency),
+      with automatic rollback when thresholds are crossed. Error rates alone miss silent degradation.
+
+  - id: D10-007
+    version: 1
+    type: single
+    subtopic: deploy.delivery
+    tags: [gov.audit-compliance]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      During an incident, an engineer opened an extra port on a security group in the client's production account
+      from the console. The Terraform pipeline's next apply would close it, and the on-call warns that this will
+      break a vendor integration. How should this be handled?
+    options:
+      - text: "Review it, codify it in Terraform through a pull request, and limit console writes to break-glass access"
+        correct: true
+        why: The code becomes the source of truth again, with review, and future manual changes are rare and traceable.
+      - text: "Add `ignore_changes` for the rule's attributes so that later applies leave the manual setting untouched"
+        why: It hides the drift from the pipeline, leaving an unreviewed security change that nobody tracks.
+        misconception: Suppressing the diff resolves drift
+      - text: "Pause the pipeline for that environment until the team has time to reconcile the differences by hand"
+        why: Deploys stall and further drift accumulates, while the unreviewed exposure stays open.
+        misconception: Freezing automation is a safe default
+      - text: "Import the console-created rule into the Terraform state without making any change to the code"
+        why: State would match reality, but the code still lacks the rule, so the next apply plans to remove it again.
+        misconception: Aligning state alone aligns code
+    explanation: |
+      Infrastructure as code is only authoritative if reality matches it. Detect drift with scheduled plans, review the
+      manual change, then either codify it or revert it. Restrict console write access to a logged break-glass role so
+      manual changes stay exceptional.
+    refs: [https://developer.hashicorp.com/terraform/tutorials/state/resource-drift]
+
+  - id: D10-008
+    version: 1
+    type: single
+    subtopic: deploy.delivery
+    tags: [data.modeling]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      A blue/green release renamed a database column. After cutover, errors spike, and traffic is switched back to
+      the previous version, which now fails because the column no longer exists. How should releases like this be made
+      rollback-safe?
+    options:
+      - text: "Use backward-compatible steps: add the new column, deploy, backfill, then drop the old one later"
+        correct: true
+        why: Both versions work against the same schema throughout, so traffic can move back at any time.
+      - text: "Restore the pre-release database snapshot each time a rollback of the application is needed"
+        why: A restore discards the writes accepted since cutover, trading an outage for data loss.
+        misconception: Database snapshots make rollback free
+      - text: "Give the green stack its own copy of the database, and sync its changes back to blue by script"
+        why: Two writable copies diverge, and the sync script becomes a new failure point during the incident.
+        misconception: Separate data stores make environments independent
+      - text: "Treat the schema change as roll-forward only and fix the new version under pressure instead"
+        why: Teams do this sometimes, but it removes the fastest mitigation for a bad release and extends the impact.
+        misconception: Rollback is optional when migrations are involved
+    explanation: |
+      Application rollback only works if the data layer stays compatible with both versions. The expand-and-contract
+      pattern splits a breaking change into additive steps, then removes the old structure in a later release once
+      nothing depends on it.
+
+  - id: D10-009
+    version: 1
+    type: single
+    subtopic: deploy.delivery
+    tags: [eval.gates]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A prompt change passes CI and staging but behaves differently in production. You find that staging uses a model
+      alias that updates automatically, production pins a dated model version, and prompts are edited in a console
+      separately in each environment. What should the pipeline do?
+    options:
+      - text: "Promote one immutable release containing prompts and pinned model IDs through each environment"
+        correct: true
+        why: What was tested is exactly what runs in production, with differences limited to injected configuration.
+      - text: "Add more unit tests around the prompt text so that differences are caught earlier in the pipeline"
+        why: Tests of the text cannot detect a different model or an out-of-band edit in another environment.
+        misconception: More tests compensate for inconsistent environments
+      - text: "Create a Git branch per environment so that each one can be tuned independently of the others"
+        why: Independent branches institutionalize the differences that caused the surprise.
+        misconception: Per-environment tuning is acceptable for parity
+      - text: "Document a manual checklist comparing staging and production settings before each release goes out"
+        why: Manual comparison is slow and error-prone, and does not stop a console edit after the check.
+        misconception: Process documents replace automation
+    explanation: |
+      Environment parity means building an artifact once and promoting it unchanged. Treat prompts, model versions
+      and tool schemas as versioned release content, and vary only environment-specific configuration and secrets.
+
+  - id: D10-010
+    version: 1
+    type: multi
+    subtopic: deploy.delivery
+    tags: [eval.online]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      Which practices make an agent release quick and safe to roll back?
+    options:
+      - text: Prompts, model ID, tool schemas and configuration ship together as one versioned release unit
+        correct: true
+        why: Rolling back restores a consistent set that was tested together rather than a mix of versions.
+      - text: The previous version stays deployed and ready throughout the observation window
+        correct: true
+        why: Switching traffic back is then a routing change, not a rebuild.
+      - text: Rollback triggers automatically when error, latency or quality metrics cross defined thresholds
+        correct: true
+        why: Recovery does not depend on someone noticing and deciding at 3 a.m.
+      - text: Builds are tagged `latest`, so redeploying `latest` restores the last good state
+        why: "`latest` moves with each build, so redeploying it can pull the faulty release again."
+        misconception: A floating tag is a rollback target
+      - text: Urgent prompt fixes are made directly in the production console to save time
+        why: Out-of-band edits are not versioned, so the rollback target no longer matches what was running.
+        misconception: Hot-patching speeds recovery without cost
+      - text: The team rebuilds from the commit history after investigating the cause
+        why: Rebuilding after analysis extends the outage; rollback is meant to restore service first.
+        misconception: Root cause must be known before rolling back
+    explanation: |
+      Rollback is a design property. Immutable, versioned releases that bundle everything affecting behavior, plus a
+      warm previous version and automated triggers, turn recovery into a quick, rehearsed action.
+
+  # ---------------------------------------------------------------- deploy.models-network
+  - id: D10-011
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [llm.model-selection, discovery.environment]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A defense contractor's analysts must use the assistant on a network with no path to the internet. Hosted model
+      APIs are prohibited. Which deployment model is required?
+    options:
+      - text: On-premises with a self-hosted model, updated through signed offline bundles
+        correct: true
+        why: Inference, data and updates all stay inside the isolated network.
+      - text: Customer-VPC deployment that reaches the hosted model through a private endpoint
+        why: The private path still leaves the network to the provider's infrastructure, which the policy prohibits.
+        misconception: Private connectivity is the same as network isolation
+      - text: A single-tenant vendor-hosted instance reachable only from the contractor's address ranges
+        why: Prompts and documents would still be processed in the vendor's environment, outside the isolated network.
+        misconception: Dedicated hosting satisfies a no-egress requirement
+      - text: Multi-tenant SaaS with customer-managed encryption keys and strict tenant isolation
+        why: Encryption keys and logical isolation do not change where data is processed or that the service is internet-hosted.
+        misconception: Strong encryption makes any hosting location acceptable
+    explanation: |
+      Deployment models sit on a spectrum of control: multi-tenant SaaS, single-tenant hosted, customer cloud account
+      (VPC/BYOC), and on-prem or air-gapped. An isolated network requires self-hosted models and an offline
+      update process, which also constrains model choice, evaluation tooling and support.
+
+  - id: D10-012
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [gov.identity]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      A fintech wants the vendor to operate the platform inside the fintech's own cloud account, but its security
+      team will not share long-lived admin credentials. Which access model fits?
+    options:
+      - text: "A role in the customer's account assumed by vendor operators, with scoped, short-lived sessions"
+        correct: true
+        why: Access is revocable by the customer, time-limited, least-privilege and attributable to a named operator.
+      - text: "A shared administrator user protected by MFA, with the password kept in the vendor's password manager"
+        why: The shared identity is long-lived, not attributable to individuals and broader than needed.
+        misconception: MFA on a shared admin account is sufficient protection
+      - text: "Access keys for a dedicated vendor service user, rotated by the customer on a quarterly schedule"
+        why: Static keys remain valid between rotations and work from anywhere if copied.
+        misconception: Periodic rotation makes static keys acceptable
+      - text: "A VPN from the vendor's office to the customer's network with SSH administrative access to hosts"
+        why: Network reachability is not identity; it grants broad host access and bypasses the cloud's own role and audit controls.
+        misconception: A private tunnel replaces cloud IAM
+    explanation: |
+      In customer-cloud (BYOC) deployments the vendor needs operational access without owning standing credentials.
+      Cross-account roles with scoped permissions, short sessions and the customer's own audit trail keep control
+      with the customer, and the customer can revoke them instantly.
+
+  - id: D10-013
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [gov.audit-compliance]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A hospital's agent runs in its own VPC and calls a hosted model API. Policy states that this traffic must not
+      traverse the public internet. The vendor points to TLS 1.3 and a published list of its egress IP ranges. What
+      should you set up?
+    options:
+      - text: "A private endpoint to the provider, private DNS resolution, and the public endpoint disabled"
+        correct: true
+        why: Traffic stays on the provider's private network path and the public route is no longer reachable.
+      - text: "A firewall allowlist of the provider's published IP ranges, with TLS 1.3 required on each API call"
+        why: Encryption and allowlisting protect the content but the path is still the public internet.
+        misconception: Encryption in transit equals private connectivity
+      - text: "A NAT gateway with a fixed address that the provider adds to its own allowlist for your account"
+        why: A fixed source address helps the provider authenticate callers but still crosses the public internet.
+        misconception: Static egress IPs are private connectivity
+      - text: "A public subnet whose security group permits outbound connections solely to the provider's ranges"
+        why: The workload gets more exposure, and the traffic still uses the public route.
+        misconception: Narrow security-group rules change the network path
+    explanation: |
+      A private endpoint (private link) gives the service a private IP in your network, so calls never leave the
+      provider's backbone. It must be paired with private DNS and with disabling public access; otherwise clients
+      can still reach the public endpoint.
+
+  - id: D10-014
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [gov.guardrails]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      An agent runtime in a client's VPC has unrestricted outbound internet access because its tools call many SaaS
+      APIs. A red team showed data leaving through a crafted URL after an injection. The client wants the strongest
+      practical network control. What do you propose?
+    options:
+      - text: "Default-deny egress through a proxy or firewall that permits the domains each tool needs"
+        correct: true
+        why: An injected instruction can only reach destinations that were approved in advance, blocking the exfiltration path.
+      - text: "Tighter inbound rules plus a web application firewall in front of the agent's public API"
+        why: Inbound controls protect against outside requests; the leak happens on outbound connections.
+        misconception: Perimeter defense is mainly about ingress
+      - text: "Stream outbound flow logs to the SIEM and alert on connections to unusual destinations"
+        why: Detection helps response but the data has left by the time an alert fires.
+        misconception: Detective controls are equivalent to preventive ones
+      - text: "A DNS filter that blocks domains listed in a commercial threat-intelligence feed each day"
+        why: An attacker-controlled domain is new and unlisted, so a denylist does not stop it.
+        misconception: Blocking known-bad destinations is sufficient
+    explanation: |
+      For agents that process untrusted content, egress is the exfiltration channel. Default-deny outbound traffic with
+      a per-tool destination allowlist turns prompt injection from a data-loss event into a blocked request, and logs
+      the attempt for review.
+    refs: [https://genai.owasp.org/llmrisk/llm01-prompt-injection/]
+
+  - id: D10-015
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [gov.identity]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      A client's agent has legitimate IAM permission to read a sensitive storage bucket. A reviewer worries that a
+      compromised agent could copy objects to a bucket in a different account controlled by an outsider, using valid
+      credentials. Which control addresses that specific path?
+    options:
+      - text: "A service perimeter around the data services that blocks API calls moving data outside it"
+        correct: true
+        why: The perimeter restricts where data may go even when the caller is authenticated and authorized to read it.
+      - text: "Narrower IAM roles so that the agent can read just the folders its tools need to use"
+        why: The agent may legitimately read those folders, so it can still copy their content to an outside destination.
+        misconception: Least privilege on reads prevents exfiltration
+      - text: "Network ACLs on the agent's subnet that drop traffic on any port other than HTTPS"
+        why: Storage API calls are HTTPS, so the copy request passes.
+        misconception: Protocol filtering stops data movement through cloud APIs
+      - text: "Customer-managed encryption keys on the bucket, with decrypt rights for the agent's role"
+        why: The agent is allowed to decrypt, so the copied data is readable by the destination's owner after transfer.
+        misconception: Encryption at rest prevents authorized copying
+    explanation: |
+      IAM answers who may call an API; it does not constrain where data may be sent. Exfiltration perimeters (such as
+      cloud service perimeters or private-only access with endpoint policies) restrict data movement to approved
+      resources and projects, complementing IAM, egress filtering and logging.
+
+  - id: D10-016
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [rag.architecture, gov.guardrails, gov.identity]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      In a multi-tenant SaaS assistant, one shared vector index serves all customers. Searches include a `tenant_id`
+      filter that the model fills in through its search-tool arguments. A pen tester retrieves another customer's
+      chunks by asking the assistant to search a different tenant ID. What is the fix?
+    options:
+      - text: "Derive the tenant from the session and enforce it in the data layer with namespaces or row-level rules"
+        correct: true
+        why: Isolation no longer depends on model output; the caller cannot name a tenant other than their own.
+      - text: "Instruct the model in the system prompt to search with the tenant ID that was supplied at login time"
+        why: The instruction can be overridden by the user or an injected document, so isolation still depends on model behavior.
+        misconception: Prompt instructions enforce tenant isolation
+      - text: "Check retrieved chunks with a second model call that confirms they belong to the user's tenant"
+        why: The data has already been retrieved and the reviewer is a probabilistic filter reading the same content.
+        misconception: A model-based post-filter is an isolation boundary
+      - text: "Deploy a separate model instance for each tenant so that no prompt context is shared between customers"
+        why: The leak is in the shared index and the tool arguments, not the model instance, so the cross-tenant search still works.
+        misconception: Isolating the model isolates the data
+    explanation: |
+      In multi-tenant systems the tenant identity must come from authentication and be enforced where data is accessed,
+      never from a parameter the model or user supplies. Use per-tenant namespaces or indexes, or row-level security.
+
+  - id: D10-017
+    version: 1
+    type: multi
+    subtopic: deploy.models-network
+    tags: [discovery.environment, adoption.handoff]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A bank is comparing a vendor-operated deployment inside the bank's own cloud account (BYOC) with multi-tenant
+      SaaS. Which statements about the BYOC option are accurate?
+    options:
+      - text: Data at rest stays in an account and network the customer controls
+        correct: true
+        why: Storage, keys and logs sit under the customer's own policies, which is the main reason to choose it.
+      - text: The vendor needs a scoped, revocable operational access path that the customer's security team must approve
+        correct: true
+        why: Someone must patch and troubleshoot, so access has to be designed, limited and audited.
+      - text: Several customers can run different versions at once, which raises upgrade and support effort
+        correct: true
+        why: Each environment is upgraded on its own schedule, unlike a single SaaS release train.
+      - text: Model inference stays inside the customer's network even if the platform calls a hosted model API
+        why: If the platform calls a hosted model, prompts leave the VPC for the provider; only self-hosted inference stays inside.
+        misconception: Hosting the platform in the VPC makes everything it calls private
+      - text: The vendor can release one build to every customer environment at the same moment, without coordination
+        why: Customers control their change windows and network paths, so rollouts need coordination.
+        misconception: BYOC has the same release model as SaaS
+    explanation: |
+      BYOC gives customers control over data and keys at the cost of operational complexity: negotiated access,
+      version skew and per-environment support. It does not by itself keep calls to hosted models private; that
+      needs private endpoints or self-hosted inference.
+
+  # ---------------------------------------------------------------- non-choice
+  - id: D10-018
+    version: 1
+    type: numeric
+    subtopic: deploy.delivery
+    tags: [eval.gates, obs.slo]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 120
+    stem: |
+      A service receives 2,400 requests per minute. Of these, 30% are agent-run requests, which are the ones the
+      quality gate is computed on. A canary receives 5% of traffic, and the gate needs 600 canary agent-run
+      requests before a decision. How many minutes must the canary run before the gate has enough data?
+      Answer in minutes, to one decimal place.
+    answer: {value: 16.7, tolerance: 0.5, tolerance_type: abs, unit: "minutes"}
+    work: |
+      Agent-run requests per minute: 2,400 × 0.30 = 720. Canary share: 720 × 0.05 = 36 per minute.
+      Time to 600 requests: 600 / 36 = 16.67 minutes, about 16.7.
+    explanation: |
+      A common error is to ignore the 30% filter: 2,400 × 0.05 = 120 per minute gives 5 minutes. A canary's soak time
+      depends on the volume of the specific traffic the metric is measured on, not total traffic.
+
+  - id: D10-019
+    version: 1
+    type: open
+    subtopic: deploy.models-network
+    tags: [gov.audit-compliance, comms.tradeoffs, discovery.environment]
+    competencies: [x.written-comms]
+    difficulty: 3
+    level: evaluate
+    time_s: 540
+    stem: |
+      A regional bank's CTO wants to pilot your agent platform on customer-service documents, some containing
+      personal data, and later connect it to an on-premises core-banking system. They ask you to choose between
+      multi-tenant SaaS, a deployment in the bank's cloud account, and fully on-premises. Write your recommendation.
+    rubric:
+      - criterion: Bottom-line recommendation with a phased path
+        points: 2
+        guidance: "2 if the answer leads with a clear choice and a staged path (for example start in the customer cloud account, reassess later); 1 if the choice is clear but no path; 0 if it only lists options."
+      - criterion: Reasons from data sensitivity, residency and connectivity
+        points: 3
+        guidance: "3 if it ties the choice to personal-data handling, residency, and reaching the on-prem system without public exposure; 1 if generic; 0 if absent."
+      - criterion: Network and identity controls
+        points: 3
+        guidance: "3 if it names private endpoints or private connectivity, egress allowlisting and scoped cross-account or workload identity instead of static keys; 2 if two of these; 1 if one; 0 if none."
+      - criterion: Trade-offs and costs of the choice
+        points: 2
+        guidance: "2 if it honestly covers operational burden, version skew, cost and time to value versus SaaS; 1 if one-sided; 0 if absent."
+    model_answer: |
+      Recommendation: deploy in the bank's own cloud account (BYOC) for the pilot, with a path to on-premises only if
+      the core-banking integration or regulator requires it.
+
+      Why. The pilot touches personal data, so the bank wants data, keys and logs under its own policies and
+      region. Multi-tenant SaaS is quickest but gives the least control, and a regulated bank will face a longer
+      security review. Fully on-premises gives the most control but means self-hosting models, hardware lead times
+      and offline updates, which would delay value by months for a pilot.
+
+      Controls. Run the platform in a dedicated VPC. Reach the model provider through a private endpoint with the
+      public endpoint disabled, or a self-hosted model if the bank prohibits external inference. Default-deny egress
+      with per-tool allowlists. Use workload identity, no stored keys, and give our operators a scoped, time-limited
+      role in the bank's account with audit logs. Connect to core banking over private connectivity through an
+      adapter, not direct database access.
+
+      Trade-offs. We take on version skew and slower upgrades, and the bank carries cloud cost. The benefit is a
+      security review that can pass in weeks.
+
+      Next step: a one-hour architecture review with the bank's security team to confirm residency and inference
+      requirements, which decides if self-hosted models are needed.
+    max_chars: 2500
+

@@ -43,16 +43,16 @@ items:
       correct chunk is often missing from the top 20 results; semantically similar but different error codes
       show up instead. What is the best fix?
     options:
-      - text: Add a lexical (BM25) retriever alongside the dense one and fuse the two result lists
+      - text: "Add a BM25 retriever alongside the dense one and fuse the two ranked lists of results"
         correct: true
         why: Exact tokens such as codes and part numbers are what lexical matching is good at, and fusion keeps the dense strengths for natural-language questions.
-      - text: Add a cross-encoder reranker that rescores the top 20 dense results
+      - text: "Add a cross-encoder reranker that rescores the top 20 dense results before they go to the LLM"
         why: A reranker only reorders candidates; if the right chunk never reached the top 20, it cannot be promoted.
         misconception: Reranking repairs recall problems in the candidate set
-      - text: Move to a larger embedding model with more dimensions
+      - text: "Move to a larger embedding model with more dimensions, trained on more technical text"
         why: Larger models improve general semantics but still blur near-identical identifiers like E-4471 and E-4417.
         misconception: Bigger embeddings learn exact-token matching
-      - text: Use an LLM to rewrite each query into a descriptive sentence before embedding
+      - text: "Use an LLM to rewrite each query into a descriptive sentence before embedding it"
         why: Rewriting an exact code into prose throws away the very token that identifies the right chunk.
         misconception: Natural-language expansion always helps retrieval
     explanation: |
@@ -73,10 +73,10 @@ items:
       lexical hits dominate every result list. The team has no labelled relevance data yet and expects to add
       a third retriever (over Jira tickets) next quarter. What should they use as the default fusion?
     options:
-      - text: Reciprocal rank fusion, scoring each document by the sum of 1/(k + rank) across the lists
+      - text: "Reciprocal rank fusion: score each document by summing 1/(k + rank) over the lists"
         correct: true
         why: It uses only ranks, so the incompatible score scales never need calibrating, and a third list can simply be added.
-      - text: Min-max normalise each retriever's scores per query, then keep the equal-weight sum
+      - text: "Min-max normalise each retriever's scores per query, then keep the equal-weight sum of the two"
         why: Workable, but one outlier hit stretches the scale for that query and the weights still need tuning when a retriever is added.
         misconception: Per-query normalisation makes raw scores comparable and stable
       - text: Take the higher of the two raw scores for each document to keep the strongest evidence
@@ -135,10 +135,10 @@ items:
       requests per second with a p95 latency budget of 2.5 seconds for the whole response. Which pipeline change
       fits best?
     options:
-      - text: Retrieve 50 candidates, rerank them with a cross-encoder, and send the top 5 to the LLM
+      - text: "Retrieve 50 candidates, rerank with a cross-encoder, send the top 5 to the LLM"
         correct: true
         why: A cross-encoder reads query and chunk together for more accurate ordering, and scoring 50 short pairs fits the latency and throughput budget.
-      - text: Send the top 30 chunks straight to the LLM so the best one is included
+      - text: "Send the top 30 chunks straight to the LLM so the best one is included in the prompt"
         why: Recall is solved, but cost and latency rise, and long noisy contexts often hurt answer quality.
         misconception: Putting more retrieved text in the prompt is free insurance
       - text: Have an LLM rank all 50 candidates in a separate call, then pass the top 5 on
@@ -198,10 +198,10 @@ items:
       contractors?" and the assistant retrieves chunks about contractor invoicing. The retriever currently
       embeds only the user's latest message. What is the most appropriate fix?
     options:
-      - text: Use the conversation history to rewrite the latest message into a standalone query before retrieval
+      - text: "Rewrite the latest message into a standalone query using the earlier conversation history"
         correct: true
         why: The follow-up depends on prior context; a condensed query such as "notice period for contractors resigning" retrieves the right policy.
-      - text: Embed the concatenation of every user turn so far and use that as the query
+      - text: "Embed the concatenation of every user turn so far and use that as the retrieval query"
         why: Older, unrelated turns dilute the embedding, and retrieval drifts further as conversations get longer.
         misconception: More conversational context in the query always improves retrieval
       - text: Raise top_k so that chunks from the first question's topic are included as well
@@ -227,16 +227,16 @@ items:
       so a proposal suggests embedding new queries with B while leaving the 8 million stored chunk vectors
       as they are, to avoid a re-embedding bill. How should you respond?
     options:
-      - text: Re-embed the corpus with B into a parallel index, compare retrieval quality offline, then cut over
+      - text: "Re-embed the corpus with B in a parallel index, compare offline, then cut over"
         correct: true
         why: Vectors from different models live in unrelated spaces, so queries and chunks must come from the same model, and a parallel index allows a safe cutover.
       - text: Approve it, since equal dimensionality means the vectors are comparable under cosine similarity
         why: Matching dimensions only prevents a runtime error; the coordinates mean different things in each model, so similarities would be noise.
         misconception: Same vector length implies the same embedding space
-      - text: Approve it after normalising all vectors to unit length so the scales match
+      - text: "Approve it after scaling the stored vectors to unit length so the scales match"
         why: Unit-normalising fixes scale, not meaning; the two spaces remain unaligned.
         misconception: Normalisation aligns embeddings from different models
-      - text: Re-embed only the most frequently retrieved chunks with B and mix both sets in one index
+      - text: "Re-embed just the most frequently retrieved chunks with B and mix both sets in one index"
         why: Search would compare B-space queries against a mixture of spaces, giving inconsistent rankings across documents.
         misconception: A partial migration degrades gracefully
     explanation: |
@@ -258,16 +258,16 @@ items:
       often receive two or zero usable chunks, and the security team objects that restricted text is still
       loaded into the application process. Where should the permission check move?
     options:
-      - text: Into the search request as a metadata filter on ACL groups synced from the source, built from the caller's identity
+      - text: "Filter the search by the caller's groups, using ACL metadata synced from the source"
         correct: true
         why: The index returns only readable chunks, so top-k is filled with permitted results and restricted text never leaves the store.
-      - text: Keep the post-filter but raise top_k to 200 so enough permitted chunks survive
+      - text: "Keep the post-filter after retrieval but raise top_k to 200 so enough permitted chunks survive"
         why: It reduces empty results for most users but still loads restricted text and gives no guarantee for users with narrow access.
         misconception: Over-fetching and filtering is equivalent to filtering in the query
       - text: Build one separate index per employee so each can only ever search their own documents
         why: Per-user copies explode storage and re-indexing work, and permissions then drift whenever the source ACLs change.
         misconception: Hard isolation per user is the only safe pattern
-      - text: Instruct the LLM not to reveal content that the user's role should not see
+      - text: "Instruct the LLM in the system prompt not to reveal content outside the user's role"
         why: The model would already have the restricted text in its context, and a prompt is not an access control.
         misconception: A prompt instruction can serve as an authorization layer
     explanation: |
@@ -289,7 +289,7 @@ items:
       Inspection shows that table cells were extracted as one stream of words in reading order. What should the
       ingestion pipeline do?
     options:
-      - text: Parse tables with a layout-aware extractor and index each table as structured rows with its headers and caption
+      - text: "Parse tables with a layout-aware extractor and index each row together with its column headers and caption"
         correct: true
         why: Keeping column headers attached to each value lets retrieval and the model tell which number belongs where.
       - text: Run OCR at a higher resolution on every page to improve the extracted text
@@ -319,19 +319,19 @@ items:
       run. Users now report answers quoting a policy that was withdrawn two months ago, and others that mix
       clauses from an old and a new version of the same policy. Which changes address the root causes?
     options:
-      - text: Remove every chunk of a document, keyed by its document id, when the source reports a deletion or a reconcile finds the id missing
+      - text: "Delete a document's chunks when the source reports a deletion or a reconcile finds its id missing"
         correct: true
         why: A modified-since query never lists deleted items, so removal needs explicit deletion events or a periodic id comparison.
-      - text: On a document change, replace all of its chunks as one operation rather than appending the new ones
+      - text: "Replace all of a changed document's chunks in one operation instead of appending new ones"
         correct: true
         why: Appending leaves old-version chunks in the index next to the new ones, which produces the mixed-version answers.
-      - text: Store each document's status and effective date as metadata and filter retrieval to the currently valid ones
+      - text: "Index status and effective date as metadata and filter retrieval to currently valid documents"
         correct: true
         why: It adds a second line of defence for superseded or withdrawn content even when an index update lags.
-      - text: Run the same incremental job twice a day instead of once
+      - text: "Run the same incremental job twice a day instead of once, so changes are picked up sooner"
         why: The job still never sees deletions, and it leaves old chunks in place; it only runs more often.
         misconception: More frequent syncs cure missing-deletion bugs
-      - text: Expire all vectors after 30 days and force a full re-ingest
+      - text: "Expire all vectors after 30 days and force a full re-ingest of the whole corpus on a schedule"
         why: It blindly drops valid, unchanged content and still leaves stale chunks for up to a month.
         misconception: Time-based expiry is a substitute for tracking change
       - text: Tell the model in the prompt to prefer the most recent document when passages conflict
@@ -355,16 +355,16 @@ items:
       prints a "Sources" list of the top three retrieved files below each answer. An internal audit found
       sentences whose listed sources do not actually support them. Which change addresses this most directly?
     options:
-      - text: Have the model attach chunk ids and supporting quotes to each claim, then check programmatically that every quote appears in its chunk
+      - text: "Attach chunk ids and a supporting quote to each claim, and check each quote in its chunk"
         correct: true
         why: Attribution becomes claim-level and verifiable, and unsupported or fabricated citations can be caught before display.
-      - text: Tell the model to cite only sources it is highly confident about
+      - text: "Tell the model to cite only sources it is highly confident about and omit the weaker ones"
         why: Model confidence is poorly calibrated, so this gives no way to detect a citation that does not support its claim.
         misconception: Self-reported confidence is a reliable filter
-      - text: Keep the list of top retrieved files but raise it from three to five
+      - text: "Keep the list of top retrieved files but raise it from three to five so more support is shown"
         why: A longer list makes support more likely by chance yet leaves the claim-to-source link unverified.
         misconception: Listing retrieved documents counts as attribution
-      - text: Move to the largest available model so that its citations are more accurate
+      - text: "Move to the largest available model so that its citations become more accurate than today"
         why: Stronger models cite better on average but still need verification when an audit requires evidence.
         misconception: Model scale removes the need for verification
     explanation: |
@@ -386,16 +386,16 @@ items:
       paragraph from different files. The team also wants to cut embedding and storage cost, yet auditors need
       to know every location where a passage appears. What is the best approach?
     options:
-      - text: Deduplicate at ingest by content hash, keep one canonical chunk, and store all source locations in its metadata
+      - text: "Hash-deduplicate at ingest, keeping every source location in the canonical chunk's metadata"
         correct: true
         why: It removes the repeated hits, cuts embedding and storage cost, and keeps the provenance auditors asked for.
-      - text: Apply maximal marginal relevance at query time to diversify the top results
+      - text: "Apply maximal marginal relevance at query time to diversify the top results shown to the model"
         why: It hides duplicates per query but still pays to embed and store every copy and adds work to every search.
         misconception: Query-time diversification is equivalent to cleaning the index
-      - text: Delete the footers and templates from the corpus with a blocklist of known filenames
+      - text: "Delete the footers and templates from the corpus with a blocklist of known filenames and paths"
         why: Filename lists miss renamed copies and lose the provenance the auditors need.
         misconception: Deduplication means removing sources rather than merging records
-      - text: Increase the number of chunks returned from five to twenty so that unique passages also appear
+      - text: "Increase the number of chunks returned from five to twenty so that unique passages also appear"
         why: The duplicates still occupy slots, and the model receives more repeated text for higher cost.
         misconception: A larger result list overcomes duplicate crowding
     explanation: |
@@ -416,16 +416,16 @@ items:
       product line?" from an 8-million-row ERP orders table. A colleague proposes exporting each row as a
       sentence, embedding it, and retrieving the closest rows for each question. What do you recommend?
     options:
-      - text: Give the assistant a read-only query tool over a governed view of the orders data and let the database do the aggregation
+      - text: "Give the assistant a read-only query tool over a governed view and let SQL compute the totals exactly"
         correct: true
         why: Totals and group-bys are exact in SQL, always current, and auditable from the query that produced them.
-      - text: Embed the rows as proposed but retrieve 200 rows per question so the totals can be summed
+      - text: "Embed the rows as proposed but retrieve 200 rows for each question so that the model can sum them"
         why: Top-k similarity returns rows that resemble the question, not all rows in scope, so sums are incomplete and unverifiable.
         misconception: Enough retrieved rows lets the model aggregate accurately
-      - text: Load the whole export into a long-context model as a CSV
+      - text: "Load the whole export into a long-context model as a CSV and ask it to total the figures"
         why: Eight million rows will not fit, and even a subset invites arithmetic errors that a database would not make.
         misconception: Large context windows replace analytical engines
-      - text: Fine-tune a model on the order history so it memorises the figures
+      - text: "Fine-tune a model on the order history so it memorises the figures and answers from memory"
         why: Memorised numbers go stale at the next order and cannot be traced back to source rows.
         misconception: Fine-tuning is a way to store facts
     explanation: |
@@ -447,10 +447,10 @@ items:
       from far-apart sections. Uploads differ every time, and the provider's model supports 1 million tokens and
       prompt caching. Which design is the best fit?
     options:
-      - text: Put the full document in the context of each session and use prompt caching so follow-up questions reuse it
+      - text: "Keep the full document in context and use prompt caching so follow-up questions reuse it"
         correct: true
         why: No indexing step is needed, cross-references stay intact, and cached input makes repeated questions much cheaper.
-      - text: Chunk and index each upload, then answer every question from the top 5 retrieved chunks
+      - text: "Chunk and index each upload on arrival, then answer every question from the top 5 retrieved chunks"
         why: Questions needing several far-apart clauses are the weak spot of top-k retrieval, and per-upload indexing adds delay.
         misconception: RAG is the default for any question over documents
       - text: Replace the document with a 3,000-token summary and ask all questions against that
@@ -481,13 +481,13 @@ items:
       - text: Index the policies and retrieve relevant sections at query time, citing them in the answer
         correct: true
         why: A re-index picks up monthly changes quickly, and retrieved sections give a concrete thing to cite.
-      - text: Specify the template with instructions and examples in the prompt, and consider fine-tuning only if evals show it falls short
+      - text: "Put the template in the prompt with examples; consider fine-tuning only if evals show a gap"
         correct: true
         why: Format and tone are behaviours that prompting usually handles, and fine-tuning adds cost and retraining only if needed.
       - text: Fine-tune on the policy documents each month so the knowledge sits in the model weights
         why: Retraining monthly is slow and costly, and the weights cannot point to the section that supports an answer.
         misconception: Fine-tuning is the right way to teach a model changing facts
-      - text: Paste the entire policy corpus into the system prompt for every request
+      - text: "Paste the entire policy corpus into the system prompt of every request to avoid building any index"
         why: Two million tokens exceed many context windows and make every call slow and expensive for a few relevant sections.
         misconception: Long context makes retrieval unnecessary at any corpus size
       - text: Fine-tune the model to recall section numbers so that it can cite without any retrieval
@@ -512,16 +512,16 @@ items:
       often wrong, and the Jira admin points out that visibility differs per project. What is the best
       architecture for the ticket lookup?
     options:
-      - text: Fetch tickets by id through a live Jira API tool that runs with the caller's own permissions, and keep the index for the guides
+      - text: "Look up tickets by id through a live Jira tool that runs under the caller's own permissions"
         correct: true
         why: An exact-id question needs the current record and the caller's own visibility, which a live call provides and an index cannot.
-      - text: Re-index tickets every five minutes to keep the vectors fresh
+      - text: "Re-index tickets every five minutes so the vectors stay close to the live Jira state"
         why: The status is still up to five minutes old, the ACL problem remains, and the extra indexing load buys little for an exact-id lookup.
         misconception: Frequent re-indexing makes an index a real-time source
-      - text: Stream Jira webhook events into the vector store so each change updates its chunk
+      - text: "Stream Jira webhook events into the vector store so that each change updates its chunk right away"
         why: This narrows staleness but adds an ingestion pipeline, and permissions still have to be mirrored for exact lookups that one API call handles.
         misconception: Event-driven indexing is the right path for every live record
-      - text: Include the ticket status as chunk metadata and tell the model to trust the newest chunk
+      - text: "Include ticket status as chunk metadata and tell the model to trust the newest chunk it sees"
         why: Metadata is only as fresh as the last index run, so the model would still report a stale status.
         misconception: Metadata in an index stays current without a sync
     explanation: |
@@ -543,10 +543,10 @@ items:
       database, and a CRM. A single retrieval pass over a combined index returns plausible but incomplete answers.
       What is the best architectural change?
     options:
-      - text: Let the model plan the lookup in steps, calling search, SQL and CRM tools and feeding each result into the next, with a step limit
+      - text: "Let the model chain search, SQL and CRM tool calls step by step, bounded by a step limit"
         correct: true
         why: The question is multi-hop and each hop needs a different source, so iterative tool use fits where one pass cannot.
-      - text: Index the CRM, tickets and wiki into one vector store and raise top_k to 50
+      - text: "Index the CRM, tickets and wiki into one vector store and raise top_k to 50 for each query"
         why: Joins across customers, tickets and owners cannot be expressed as similarity search, however many hits come back.
         misconception: A large enough retrieval set substitutes for joining data
       - text: Build a nightly job that joins all three sources into pre-written summaries for every incident
@@ -618,16 +618,16 @@ items:
 
       What is the right fix?
     options:
-      - text: Move the status test into the join as `AND t.status = 'open'` and drop the WHERE clause
+      - text: "Move the status test into the join as `AND t.status = 'open'`, dropping the WHERE"
         correct: true
         why: The filter then restricts which tickets match, while customers with no matching ticket are kept with a count of 0.
-      - text: Change the WHERE clause to `t.status = 'open' OR t.status IS NULL`
+      - text: "Change the WHERE clause to `t.status = 'open' OR t.status IS NULL` so unmatched rows pass"
         why: Customers that have only closed tickets still fail both tests and vanish, so the report remains incomplete.
         misconception: Allowing NULL in the WHERE clause restores unmatched rows
-      - text: Swap COUNT(t.id) for COUNT(*) so rows with no tickets are counted
+      - text: "Swap COUNT(t.id) for COUNT(*) so that customers without tickets are still counted"
         why: The WHERE clause has already discarded those rows; COUNT(*) would also count a no-match row as 1 after any fix.
         misconception: The aggregate function decides which rows survive
-      - text: Replace LEFT JOIN with RIGHT JOIN so that all customers are preserved
+      - text: "Replace LEFT JOIN with RIGHT JOIN so that all customers are preserved by the join"
         why: The same WHERE predicate on tickets still removes rows without an open ticket, whichever side is preserved.
         misconception: Join direction determines whether a later filter keeps unmatched rows
     explanation: |
@@ -649,7 +649,7 @@ items:
       original developers gone. Your first deliverable needs to know which policies are active. What is the best
       first step?
     options:
-      - text: Profile the columns (distinct values with counts, null rates, min and max) and check hypotheses against policies the business can confirm
+      - text: "Profile the columns and check each hypothesis against policies the business can confirm"
         correct: true
         why: Value distributions plus known records quickly show what a code means, and the checks are cheap, read-only and verifiable.
       - text: Infer each column's meaning from its name and build the active filter on the likeliest reading
@@ -761,16 +761,16 @@ items:
 
       A ticket can carry both tags. Which fix gives each ticket's cost counted exactly once?
     options:
-      - text: Filter with `WHERE EXISTS (SELECT 1 FROM ticket_tags g WHERE g.ticket_id = t.id AND g.tag IN ('billing','refund'))` and drop the join
+      - text: "Test tag membership with `EXISTS` on `ticket_tags` instead of joining the two tables"
         correct: true
         why: A semi-join tests membership without multiplying rows, so each ticket contributes once.
-      - text: Use `SUM(DISTINCT t.cost_usd)` to remove repeated values
+      - text: "Use `SUM(DISTINCT t.cost_usd)` so that repeated cost values are removed from the total"
         why: DISTINCT works on values, so two different tickets with the same cost would collapse into one.
         misconception: DISTINCT inside an aggregate deduplicates entities
-      - text: Change the JOIN to a LEFT JOIN so that each ticket keeps one row
+      - text: "Change the JOIN to a LEFT JOIN so that each ticket keeps just one row in the result"
         why: A LEFT JOIN still returns one row per matching tag, so a ticket with two tags still appears twice.
         misconception: The join type controls row multiplication
-      - text: Add `g.tag` to the GROUP BY so that each tag gets its own total
+      - text: "Add `g.tag` to the GROUP BY so that each tag gets its own total per project"
         why: A ticket with both tags is still counted once per tag, and the project totals are now split across tag rows.
         misconception: Grouping by the duplicated column resolves the double counting
     explanation: |
@@ -790,16 +790,16 @@ items:
       its live application. Analysts run group-by queries over two years of history, and the dashboards must
       respond in under a second; each heavy query now causes latency spikes in the product. What is the best direction?
     options:
-      - text: Replicate the log data to a columnar analytical store and point dashboards there
+      - text: "Replicate the data to a columnar analytical store and point the dashboards there"
         correct: true
         why: Columnar engines aggregate large histories quickly, and isolating the workload removes the contention with the product.
-      - text: Add indexes on every column the dashboards group by
+      - text: "Add indexes on every column the dashboards group by to speed up the aggregations"
         why: Wide scans and aggregations still touch most rows, while each added index slows the product's writes.
         misconception: Indexes make analytical aggregations cheap
-      - text: Move the heavy queries to run overnight on the same database
+      - text: "Move the heavy queries to run overnight on the same database instead of during the day"
         why: Dashboards need fresh sub-second answers during the day, and the nightly window shrinks as the data grows.
         misconception: Scheduling alone resolves workload contention
-      - text: Move to a bigger instance class for the primary database
+      - text: "Move to a bigger instance class for the primary database to absorb the analytical load"
         why: It buys headroom for a while, but analytical scans and transactional traffic still compete for the same resources.
         misconception: Scaling up removes the need to separate workloads
     explanation: |
@@ -821,16 +821,16 @@ items:
       one supplier format. They cannot recover the original files from the curated tables. Which design would
       have made the repair straightforward?
     options:
-      - text: Land the unmodified source files in an immutable raw layer, so the cleaned and curated layers can be rebuilt from it
+      - text: "Land the unmodified files in an immutable raw layer and rebuild later layers from it"
         correct: true
         why: With raw data retained, the parsing fix is applied once and the downstream tables are regenerated.
-      - text: Keep an audit log of every transformation step that the pipeline applied
+      - text: "Keep an audit log recording every transformation step the pipeline applied to each file"
         why: A log records what was done but cannot invert lossy parsing to recover the original values.
         misconception: Recording transformations is equivalent to keeping the inputs
-      - text: Snapshot the curated tables weekly and restore the last good snapshot
+      - text: "Snapshot the curated tables weekly and restore the last good snapshot when a bug appears"
         why: Every snapshot contains the same mangled dates; none of them hold the original values.
         misconception: Backups of derived data protect against logic errors
-      - text: Apply stricter validation rules to curated rows so errors are rejected on load
+      - text: "Apply stricter validation rules to curated rows so that errors are rejected on load"
         why: Mangled dates are still valid dates, so the rules would not flag them, and unrecoverable bad rows would be lost.
         misconception: Validation can catch every semantic parsing error
     explanation: |
@@ -851,19 +851,19 @@ items:
       the RAG metadata store and the sales dashboards kept running but loaded NULL customer ids for a week.
       Which actions reduce the chance of this class of failure?
     options:
-      - text: Define a data contract for the feed (schema, types, nullability) and have the producer run compatibility checks before releasing changes
+      - text: "Define a data contract for the feed and have the producer run compatibility checks before release"
         correct: true
         why: The producer learns about a breaking change before it ships, and the consumers get a stable, versioned interface.
-      - text: Validate incoming batches against the expected schema and quarantine and alert on failures instead of loading
+      - text: "Validate each incoming batch against the expected schema; quarantine and alert on failure"
         correct: true
         why: Detecting the mismatch at load time turns a silent week of bad data into a same-day alert.
       - text: Make the pipeline tolerant by loading whatever columns exist and defaulting missing ones to NULL
         why: This is the behaviour that caused the failure, since missing data became silent NULLs.
         misconception: A forgiving pipeline is a more reliable one
-      - text: Map columns by position, not by name, so renames no longer matter
+      - text: "Map columns by position instead of by name so that renames no longer matter to the load"
         why: Positional mapping breaks silently on any reorder or inserted column and makes the pipeline harder to debug.
         misconception: Removing dependence on names removes dependence on schema
-      - text: Have an LLM infer the column mapping on each run when names change
+      - text: "Have an LLM infer the column mapping on each run whenever the names change upstream"
         why: A nondeterministic mapping on a production feed can silently attach the wrong field, and its choices are hard to audit.
         misconception: An LLM can safely absorb schema drift in a data pipeline
     explanation: |
