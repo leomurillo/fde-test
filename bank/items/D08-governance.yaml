@@ -1,0 +1,1139 @@
+domain: D8
+items:
+  # ---------------------------------------------------------------- gov.identity
+  - id: D8-001
+    version: 1
+    type: single
+    subtopic: gov.identity
+    tags: [gov.guardrails]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A bank's internal HR assistant answers employee questions by calling the HRIS API through one service
+      account that can read every employee record. A penetration test shows an ordinary employee got a
+      colleague's salary simply by asking the assistant. What is the most robust fix?
+    options:
+      - text: "Call the HRIS with the signed-in employee's own delegated token so the HRIS enforces what they may see"
+        correct: true
+        why: Authorization is decided by the system of record using the real user's entitlements, so no prompt trick can widen access.
+      - text: "Add a rule to the system prompt telling the assistant to refuse questions about other employees' compensation or personnel files"
+        why: The model is being asked to enforce authorization; a rephrased or injected request can still get the data through the over-privileged account.
+        misconception: Prompt instructions are an access-control mechanism
+      - text: "Narrow the shared service account so that it can no longer read compensation fields for anyone at all"
+        why: Managers and HR legitimately need those fields; a single shared identity cannot express per-user entitlements, so you trade a leak for a broken feature.
+        misconception: Least privilege on a shared service identity solves per-user authorization
+      - text: "Run an output filter that redacts currency amounts and personal names from each response before display"
+        why: Redaction is brittle (salary in words, bands, derived values) and still blocks legitimate answers; the account still reads everything.
+        misconception: Output filtering is a substitute for access control
+      - text: "Rotate the service account's credentials every 24 hours and alert on unusual read volume from the assistant"
+        why: This improves credential hygiene and detection, but the leak happens through valid, authorized-looking calls.
+        misconception: Credential rotation addresses over-broad authorization
+    explanation: |
+      An agent acting for a user should carry that user's identity (delegation / on-behalf-of) to every system of
+      record so existing entitlements apply. A shared service identity with broad read access turns the model into a
+      confused deputy: whatever the model can be talked into asking, the account will answer.
+    refs: [https://genai.owasp.org/llmrisk/llm062025-excessive-agency/]
+
+  - id: D8-002
+    version: 1
+    type: single
+    subtopic: gov.identity
+    difficulty: 1
+    level: apply
+    time_s: 60
+    stem: |
+      You are building a browser-based assistant for a client's support staff. Staff sign in with the company
+      SSO, and the assistant must create and update tickets in the client's ticketing SaaS as each signed-in
+      person. Which OAuth 2.0 approach fits?
+    options:
+      - text: Authorization code flow with PKCE, requesting only the ticket read and write scopes
+        correct: true
+        why: The user consents in their browser and the app receives a token that acts as that user with limited scopes.
+      - text: Client credentials grant with an app-level token limited to ticket scopes
+        why: Tickets would be created as the application and would ignore each staff member's own access rights, even though the scopes are narrow.
+        misconception: A narrowly scoped app token is equivalent to acting on behalf of a user
+      - text: Resource owner password credentials, because the app already renders its own login form
+        why: It hands user passwords to the application, bypasses SSO and MFA, and is deprecated in current OAuth guidance.
+        misconception: The simplest flow is acceptable when we control the front end
+      - text: Device authorization grant, since the assistant is not a person at a keyboard
+        why: Device flow is for input-constrained devices; here a full browser is available, so the standard redirect flow applies.
+        misconception: An agent is a headless device and needs the headless flow
+    explanation: |
+      When an agent acts for a signed-in user, use a user-delegated flow: authorization code with PKCE for
+      browser or native apps. Client credentials is for machine-to-machine access with no user, and password
+      grants are discouraged because they expose credentials to the client.
+    refs: [https://datatracker.ietf.org/doc/html/rfc9700]
+
+  - id: D8-003
+    version: 1
+    type: single
+    subtopic: gov.identity
+    tags: [gov.audit-compliance]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A weekly agent job runs under a service identity with read access to every project in a client's issue
+      tracker and posts a summary to a company-wide channel. Legal finds that the digest included ticket titles
+      from a restricted HR-investigations project. What is the correct remedy?
+    options:
+      - text: "Bound the digest to what its audience may see, such as building it from projects the whole channel can open"
+        correct: true
+        why: The leak comes from a mismatch between the identity that reads and the audience that sees; the output must be bounded by the audience's permissions.
+      - text: "Run the job as the person who scheduled it, so that the digest inherits that person's own project access rights"
+        why: That person probably can still see the restricted project, and the digest still goes to a wider audience than they are.
+        misconception: Switching to a user identity fixes audience exposure
+      - text: "Require a project admin to review and approve each digest before it is posted to the company-wide channel"
+        why: It puts a human in the loop for a structural problem, depends on the reviewer spotting a title among hundreds, and does not scale.
+        misconception: Human review is the right control for a data-scoping flaw
+      - text: "Add a keyword filter for terms like HR and investigation to the retrieved ticket titles before summarizing them"
+        why: Titles rarely contain the obvious words, and the filter must guess sensitivity instead of using the tracker's own permissions.
+        misconception: Pattern matching can stand in for authorization
+    explanation: |
+      A service identity is appropriate when no user is present, but its broad access means the agent can read
+      more than any reader may see. Bound the output by the audience: restrict inputs to data every recipient is
+      entitled to, or generate per-audience outputs under that audience's permissions.
+
+  - id: D8-004
+    version: 1
+    type: single
+    subtopic: gov.identity
+    tags: [deploy.models-network]
+    difficulty: 1
+    level: apply
+    time_s: 60
+    stem: |
+      A containerized agent service in a client's Kubernetes cluster must read documents from the cloud
+      provider's object storage. A teammate suggests downloading a service-account key file and mounting it as
+      a Kubernetes secret. What is the better approach?
+    options:
+      - text: Federate the pod's Kubernetes service account to a cloud identity so it receives short-lived tokens
+        correct: true
+        why: No long-lived key exists to leak, and credentials are minted per workload and expire automatically.
+      - text: Keep the key file in the cloud secrets manager and rotate it every 90 days
+        why: Rotation shortens exposure but the key is still a long-lived bearer secret that works from anywhere if copied.
+        misconception: Rotating a static key is as good as not having one
+      - text: Encrypt the Kubernetes secret with a KMS key and restrict who can read it with RBAC
+        why: Anyone or anything that can read the secret, including a compromised pod, still obtains a reusable key.
+        misconception: Encryption at rest protects a credential that the workload must read in clear text
+      - text: Inject the key as an environment variable from the CI pipeline so it never sits in the cluster secret store
+        why: It only moves where the secret lives; the key is still long-lived and now visible in process environments and CI logs.
+        misconception: Changing where a static secret is stored removes the risk
+    explanation: |
+      Workload identity (federation) replaces stored keys with short-lived credentials issued to the running
+      workload. The mechanism exists on every major cloud and in Kubernetes; the principle is to have no
+      long-lived secret to protect or leak.
+    refs: [https://kubernetes.io/docs/concepts/security/service-accounts/]
+
+  - id: D8-005
+    version: 1
+    type: single
+    subtopic: gov.identity
+    tags: [rag.architecture]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      A law firm's research agent may read a matter's documents only if the user is on the matter team, no
+      ethical wall excludes them, and their clearance covers the document's sensitivity label. About 4,000
+      matters are active and team membership changes daily. Which authorization approach fits best?
+    options:
+      - text: Attribute-based policy evaluated per request on membership, wall status, clearance and label
+        correct: true
+        why: The rule combines user and resource attributes that change often, which a policy engine evaluates at request time without new roles.
+      - text: Role-based access with one role per matter, synced from the matter-management system every hour
+        why: It produces thousands of roles, and an hourly sync leaves a window where a newly walled-off lawyer keeps access.
+        misconception: RBAC scales by creating a role for each resource
+      - text: A few broad roles such as associate and partner, with the agent prompted to apply the matter rules
+        why: The rules would be enforced by the model rather than the system, so a persuasive prompt could bypass them.
+        misconception: Coarse roles plus model judgement are sufficient
+      - text: Per-document access lists copied into the vector index at ingestion and refreshed weekly
+        why: Copied lists go stale, so removals take effect late, and they cannot express clearance-versus-label logic well.
+        misconception: Mirroring ACLs into the index at ingest time keeps them correct
+    explanation: |
+      RBAC is simple and auditable when permissions follow stable job functions. When access depends on
+      relationships and attributes that change often, such as matter membership, walls and sensitivity, ABAC or
+      relationship-based policies avoid role explosion and stale copies. Evaluate at query time, in the data layer.
+    refs: [https://csrc.nist.gov/pubs/sp/800/162/upd2/final]
+
+  - id: D8-006
+    version: 1
+    type: single
+    subtopic: gov.identity
+    tags: [agents.tools-mcp]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      An internal MCP server receives the user's OAuth access token from the agent host and forwards it
+      unchanged to three downstream APIs. A security review flags this. The token's signature is valid and each
+      API checks it. What should change?
+    options:
+      - text: "Validate that tokens were issued for the MCP server, and obtain narrower downstream tokens via token exchange"
+        correct: true
+        why: Audience validation stops the server being used as a confused deputy, and exchanged tokens carry only the scopes each API needs.
+      - text: "Keep forwarding the user's token, because each downstream API already validates its signature and expiry"
+        why: A valid signature only proves who issued the token; the token was meant for the MCP server, so downstream acceptance lets any token leak be replayed across services.
+        misconception: A valid signature means the token is appropriate for this recipient
+      - text: "Protect each hop between the agent host, MCP server and APIs with mutual TLS client certificates"
+        why: Mutual TLS secures the channel but does not fix a token being accepted by services it was never issued for.
+        misconception: Transport security fixes token misuse
+      - text: "Give the MCP server a single service credential for its downstream calls instead of forwarding user tokens"
+        why: Downstream APIs would no longer see the user, so per-user entitlements and audit attribution are lost.
+        misconception: Removing passthrough by collapsing to a shared identity is least-privilege
+    explanation: |
+      Servers must only accept tokens whose audience is themselves, and must not pass a received token to other
+      services (token passthrough). To call downstream APIs on the user's behalf they exchange the token (for
+      example with OAuth token exchange) for a new one scoped to that audience, preserving the user as subject.
+    refs: [https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization, https://datatracker.ietf.org/doc/html/rfc8693]
+
+  - id: D8-007
+    version: 1
+    type: multi
+    subtopic: gov.identity
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      An agent integrates with a client's CRM through OAuth to look up accounts and log call notes. Which
+      practices fit least privilege for this integration?
+    options:
+      - text: Request only the read-account and create-note scopes that the exposed tools actually need
+        correct: true
+        why: Scopes bound what a leaked or manipulated token can do to exactly what the tools do.
+      - text: Request any extra write scope at the moment a feature first needs it rather than at install time
+        correct: true
+        why: Incremental consent keeps standing privilege low until a capability is really used.
+      - text: Use short-lived access tokens, with refresh tokens kept server-side outside the model's reach
+        correct: true
+        why: A stolen access token expires quickly and the long-lived part never enters prompts, logs or tool results.
+      - text: Request the CRM's full-access scope once, so adding features later does not trigger new consent prompts
+        why: It trades a one-time convenience for a token that can do anything if it leaks or the agent is manipulated.
+        misconception: Avoiding consent friction outweighs scope minimization
+      - text: Rely on the agent's tool allowlist alone, since the agent will never issue calls outside it
+        why: The allowlist is a second control, not a replacement; a token with broad scopes remains usable by anything that obtains it.
+        misconception: Client-side restrictions make server-side scopes unnecessary
+      - text: Issue a non-expiring integration token so scheduled jobs never fail when a refresh breaks
+        why: A permanent credential removes the main containment on theft and survives staff changes.
+        misconception: Availability of scheduled jobs justifies a credential that never expires
+    explanation: |
+      Least privilege for agent integrations means minimal scopes, requested late, with credentials that expire
+      and stay out of the model's context. The tool allowlist and the token scopes are independent layers.
+    refs: [https://datatracker.ietf.org/doc/html/rfc9700]
+
+  - id: D8-008
+    version: 1
+    type: single
+    subtopic: gov.identity
+    tags: [gov.guardrails, agents.tools-mcp]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      A multi-client agent platform's draft design lets the model call `http_request(url, headers, body)`, and
+      places each client's API key in the system prompt so the model can authenticate. The security lead
+      objects. What should replace the design?
+    options:
+      - text: "A tool taking a connection ID, with the executor attaching the stored credential on the server side"
+        correct: true
+        why: The model never sees the secret, so it cannot leak it through output, logs or an injected instruction.
+      - text: "Keep the keys in the prompt, but issue each client a read-only key scoped to the minimum endpoints"
+        why: A narrower key limits damage, but prompt injection or a verbose response can still disclose it, and it appears in logs and traces.
+        misconception: A reduced-scope secret is safe to expose to the model
+      - text: "Encrypt the keys inside the prompt and give the model a decrypt tool to call when it needs one"
+        why: The model can still call the tool and see the plaintext, so the exposure is only delayed by one step.
+        misconception: Indirection through a tool hides a secret from the model
+      - text: "Mask the keys in logs and traces so that operators and support staff cannot read the plaintext values"
+        why: This protects log readers but the model still receives the key and can repeat it in its output.
+        misconception: Redacting secrets in logs is the same as isolating them from the model
+    explanation: |
+      Credentials belong in the tool-execution layer, resolved from a secrets manager by identifier at call time.
+      Anything placed in the context window can be echoed, exfiltrated by injection, or captured in traces.
+
+  - id: D8-009
+    version: 1
+    type: multi
+    subtopic: gov.identity
+    tags: [gov.approvals]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      An agent acts for logged-in users against a finance API that has its own entitlements. Which controls help
+      ensure the agent cannot do more than the user could?
+    options:
+      - text: Calls carry the user's delegated token so the finance API decides every request
+        correct: true
+        why: Enforcement stays in the system that owns the entitlements.
+      - text: The tool list given to the model is filtered to what the user's role may use
+        correct: true
+        why: Effective capability becomes the intersection of what the agent offers and what the user may do, so disallowed tools are never even proposed.
+      - text: Permission changes take effect on the next call instead of a snapshot taken at login
+        correct: true
+        why: A revoked role stops working immediately instead of lingering for a cached session.
+      - text: A service identity holding the union of all users' rights, with a prompt to stay within the current user's
+        why: The enforcement rests on model compliance; any manipulation uses the full union of rights.
+        misconception: A well-worded prompt can bound a privileged identity
+      - text: User permissions are cached at login for 24 hours to keep latency low
+        why: Revocations and role changes are ignored for up to a day, during which the agent exceeds the user's current rights.
+        misconception: Performance justifies stale authorization data
+      - text: A daily cap on the number of finance actions each agent may perform
+        why: Rate limits reduce volume but say nothing about which actions are permitted.
+        misconception: Throttling is a form of permission control
+    explanation: |
+      The agent's authority should be derived from, and never exceed, the requesting user's current authority.
+      Combine delegated tokens, per-user tool filtering and live permission checks; keep rate limits as a separate
+      containment layer.
+
+  # ---------------------------------------------------------------- gov.guardrails
+  - id: D8-010
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [agents.tools-mcp]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      An insurance client's email-triage agent has tools to read mail, search the CRM and send mail. A red team
+      sends a message that says to forward the last ten customer invoices to an outside address, and the agent
+      complies. Which change addresses the root cause?
+    options:
+      - text: "Split duties so the step reading untrusted mail has no send tool, or can send to approved recipients"
+        correct: true
+        why: Even a fully hijacked reader cannot exfiltrate, because the dangerous capability is not available alongside untrusted input.
+      - text: "Strengthen the system prompt to state clearly that instructions found inside email bodies must be ignored"
+        why: This lowers the success rate but is probabilistic; the model still cannot reliably tell data from instructions.
+        misconception: The model can be instructed into reliably separating data from commands
+      - text: "Put a prompt-injection classifier in front of the model and block the emails it flags as suspicious"
+        why: Classifiers miss novel phrasing and encodings, so a single bypass still leads to a send; useful as one layer but not a boundary.
+        misconception: A detection model is a sufficient security boundary
+      - text: "Wrap each email body in delimiter tags and tell the model that tagged content is data to read, not obey"
+        why: Delimiters help the model but an attacker can imitate or close them, and nothing enforces the distinction.
+        misconception: Formatting conventions create a trust boundary
+    explanation: |
+      Indirect prompt injection cannot be fully solved at the prompt layer. Treat retrieved and tool content as
+      untrusted, and limit what a compromised model run can do: separate privileges, allowlist recipients, and
+      gate outbound actions. Filters and prompt hardening are useful additional layers, not the boundary.
+    refs: [https://genai.owasp.org/llmrisk/llm01-prompt-injection/]
+
+  - id: D8-011
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [llm.structured-tools, agents.tools-mcp]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A retailer's support agent has a tool `issue_refund(order_id, amount)`. The model fills `amount` from the
+      conversation, and a customer talks it into refunding more than the order total. Where should the limit be enforced?
+    options:
+      - text: "In the refund service, checking amount against the order record, daily caps and caller authority"
+        correct: true
+        why: The check runs deterministically against the system of record, regardless of what the model generates.
+      - text: "In the tool's JSON schema, declaring `amount` as a positive number with two decimal places"
+        why: A type check cannot know the order total or the daily cap; the invalid value is still a valid number.
+        misconception: Schema validation is business-rule validation
+      - text: "In the tool description, stating clearly that refund amounts above the order total are not permitted"
+        why: A description is guidance the model may ignore or be talked out of; it enforces nothing.
+        misconception: Telling the model the rule is the same as enforcing it
+      - text: "In a second model call that reviews each proposed refund against the conversation before the tool runs"
+        why: A reviewer model reads the same conversation and can be persuaded the same way, and it adds cost and latency.
+        misconception: Another LLM is an adequate hard control
+    explanation: |
+      Validate parameters before any side effect, in code that has access to authoritative data and the caller's
+      identity. Schemas ensure well-formed arguments; policy checks ensure permitted ones. Treat model output like
+      untrusted user input.
+    refs: [https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/]
+
+  - id: D8-012
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [gov.audit-compliance]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A hospital group wants an assistant to summarise clinical notes using an external model API. Its policy
+      forbids patient identifiers from reaching any third-party model endpoint. Where should PII redaction happen?
+    options:
+      - text: "Before the call, swapping identifiers for placeholders and restoring them in the trusted layer after"
+        correct: true
+        why: Identifiers never leave the boundary, yet the final answer shown to an authorized clinician can still be complete.
+      - text: "On the model's response, scanning each summary for patient names and record numbers before showing it"
+        why: By then the identifiers have already been sent to the provider, which is exactly what policy forbids.
+        misconception: Output filtering protects data that was already transmitted
+      - text: "In the prompt, instructing the model not to reproduce any patient identifiers it sees in the notes"
+        why: The model still receives them; an instruction does not change what the provider processes or logs.
+        misconception: Telling the model not to repeat data is data minimization
+      - text: "In transit, by encrypting the request body end to end with a key the hospital group controls"
+        why: The provider must decrypt the content to run inference, so it sees the identifiers in plaintext.
+        misconception: Encryption in transit hides content from the party processing it
+    explanation: |
+      Data minimization works at the boundary where data leaves your control. Replace identifiers before sending,
+      keep the mapping in your trusted layer, and re-insert after the response. Regex-only detection misses
+      identifiers in free text, so pair it with a tested detector and measure its recall.
+
+  - id: D8-013
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [deploy.models-network]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A data-analysis agent writes and runs Python against files that business users upload. The team's draft
+      runs the code inside the application pod using a restricted Unix user. What should the design use instead?
+    options:
+      - text: "An ephemeral sandbox with no ambient credentials, read-only inputs and default-deny network access"
+        correct: true
+        why: Compromised or malicious generated code cannot reach secrets, the cluster or the internet, and the sandbox is discarded after the run.
+      - text: "Static scanning that rejects generated code importing risky modules such as `os` and `subprocess`"
+        why: Denylists are bypassed through aliases, dynamic imports, and libraries that shell out; a scanner is a helpful filter, not isolation.
+        misconception: Blocking known-dangerous calls makes untrusted code safe
+      - text: "A human reviewer who approves each generated snippet before it is allowed to execute in the pod"
+        why: It does not scale, reviewers miss obfuscated behavior, and it adds a delay that defeats interactive analysis.
+        misconception: Manual review of generated code is a practical isolation control
+      - text: "The same pod, with the generated code run under CPU and memory limits and a short execution timeout"
+        why: Resource limits stop runaway usage, not credential theft, lateral movement or data exfiltration.
+        misconception: Resource limits provide security isolation
+    explanation: |
+      Model-generated code is untrusted code. Run it in an isolation boundary (container or microVM with a
+      locked-down profile) that has no credentials, minimal filesystem access, no outbound network by default,
+      and strict resource limits, and destroy it after use.
+    refs: [https://genai.owasp.org/llmrisk/llm062025-excessive-agency/]
+
+  - id: D8-014
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [agents.tools-mcp]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A client's platform team lets business units attach their own MCP servers to a shared agent. A security
+      engineer shows that one server's tool description includes hidden text telling the agent to include a
+      user's session data in calls to other tools. Which governance control best addresses this class of risk?
+    options:
+      - text: "An approved-server allowlist with pinned tool definitions, re-reviewed when a description changes"
+        correct: true
+        why: Tool metadata is part of the prompt, so it must be vetted and change-controlled like code before a server is trusted.
+      - text: "Requiring each MCP server to authenticate to the platform with OAuth before the agent will connect"
+        why: Authentication proves who the server is, not that its tool descriptions or results are benign.
+        misconception: An authenticated server can be trusted with the model's context
+      - text: "Namespacing tool names by server so that tools from different servers cannot collide or shadow each other"
+        why: Namespacing prevents name collisions but does nothing about malicious instructions inside a description.
+        misconception: Naming hygiene counters tool-description poisoning
+      - text: "Sanitizing tool results before they reach the model, while treating tool descriptions as trusted configuration"
+        why: Descriptions are placed in the model's context just like results, so trusting them leaves the attack path open.
+        misconception: Only runtime outputs are untrusted, not tool metadata
+    explanation: |
+      Tool names, descriptions and schemas are loaded into the model's context and can carry instructions. Vet and
+      allowlist the servers you connect, pin and hash the definitions you reviewed, and re-review changes.
+      Authentication, namespacing and output sanitization are complementary but do not cover descriptions.
+    refs: [https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices]
+
+  - id: D8-015
+    version: 1
+    type: multi
+    subtopic: gov.guardrails
+    tags: [gov.approvals]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      A research agent browses the open web and can send email on the user's behalf. Which measures reduce the
+      damage of an indirect prompt injection planted on a web page?
+    options:
+      - text: Require confirmation before mail goes to any recipient the user has not previously written to
+        correct: true
+        why: The usual exfiltration step is a message to a new address, so a human check blocks that path.
+      - text: Block rendering of model-supplied image and link URLs that point to non-allowlisted domains
+        correct: true
+        why: Auto-fetched images and links are a silent channel for leaking context in the URL.
+      - text: Run browsing in a low-privilege session that holds no mail or user-data tools
+        correct: true
+        why: A hijacked browsing step then has nothing sensitive to read or send.
+      - text: Add to the system prompt that tool results are untrusted and instructions in them should be ignored
+        why: Worth including, but the model may still follow a well-crafted injection, so it cannot be the primary mitigation.
+        misconception: A system prompt warning stops injection
+      - text: Switch to the newest model version because it has been trained to resist injection
+        why: Training reduces success rates but does not eliminate injection; architecture must still limit impact.
+        misconception: Model upgrades remove the need for architectural controls
+      - text: Log each tool call so that attacks can be reconstructed after the fact
+        why: Logging supports detection and forensics, but the data has already left by the time the log is read.
+        misconception: Detective controls prevent exfiltration
+    explanation: |
+      Assume some injections succeed and constrain the consequences: remove dangerous capability from the step that
+      handles untrusted content, gate irreversible outbound actions, and close silent exfiltration channels.
+      Prompt warnings, model hardening and logging help but are not boundaries.
+    refs: [https://genai.owasp.org/llmrisk/llm01-prompt-injection/]
+
+  - id: D8-016
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [data.sql, gov.identity]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      To let executives ask analytics questions in plain English, a team gives the agent a `run_sql` tool connected
+      to the production database as the database owner. The team plans to rely on a prompt saying to only write
+      SELECT statements. How should the access be redesigned?
+    options:
+      - text: "A read-only role limited to approved views, with statement timeouts and row limits"
+        correct: true
+        why: The database itself refuses writes and restricts what can be read, whatever SQL the model generates.
+      - text: "Keep the owner role, but reject statements that do not begin with the keyword SELECT"
+        why: String checks miss data-modifying CTEs, functions with side effects and multi-statement input, and the owner can still read everything.
+        misconception: A syntactic filter equals a permissions model
+      - text: "Keep the owner role, and add an LLM reviewer that approves each query before it is executed"
+        why: The reviewer shares the same weaknesses and the account still has full power if it errs.
+        misconception: A second model call is a security control
+      - text: "Point the tool at the nightly backup copy of the database, while keeping the owner role"
+        why: Writes would be harmless to production, but the agent could still read every table, including restricted data.
+        misconception: Isolating from production solves excessive privilege
+    explanation: |
+      Excessive agency is fixed by removing capability, not by instructing the model. Give agent database tools a
+      least-privilege role, constrain the surface (views, schemas), and add resource limits.
+    refs: [https://genai.owasp.org/llmrisk/llm062025-excessive-agency/]
+
+  # ---------------------------------------------------------------- gov.approvals
+  - id: D8-017
+    version: 1
+    type: single
+    subtopic: gov.approvals
+    tags: [adoption.change, comms.stakeholders]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A client's CISO requires human approval for every action an operations agent takes. After a month, approvers
+      are clicking through about 600 requests a day and approving nearly all of them without reading. How should
+      you redesign the policy?
+    options:
+      - text: "Tier by reversibility and blast radius, so that irreversible or wide-impact actions need a human"
+        correct: true
+        why: Scarce attention goes to the actions where a mistake is costly, and low-risk actions are covered by logging and sampled review.
+      - text: "Keep approval on everything, but auto-approve any request that has waited more than four hours"
+        why: It removes the control exactly when the approver is absent and makes silence equal consent.
+        misconception: Timeouts that approve by default keep the process moving safely
+      - text: "Require approval when the action's monetary value exceeds a fixed threshold set by finance"
+        why: A single dimension misses cheap but irreversible actions such as deleting data or emailing customers.
+        misconception: Financial value is a complete measure of risk
+      - text: "Let the agent score each action's risk and request approval above a threshold it computes"
+        why: The model's self-assessment can be wrong or manipulated, and it grades its own homework.
+        misconception: Model self-reported risk is a reliable control input
+    explanation: |
+      Approval fatigue turns a control into theatre. Apply risk-based tiers: reversibility, blast radius (how
+      many records, customers or systems), and external visibility decide whether a human must approve, while
+      lower tiers rely on limits, logging and periodic review.
+    refs: [https://genai.owasp.org/llmrisk/llm062025-excessive-agency/]
+
+  - id: D8-018
+    version: 1
+    type: single
+    subtopic: gov.approvals
+    tags: [deploy.delivery]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A production agent begins sending duplicate outbound emails to customers. Operators need to stop it within
+      seconds, and queued jobs must not resume when pods restart. Which mechanism fits best?
+    options:
+      - text: "A central switch that the tool-execution layer checks before each side effect"
+        correct: true
+        why: It takes effect immediately for in-flight and queued work, without a deploy, and independently of the agent process.
+      - text: "Delete the running pods and let the orchestrator replace them with fresh instances"
+        why: The scheduler restarts them and queued jobs continue; the underlying cause is untouched.
+        misconception: Killing the process is the same as disabling the capability
+      - text: "Roll back the prompt version through the normal CI/CD pipeline and redeploy the service"
+        why: Deployment takes minutes and may not be the cause, and in-flight runs may keep the old behavior.
+        misconception: The release process is the incident control
+      - text: "Tell the agent in the operator chat console to stop sending further emails to customers"
+        why: Instructions go through the same model that is misbehaving and may not reach every concurrent run.
+        misconception: The agent can be commanded to disable itself reliably
+    explanation: |
+      A kill switch must live outside the agent's reasoning loop, be cheap to flip, and be checked at the
+      point of side effects. Pair it with credential revocation for stronger containment and with action rate limits
+      so a runaway loop is bounded even before anyone reacts.
+
+  - id: D8-019
+    version: 1
+    type: single
+    subtopic: gov.approvals
+    tags: [int.resilience]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      An agent will apply a new pricing rule across 12,000 CRM records. Nobody can review each record. Which
+      rollout policy limits the risk best?
+    options:
+      - text: "A dry run producing a diff for sampled human review, then batches under a per-run change cap"
+        correct: true
+        why: Reviewers see the proposed effects without any write, and limits bound how much damage a wrong rule can do.
+      - text: "Per-record approval from the account owner before the agent applies an update to that record"
+        why: This produces thousands of approvals and recreates click-through fatigue on a bulk change.
+        misconception: More human approvals always mean more safety
+      - text: "Run on the full set and rely on the audit log to reverse mistakes if someone notices them later"
+        why: Logs record what happened but do not make writes reversible, and customer-visible effects may already have occurred.
+        misconception: Audit trails substitute for preventive controls
+      - text: "Test on synthetic records in staging, then run the change against production without batch limits"
+        why: Synthetic data rarely reproduces real edge cases, and production still has no limit if the rule is wrong.
+        misconception: A passing staging test removes the need for production limits
+    explanation: |
+      For bulk or hard-to-undo actions, combine dry-run mode (preview the effect), a sampled human review, and
+      rate and batch limits so a mistake is bounded and detectable early.
+
+  - id: D8-020
+    version: 1
+    type: single
+    subtopic: gov.approvals
+    tags: [agents.state, gov.audit-compliance]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      An approval request in a procurement agent shows an LLM-written sentence: "Pay supplier invoice 4471."
+      A reviewer approved it, but the executed payment went to a different bank account than the one on the
+      invoice record. What design flaw is most important to fix?
+    options:
+      - text: "The approval was not bound to the real parameters, which code (not the model) should render"
+        correct: true
+        why: The approver must see the real payee and amount, and the approval must apply only to that payload.
+      - text: "The summary was too brief, so the model should be prompted to write longer, more detailed descriptions"
+        why: Any model-written text can differ from the executed call, so more words do not guarantee fidelity.
+        misconception: Better prose makes the summary trustworthy
+      - text: "One person approved, so a second approver should be required for each payment instruction"
+        why: Two reviewers looking at the same misleading summary approve the same mismatch.
+        misconception: More approvers fix an information problem
+      - text: "Approvals were not logged with the approver's name and a timestamp, so the click cannot be traced"
+        why: A complete log would show who clicked, but would not have prevented the mismatch.
+        misconception: Logging makes an approval valid
+    explanation: |
+      Approval is only meaningful if the human sees what will actually execute and the approval authorizes exactly
+      that. Render the action from the structured tool call, bind approval to a hash of the parameters, make it
+      single-use and expiring, and re-request approval if anything changes between approval and execution.
+    refs: [https://genai.owasp.org/llmrisk/llm062025-excessive-agency/]
+
+  - id: D8-021
+    version: 1
+    type: single
+    subtopic: gov.approvals
+    tags: [gov.identity]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      In a finance team, an agent proposes changing a vendor's bank details after receiving an email. The
+      workflow currently lets the requesting clerk approve the agent's own action from the same screen. Which
+      change best reduces fraud risk?
+    options:
+      - text: "Require a different, authorized person to approve, plus verification through a known contact channel"
+        correct: true
+        why: Separating requester from approver and confirming out-of-band defeats both insider abuse and a spoofed request.
+      - text: "Keep the clerk as approver, but add a mandatory comment box explaining the reason for the change"
+        why: A free-text justification is trivially written by a fraudster and does not add independence.
+        misconception: Documentation substitutes for separation of duties
+      - text: "Let the agent compare the new account to the vendor's history and approve low-risk changes itself"
+        why: A manipulated or mistaken agent would then authorize the exact action the control protects against.
+        misconception: Automated scoring may replace human approval for fraud-prone actions
+      - text: "Add a confirmation dialog with a ten-second delay before the clerk's approval is accepted by the system"
+        why: A delay discourages impulsive clicks but does not add independent review.
+        misconception: Friction equals oversight
+    explanation: |
+      High-impact, fraud-prone actions need segregation of duties: the requester cannot be the approver, and the
+      request is verified through an independent channel. The agent can prepare the change but cannot approve it.
+
+  - id: D8-022
+    version: 1
+    type: multi
+    subtopic: gov.approvals
+    tags: [agents.tools-mcp]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      You are writing the rule that decides whether an agent action needs human approval. Which inputs belong in it?
+    options:
+      - text: Whether the action can be undone cheaply and quickly
+        correct: true
+        why: Reversible actions can be corrected after the fact, so approval has less to protect.
+      - text: How many records, customers or systems one execution can affect
+        correct: true
+        why: Blast radius scales the cost of error, even for individually small changes.
+      - text: Whether the effect is visible outside the organization, such as customer email or a public post
+        correct: true
+        why: External effects cannot be recalled and carry legal and reputational risk.
+      - text: The model's own confidence in its proposed action
+        why: Confidence from the same model that may be wrong or manipulated is not an independent signal.
+        misconception: Self-reported confidence is calibrated risk
+      - text: The read-only hint declared by the tool's server in its metadata
+        why: Tool annotations come from the server and are untrusted unless the server is itself trusted; the platform must classify tools itself.
+        misconception: Tool self-descriptions can be trusted for risk classification
+      - text: Whether approvers have approved most similar requests in the past
+        why: A high past approval rate may reflect fatigue, not safety, and removes oversight where it is most needed.
+        misconception: Historic approval rates indicate low risk
+    explanation: |
+      Tier on properties the platform controls and can verify: reversibility, blast radius, external visibility and
+      data sensitivity. Self-reported signals from the model or a tool server should not lower the tier.
+    refs: [https://modelcontextprotocol.io/specification/2025-06-18/server/tools]
+
+  # ---------------------------------------------------------------- gov.audit-compliance
+  - id: D8-023
+    version: 1
+    type: single
+    subtopic: gov.audit-compliance
+    tags: [obs.tracing]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      After a disputed refund, an auditor asks the client who caused it, on whose authority, and what the agent
+      saw. The system only has debug logs of model prompts and responses, and traces are sampled at 10%. What
+      should the team add?
+    options:
+      - text: "A complete, append-only record per tool call: user, agent run, parameters, result and approval reference"
+        correct: true
+        why: It answers who, what, when and on whose behalf for every action, and cannot be silently edited.
+      - text: "Raise trace sampling to 100% and extend the retention period of the tracing backend by several years"
+        why: Tracing is built for debugging and may omit identity and approval context, and retention follows engineering needs, not evidence requirements.
+        misconception: Observability traces are audit records
+      - text: "Store the full chat transcript of each user session for several years in the conversation database"
+        why: Transcripts show the conversation but not what was actually executed, and they retain personal data for no purpose.
+        misconception: Conversation text is evidence of actions
+      - text: "Turn on verbose debug logging for the refund service and ship those logs to the central log store"
+        why: Debug logs are mutable operational output, lack the user and approval link, and are often rotated away quickly.
+        misconception: More verbose application logs are sufficient evidence
+    explanation: |
+      Audit trails are a distinct artifact from traces: complete (not sampled), structured, attributable
+      (subject and actor), tamper-evident and retained according to policy. They record decisions and side effects,
+      including approvals, not merely text exchanged with the model.
+    refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
+
+  - id: D8-024
+    version: 1
+    type: single
+    subtopic: gov.audit-compliance
+    tags: [deploy.models-network]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A German insurer requires that personal data be processed only in the EU. The proposed assistant stores
+      documents and embeddings in an EU region but calls a hosted model endpoint whose default region is outside
+      the EU. What should you verify before go-live?
+    options:
+      - text: "Where inference runs, and where prompts, logs and caches are retained, including sub-processors"
+        correct: true
+        why: Processing and retention locations matter, not only storage; each stage that touches personal data must meet the requirement.
+      - text: "Nothing further, since the documents and embeddings are stored at rest in the EU region already"
+        why: Sending prompts to a non-EU endpoint is itself processing outside the EU.
+        misconception: Residency is satisfied by the storage location alone
+      - text: "That names are stripped from prompts, since anonymous data falls outside the regulation's scope"
+        why: Removing names usually leaves pseudonymized data that is still personal, and context often re-identifies people.
+        misconception: Dropping direct identifiers makes data anonymous
+      - text: "That the provider's marketing page describes the service as compliant with European privacy law"
+        why: A general claim does not bind the provider to region pinning, retention limits or sub-processor terms for your tenant.
+        misconception: A vendor compliance claim substitutes for contractual terms
+    explanation: |
+      Data residency covers every place data is processed or retained: storage, inference, logs, caches, backups
+      and sub-processors. Region-pinned endpoints, contractual data-processing terms and retention settings
+      should be confirmed in writing.
+
+  - id: D8-025
+    version: 1
+    type: single
+    subtopic: gov.audit-compliance
+    tags: [rag.ingestion]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      A retail client receives a data-subject erasure request. Customer text appears in the support database, in
+      the vector index built from tickets, in prompt logs, and in a response cache. Which design would have made
+      compliance workable?
+    options:
+      - text: "Keep identifiers as references, tag each copy by subject, and set retention by purpose"
+        correct: true
+        why: Copies can be located and deleted or pseudonymized on request, and short retention limits how many exist.
+      - text: "Delete from the primary database, because the index, logs and cache are rebuilt from it in time"
+        why: Derived stores keep their data until rebuilt, so personal data may remain for weeks in the index, logs and cache.
+        misconception: Deleting the source of truth removes all copies
+      - text: "Retain each log and index entry permanently so that evidence needed for an audit is not lost"
+        why: Indefinite retention of personal data without a purpose conflicts with data-minimization and storage-limitation principles.
+        misconception: Retaining everything is the safe compliance default
+      - text: "Anonymize customer records when the contract ends, in a yearly batch run by the data team"
+        why: An erasure request must be handled promptly and independent of contract status; a yearly batch is too late.
+        misconception: Erasure timing can follow the data owner's batch cycle
+    explanation: |
+      Plan for erasure and retention when designing the pipeline: minimize personal data in logs, tag derived
+      artifacts (embeddings, caches, logs) to their source subject, and set retention by purpose. Statutory
+      retention duties can override erasure in some cases, so involve legal; this is awareness-level, not legal advice.
+    refs: [https://gdpr-info.eu/art-17-gdpr/]
+
+  - id: D8-026
+    version: 1
+    type: single
+    subtopic: gov.audit-compliance
+    tags: [comms.stakeholders]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A client's legal team says: "The model vendor has a SOC 2 Type II report, so we are covered on whether
+      they train on our prompts." How should you respond?
+    options:
+      - text: "The report attests to control operation; training and retention terms come from the contract"
+        correct: true
+        why: SOC 2 describes audited controls over a period, while data-use commitments come from the agreement for the specific product tier.
+      - text: "Correct, because a SOC 2 report certifies how the vendor may use customer data, including training"
+        why: SOC 2 is an auditor's attestation about controls against trust criteria, not a statement of the vendor's data-use policy.
+        misconception: SOC 2 is a legal certification of how data is used
+      - text: "Not covered, because SOC 2 reports apply to the vendor's corporate offices and not its services"
+        why: Scope depends on the report and normally includes the production service; the issue is different in nature, not scope.
+        misconception: SOC 2 covers only corporate IT
+      - text: "Covered once the report is under two years old, since older reports no longer count as current"
+        why: Currency matters for assurance, but age says nothing about training or retention terms.
+        misconception: A report's freshness determines data-use coverage
+    explanation: |
+      SOC 2 is an independent attestation that stated controls were designed (Type I) or operated effectively over
+      a period (Type II) against trust service criteria. Whether prompts are retained or used for training is set by
+      the contract, data-processing terms and the specific API or product tier, so read those and get them in writing.
+
+  - id: D8-027
+    version: 1
+    type: single
+    subtopic: gov.audit-compliance
+    tags: [gov.guardrails, deploy.models-network]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A US hospital wants an assistant to summarise clinician notes containing protected health information. A
+      developer proposes the vendor's general API because it is encrypted in transit. What is required first?
+    options:
+      - text: "A business associate agreement covering the specific service, plus minimum-necessary access"
+        correct: true
+        why: A vendor handling PHI for a covered entity needs a signed agreement covering that service, and access should be limited to what the task needs.
+      - text: "Nothing beyond TLS, because encrypting traffic in transit satisfies the privacy rule's requirements"
+        why: Encryption is a safeguard, not a substitute for the contractual and administrative requirements.
+        misconception: Technical encryption removes the vendor's regulatory role
+      - text: "Removal of patient names from the notes, after which the remaining text counts as de-identified"
+        why: De-identification covers many more identifiers, such as dates and locations, and free-text notes often retain them.
+        misconception: Dropping names de-identifies clinical text
+      - text: "The vendor's SOC 2 report, which regulators accept in place of a business associate agreement"
+        why: SOC 2 attests to controls but creates no HIPAA obligations; the agreement is a separate legal requirement.
+        misconception: A security attestation equals a HIPAA agreement
+    explanation: |
+      At awareness level: HIPAA requires a business associate agreement before a vendor handles PHI on behalf of a
+      covered entity, and it applies to specific services, not the vendor in general. Other safeguards, such as
+      minimum necessary access, audit logging and de-identification where feasible, apply in addition.
+    refs: [https://www.hhs.gov/hipaa/for-professionals/covered-entities/guidance-business-associates/index.html]
+
+  - id: D8-028
+    version: 1
+    type: multi
+    subtopic: gov.audit-compliance
+    tags: [gov.identity, gov.approvals]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      A financial client wants an audit record for every agent-initiated write to its core system. Which belong in
+      each record?
+    options:
+      - text: The user on whose behalf the agent acted and the agent run that made the call
+        correct: true
+        why: Attribution needs both the accountable subject and the acting component.
+      - text: The validated parameters sent to the tool and the result returned
+        correct: true
+        why: This shows exactly what was changed, not just what was discussed.
+      - text: A reference to the approval that authorised the action, if one was required
+        correct: true
+        why: It links the action to a human decision that can be examined later.
+      - text: The model's full reasoning text as the justification for the action
+        why: Generated reasoning is not a verified account of why the system acted, may contain personal data, and is not evidence of authorization.
+        misconception: Model-written rationale is audit evidence
+      - text: The API credential used for the call, so that the call can be replayed
+        why: Storing secrets in the log creates a new leak; log which identity was used, never the secret.
+        misconception: Auditability requires the credential itself
+      - text: A status field that is overwritten as the action moves from pending to complete
+        why: Overwriting loses history and allows silent alteration; the log should record each state transition as an immutable event.
+        misconception: A mutable status row is an audit trail
+    explanation: |
+      An audit record answers who, what, when, on whose behalf and under which approval. It should be structured,
+      append-only and free of secrets, and it records validated inputs and outputs rather than model narrative.
+
+  # ---------------------------------------------------------------- gov.responsible-ai
+  - id: D8-029
+    version: 1
+    type: single
+    subtopic: gov.responsible-ai
+    tags: [comms.stakeholders]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A staffing client in the EU wants an agent that scores and ranks job applicants, with recruiters making the
+      final interview decision. The product owner says the human decision makes it low risk under the EU AI Act.
+      How should you frame it?
+    options:
+      - text: "Treat it as high-risk, since recruitment is a listed use, and plan for oversight, logging and records"
+        correct: true
+        why: Systems that filter or rank candidates fall in the high-risk category regardless of a human in the loop, which brings specific obligations.
+      - text: "Treat it as limited-risk and add a notice telling applicants that they are interacting with an AI"
+        why: Transparency notices apply to limited-risk systems, but recruitment ranking is a high-risk use with broader duties.
+        misconception: Disclosure is the main obligation for any customer-facing AI
+      - text: "Treat it as minimal-risk because the recruiter, and not the system, makes the final interview decision"
+        why: Human involvement is an obligation for high-risk systems, not an exemption from the category.
+        misconception: A human final decision lowers the regulatory class
+      - text: "Rely on the model provider's compliance work, because deployers inherit the provider's risk classification"
+        why: Deployers of high-risk systems have their own duties, such as oversight, monitoring and informing workers.
+        misconception: Regulatory duties sit only with the model vendor
+    explanation: |
+      The EU AI Act is risk-tiered: unacceptable (prohibited), high-risk (listed uses such as employment, credit,
+      education), limited-risk (transparency duties) and minimal-risk. High-risk systems require risk management,
+      data governance, logging, human oversight and documentation. This is awareness-level guidance; involve counsel.
+    refs: [https://artificialintelligenceact.eu/annex/3/]
+
+  - id: D8-030
+    version: 1
+    type: multi
+    subtopic: gov.responsible-ai
+    tags: [eval.datasets, eval.gates]
+    difficulty: 2
+    level: analyze
+    time_s: 110
+    stem: |
+      A lender's pre-screening assistant looks accurate overall, but a review shows noticeably fewer positive
+      recommendations for applicants from certain postal codes. Which actions are sound?
+    options:
+      - text: Evaluate outcomes and error rates by subgroup, including groups defined by likely proxies
+        correct: true
+        why: Aggregate accuracy hides disparities, and postal code can stand in for protected characteristics.
+      - text: Set a disparity threshold as a release gate and re-run the check on each model or prompt change
+        correct: true
+        why: A fairness regression is then caught like any other quality regression.
+      - text: Give applicants a route to human review and a way to contest an outcome
+        correct: true
+        why: Oversight and recourse limit the harm of residual errors.
+      - text: Remove explicit protected attributes from the inputs, which removes the bias
+        why: Correlated features such as postal code, employer or name still encode the attribute, so the disparity can persist.
+        misconception: Fairness through unawareness
+      - text: Add a disclaimer that recommendations may be imperfect
+        why: A disclaimer informs but does not reduce the unequal outcomes.
+        misconception: Transparency notices substitute for mitigation
+      - text: Rely on overall accuracy exceeding the target as evidence of fairness
+        why: High average accuracy can coexist with large gaps for smaller groups.
+        misconception: Good aggregate metrics imply equitable performance
+    explanation: |
+      Bias is found by slicing evaluation by group and proxy features, then controlled by thresholds in the release
+      process and by human recourse. Removing the protected attribute alone rarely works because other features
+      carry the same signal.
+
+  - id: D8-031
+    version: 1
+    type: single
+    subtopic: gov.responsible-ai
+    tags: [rag.architecture, comms.stakeholders]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A compliance team distrusts an internal policy Q&A assistant because it is a black box. They ask for the
+      assistant to explain its answers. What should you build?
+    options:
+      - text: "Answers grounded in retrieved passages, each cited to its source document so users can check"
+        correct: true
+        why: Citations give users a verifiable basis for the answer and show what evidence the system used.
+      - text: "A step-by-step reasoning narrative that the model writes after each answer to show how it got there"
+        why: A narrative the model writes about itself may not reflect how the answer was produced and can sound convincing when wrong.
+        misconception: Model-written reasoning is a faithful explanation
+      - text: "A confidence percentage displayed next to each answer, as estimated by the model for that answer"
+        why: Self-reported confidence is poorly calibrated, so users may over-trust answers marked high.
+        misconception: A number conveys reliability
+      - text: "The model vendor's published model card describing the base model's training data and limitations"
+        why: A model card describes the base model in general, not why this answer was given from these documents.
+        misconception: General model documentation explains individual outputs
+    explanation: |
+      For retrieval-based assistants, practical explainability means provenance: show which documents and passages
+      support each claim so a person can verify it. Model-generated rationales and confidence numbers are weak
+      substitutes.
+
+  # ---------------------------------------------------------------- non-choice
+  - id: D8-032
+    version: 1
+    type: numeric
+    subtopic: gov.audit-compliance
+    tags: [obs.cost]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      A bank's agent platform handles 50,000 runs a day, averaging 14 tool calls per run. Each tool call writes
+      one audit record of 3 KB. Policy requires 365 days of retention, stored in two copies (primary and
+      replica). Use decimal units (1 GB = 1,000,000 KB) and ignore compression. How much audit storage is
+      needed, in GB?
+    answer: {value: 1533, tolerance: 0.02, tolerance_type: rel, unit: "GB"}
+    work: |
+      Records per day: 50,000 × 14 = 700,000. Size per day: 700,000 × 3 KB = 2,100,000 KB = 2.1 GB.
+      For 365 days: 2.1 × 365 = 766.5 GB. Two copies: 766.5 × 2 = 1,533 GB.
+    explanation: |
+      Common mistakes: counting one record per run instead of per tool call (about 110 GB), forgetting the replica
+      (766.5 GB), or using 1,024-based units. Audit volume scales with tool calls, so estimate retention cost early.
+
+  - id: D8-033
+    version: 1
+    type: open
+    subtopic: gov.guardrails
+    tags: [gov.identity, gov.approvals, comms.stakeholders]
+    competencies: [x.written-comms]
+    difficulty: 3
+    level: evaluate
+    time_s: 480
+    stem: |
+      A regional bank's CISO has paused your pilot of an agent that reads customer emails and can update the
+      core-banking CRM and send replies. Their note says: "A single malicious email could make this thing do
+      anything. Convince me this is safe enough for a limited production launch." Write your response.
+    rubric:
+      - criterion: Leads with a clear position and acknowledges the valid concern
+        points: 2
+        guidance: "2 if the reply opens with a position (conditional go with named controls) and concedes that injection cannot be fully prevented; 1 if the concession or position is buried or defensive; 0 if dismissive or vague."
+      - criterion: Limits what a hijacked run can do (architecture, not prompts)
+        points: 3
+        guidance: "3 if it describes privilege separation or least privilege such as no send or write tools during untrusted-content steps, recipient allowlists, scoped credentials or sandboxing; 1 if it relies mainly on prompt hardening or classifiers; 0 if absent."
+      - criterion: Identity and permissions
+        points: 2
+        guidance: "2 if it states the agent acts with the delegated user's or a narrowly scoped identity, with parameter validation before side effects; 1 if only one is mentioned; 0 if absent."
+      - criterion: Risk-tiered human approval and kill switch
+        points: 2
+        guidance: "2 if it ties approval to reversibility, blast radius and external visibility and includes a kill switch or rate limits; 1 if generic approval for everything; 0 if absent."
+      - criterion: Evidence and launch plan
+        points: 2
+        guidance: "2 if it proposes red-team testing, audit logs and a limited rollout with measurable exit criteria; 1 if only one; 0 if none."
+    model_answer: |
+      You are right that one malicious email can try to steer the agent, and no prompt or filter will reliably
+      stop that. So I am not asking you to trust the model. I am proposing that a compromised run cannot cause
+      serious harm, and a limited launch to prove it.
+
+      First, capability separation. The step that reads email has no send tool and no CRM write tool. It can only
+      produce a structured proposal, such as an intent and a draft. A second step, which never sees raw email text,
+      executes via tools that validate every parameter against the CRM record and the caller's authority before any
+      side effect. Replies go only to the original sender or an allowlisted domain.
+
+      Second, identity. The agent calls the CRM with the delegated token of the employee handling the case, scoped
+      to the fields needed, so it cannot do more than that person. No credentials are visible to the model.
+
+      Third, approvals tiered by risk. Drafts to customers and changes to account details need a human who sees the
+      real parameters. Low-risk note updates are auto-applied with sampled review. A central kill switch and per-hour
+      action limits bound any runaway.
+
+      Fourth, evidence. Every tool call is logged with user, run, parameters and result. Before launch we run a
+      red-team set of injection emails and report the success rate and what an attacker could reach.
+
+      Proposal: launch to one team of 20 for four weeks, with exit criteria of zero unauthorised writes, a
+      measured injection success rate against a target, and approver override rate under an agreed level.
+    max_chars: 2500
+
+  - id: D8-034
+    version: 1
+    type: open
+    subtopic: gov.approvals
+    tags: [gov.audit-compliance, agents.when]
+    competencies: [x.written-comms, x.decomposition]
+    difficulty: 2
+    level: evaluate
+    time_s: 480
+    stem: |
+      A manufacturing client's accounts-payable agent can read invoices, match them to purchase orders, flag
+      discrepancies, schedule payments, change vendor bank details and email vendors. The client's controller
+      asks you to propose which of these actions should require human approval. Write the policy you would
+      recommend and justify it.
+    rubric:
+      - criterion: Tiers actions by reversibility, blast radius and external effect
+        points: 3
+        guidance: "3 if every listed action is assigned to a tier using explicit criteria; 2 if tiers exist but criteria are implicit; 1 if a single threshold only; 0 if all-or-nothing."
+      - criterion: Handles the highest-risk action correctly
+        points: 2
+        guidance: "2 if bank-detail changes require independent approval and out-of-band verification, with the agent unable to approve; 1 if approval only; 0 if missing."
+      - criterion: Approval quality
+        points: 2
+        guidance: "2 if approvers see the actual parameters, approval is bound to them and auditable; 1 if one of these; 0 if a generic click-through."
+      - criterion: Avoids approval fatigue and keeps controls for low tiers
+        points: 2
+        guidance: "2 if low-risk actions are automated with limits, logging and sampled review; 1 if automated without compensating controls; 0 if approval everywhere."
+      - criterion: Plan to verify and tune
+        points: 1
+        guidance: "1 if it proposes tracking override and rejection rates and revisiting tiers; 0 if not."
+    model_answer: |
+      Recommendation: three tiers, not approval on everything.
+
+      Tier 1, automatic: reading invoices, matching to purchase orders and flagging discrepancies. These are read
+      or advisory actions, with no external effect. They are logged and sampled weekly by AP staff.
+
+      Tier 2, automatic within limits, otherwise approval: scheduling payments against a matched PO. This is
+      reversible until the payment run executes, so the agent may schedule payments under an amount threshold, to
+      existing verified vendors, inside a daily cap. Anything above the threshold, to a new vendor, or with a
+      discrepancy goes to an AP approver.
+
+      Tier 3, always independent approval: changing vendor bank details, and emailing vendors with payment
+      or banking content. Bank changes are irreversible in effect once money moves, are the classic fraud path,
+      and a vendor email cannot be recalled. The approver must differ from the requester, and the change is verified
+      by a call to a number already on file.
+
+      For all approvals, the screen is rendered by code from the exact tool parameters, the approval is bound to
+      that payload and expires, and it is written to the audit log.
+
+      I would review approver override and rejection rates monthly and move actions between tiers based on data.
+    max_chars: 2500
+
+  - id: D8-035
+    version: 1
+    type: audio
+    subtopic: gov.identity
+    tags: [comms.stakeholders, gov.guardrails]
+    competencies: [x.written-comms]
+    difficulty: 2
+    level: evaluate
+    time_s: 150
+    prep_s: 30
+    max_s: 120
+    stem: |
+      A COO asks: "To get this moving, can we just run the assistant under one admin account and tell it in the
+      prompt what each person is allowed to see?" Answer out loud, in plain language.
+    rubric:
+      - criterion: Clear position up front
+        points: 2
+        guidance: "2 if it says no (or not as proposed) in the first sentences; 1 if the position emerges late; 0 if unclear."
+      - criterion: Explains why prompts are not access control
+        points: 3
+        guidance: "3 if it explains that the model can be talked or tricked into revealing data and the admin account will comply, in non-technical language; 1 if only 'risky'; 0 if absent."
+      - criterion: Proposes a practical alternative
+        points: 3
+        guidance: "3 if it proposes acting with each user's own permissions so existing systems enforce access, and a quick path to start; 1 if generic least-privilege talk; 0 if none."
+      - criterion: Business framing and next step
+        points: 2
+        guidance: "2 if it links to risk (data leak, audit) and a concrete next step or timeline; 1 if only one; 0 if neither."
+    model_answer: |
+      Short answer: not like that. An admin account plus instructions in the prompt means we're relying on the
+      assistant to say no, and an assistant can be talked into things. A clever question, or a malicious sentence
+      hidden in a document, could get it to reveal what a person should not see. The admin account would happily
+      return it. If that happened, we would have no good answer for audit or for the affected employee.
+
+      What I'd propose instead is simple. The assistant works with each person's own sign-in, so it can only
+      reach what that person can already reach. The systems that hold the data keep deciding who sees what, the
+      way they do today. That also gives us a clear record of who asked for what.
+
+      It is not much slower. The sign-in connection to your identity system is a standard piece of work, usually a
+      couple of weeks. To keep momentum, we can start with one department and one data source, show it working
+      with real permissions, and expand from there. I'd suggest we agree that pilot scope this week.

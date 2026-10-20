@@ -1,0 +1,1454 @@
+domain: D5
+items:
+  - id: D5-001
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A law firm's contract-review assistant indexes master services agreements in fixed 200-token chunks.
+      Reviewers report answers that quote half a clause, or apply a definition from section 1 to the wrong
+      obligation. Clauses in these contracts run from about 80 to 900 tokens, and each one carries a numbered
+      heading such as "12.3 Termination for convenience". Which change to ingestion is most likely to fix this?
+    options:
+      - text: Split on the contracts' own clause boundaries and prepend each clause's section path to its chunk text
+        correct: true
+        why: Chunks then align with the unit lawyers reason about, and the heading path restores the context a bare clause loses.
+      - text: Raise the fixed size to 2,000 tokens so that nearly every clause fits whole inside one chunk
+        why: Each chunk then mixes several unrelated clauses, which blurs its embedding and spends context on text the question does not need.
+        misconception: Bigger chunks are always safer because nothing gets cut
+      - text: Keep 200-token chunks but use 50% overlap so every boundary also sits inside the middle of another chunk
+        why: Overlap hides some cuts but doubles the index, retrieves near-duplicates, and still ignores where clauses really begin and end.
+        misconception: Overlap is a substitute for structure-aware splitting
+      - text: Switch to single-sentence chunks so that each embedding matches one precise statement
+        why: Sentences strip away the clause context and the definitions the reviewers need, making the wrong-obligation problem worse.
+        misconception: Finer granularity gives more precise retrieval with no downside
+    explanation: |
+      Fixed-size splitting ignores document structure. When the source has reliable structure (numbered clauses),
+      split on it and keep the heading path with each chunk so it is self-describing. Overlap and size tuning
+      are second-order knobs; they cannot recover boundaries the splitter never respected.
+
+  - id: D5-002
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A field-service assistant for an industrial-equipment maker searches 30,000 repair-manual chunks with dense
+      embeddings only. Technicians type queries like "E-4471 after firmware 3.2" or a part number, and the
+      correct chunk is often missing from the top 20 results; semantically similar but different error codes
+      show up instead. What is the best fix?
+    options:
+      - text: Add a lexical (BM25) retriever alongside the dense one and fuse the two result lists
+        correct: true
+        why: Exact tokens such as codes and part numbers are what lexical matching is good at, and fusion keeps the dense strengths for natural-language questions.
+      - text: Add a cross-encoder reranker that rescores the top 20 dense results
+        why: A reranker only reorders candidates; if the right chunk never reached the top 20, it cannot be promoted.
+        misconception: Reranking repairs recall problems in the candidate set
+      - text: Move to a larger embedding model with more dimensions
+        why: Larger models improve general semantics but still blur near-identical identifiers like E-4471 and E-4417.
+        misconception: Bigger embeddings learn exact-token matching
+      - text: Use an LLM to rewrite each query into a descriptive sentence before embedding
+        why: Rewriting an exact code into prose throws away the very token that identifies the right chunk.
+        misconception: Natural-language expansion always helps retrieval
+    explanation: |
+      Dense retrieval captures meaning, not exact strings. Identifiers, SKUs and error codes need lexical matching,
+      so hybrid search (BM25 plus dense) is the standard answer. Fix candidate generation first; reranking only
+      helps once the right document is in the candidate list.
+
+  - id: D5-003
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      A team fuses BM25 and dense retrieval for an internal knowledge assistant by adding raw scores with equal
+      weights. BM25 scores range from 0 to about 30 while cosine similarities sit between 0.2 and 0.9, so
+      lexical hits dominate every result list. The team has no labelled relevance data yet and expects to add
+      a third retriever (over Jira tickets) next quarter. What should they use as the default fusion?
+    options:
+      - text: Reciprocal rank fusion, scoring each document by the sum of 1/(k + rank) across the lists
+        correct: true
+        why: It uses only ranks, so the incompatible score scales never need calibrating, and a third list can simply be added.
+      - text: Min-max normalise each retriever's scores per query, then keep the equal-weight sum
+        why: Workable, but one outlier hit stretches the scale for that query and the weights still need tuning when a retriever is added.
+        misconception: Per-query normalisation makes raw scores comparable and stable
+      - text: Take the higher of the two raw scores for each document to keep the strongest evidence
+        why: This still compares BM25 magnitudes with cosine magnitudes, so lexical scores win every time.
+        misconception: Taking the max avoids the need to calibrate score scales
+      - text: Tune the BM25 weight on a held-out set before deploying any fusion at all
+        why: There is no labelled data, and the tuned weight would be invalidated by the third retriever anyway.
+        misconception: Weighted score fusion must be tuned before it is usable
+    explanation: |
+      Rank-based fusion (RRF) is robust when scores are not comparable and no labels exist; the constant k
+      (commonly 60) damps the influence of any single list's top ranks. Score-based fusion can outperform it once
+      you have labelled data to tune weights, but as a default it needs more care and more maintenance.
+    refs: [https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf]
+
+  - id: D5-004
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 3
+    level: analyze
+    time_s: 100
+    stem: |
+      An HNSW index over 20 million chunks serves a support assistant. Measured against exact search on a
+      sample, recall@10 of the approximate index is 0.88, and answers miss relevant documents the exact search
+      would have found. Query latency is 25 ms at p95 against a 150 ms budget, and rebuilding the index would
+      take two days the team would rather avoid. What is the best first adjustment?
+    options:
+      - text: Increase the query-time search breadth (`ef_search`) and re-measure recall and latency
+        correct: true
+        why: It widens graph exploration per query, raises recall at the cost of latency the team has spare, and needs no rebuild.
+      - text: Reduce `M` (links per node) to make the graph sparser and the search more focused
+        why: Fewer links shrink memory and often lower recall; changing M also requires a rebuild.
+        misconception: A sparser graph is a more focused one
+      - text: Lower `ef_construction` and rebuild, because a quickly built graph is cheaper to search
+        why: Build effort sets graph quality; lowering it generally hurts recall and does not make queries faster in a way that helps here.
+        misconception: Index build parameters trade off like query parameters
+      - text: Switch to exact (flat) search so recall is 1.0
+        why: Exact search over 20 million vectors costs far more than the 125 ms of slack and would need much more compute.
+        misconception: Exact search is always affordable when the corpus fits in memory
+    explanation: |
+      ANN indexes trade recall against latency. Query-time parameters (such as `ef_search` in HNSW) can be raised
+      without rebuilding, so tune those first while latency headroom exists; build-time parameters (`M`,
+      `ef_construction`) set graph quality and need a rebuild to change.
+    refs: [https://arxiv.org/abs/1603.09320]
+
+  - id: D5-005
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A bank's policy assistant passes the top 5 vector hits to the LLM. Offline review shows the best chunk is
+      usually in the top 30 but rarely in the top 5, and users see mediocre answers. Traffic is about 40
+      requests per second with a p95 latency budget of 2.5 seconds for the whole response. Which pipeline change
+      fits best?
+    options:
+      - text: Retrieve 50 candidates, rerank them with a cross-encoder, and send the top 5 to the LLM
+        correct: true
+        why: A cross-encoder reads query and chunk together for more accurate ordering, and scoring 50 short pairs fits the latency and throughput budget.
+      - text: Send the top 30 chunks straight to the LLM so the best one is included
+        why: Recall is solved, but cost and latency rise, and long noisy contexts often hurt answer quality.
+        misconception: Putting more retrieved text in the prompt is free insurance
+      - text: Have an LLM rank all 50 candidates in a separate call, then pass the top 5 on
+        why: Works in principle, but an extra LLM call over 50 chunks adds seconds of latency and cost at 40 requests per second.
+        misconception: An LLM is the best reranker whatever the latency budget
+      - text: Re-embed the corpus with a model whose vectors have double the dimensions
+        why: A bi-encoder still scores query and chunk independently, so the ordering gain is small relative to a reranker and the cost is a full re-embed.
+        misconception: Higher-dimensional embeddings fix ordering precision
+    explanation: |
+      Two-stage retrieval is the standard pattern: a fast bi-encoder gets recall into a candidate set, then a
+      cross-encoder reranker improves precision on that small set. Keep the final context small; more chunks do
+      not mean better answers.
+
+  - id: D5-006
+    version: 1
+    type: multi
+    subtopic: rag.retrieval
+    tags: [eval.rag-agent]
+    difficulty: 2
+    level: analyze
+    time_s: 110
+    stem: |
+      On a labelled sample of 200 questions, a company wiki assistant's first-stage retrieval puts a relevant
+      chunk in the top 20 only 62% of the time. When a relevant chunk is in the top 20, the reranker places it
+      first nearly every time, and the generator uses it correctly. Which changes are most likely to raise
+      end-to-end accuracy?
+    options:
+      - text: Add a keyword retriever and fuse it with the dense results to widen the candidate set
+        correct: true
+        why: The bottleneck is first-stage recall; a second retriever surfaces relevant chunks the dense search misses.
+      - text: Rewrite ambiguous or follow-up queries into standalone queries before retrieval
+        correct: true
+        why: Poorly formed queries are a common recall killer, and the fix acts exactly where the loss occurs.
+      - text: Retrain the reranker on more labelled pairs to sharpen its ordering
+        why: The reranker already orders correctly when it gets a relevant chunk; it cannot help chunks that never arrive.
+        misconception: Improving the later stage compensates for an earlier stage's recall
+      - text: Reduce the number of chunks sent to the generator from 5 to 3
+        why: Generation is not the stage losing relevant material, so trimming context changes nothing about the 38% retrieval misses.
+        misconception: Less context always improves answers
+      - text: Add an instruction to the prompt telling the model to say when the context is insufficient
+        why: This reduces confident wrong answers but leaves the missing-evidence rate unchanged.
+        misconception: A prompt instruction can recover information that was never retrieved
+    explanation: |
+      Diagnose by stage. Recall of the candidate stage bounds everything after it, and here the reranker and
+      generator are healthy. Improve candidate generation (hybrid retrieval, query rewriting, larger candidate pool)
+      before tuning downstream components.
+
+  - id: D5-007
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 1
+    level: apply
+    time_s: 60
+    stem: |
+      An HR chatbot answers "What is the notice period for resigning?" well. The user then asks "And for
+      contractors?" and the assistant retrieves chunks about contractor invoicing. The retriever currently
+      embeds only the user's latest message. What is the most appropriate fix?
+    options:
+      - text: Use the conversation history to rewrite the latest message into a standalone query before retrieval
+        correct: true
+        why: The follow-up depends on prior context; a condensed query such as "notice period for contractors resigning" retrieves the right policy.
+      - text: Embed the concatenation of every user turn so far and use that as the query
+        why: Older, unrelated turns dilute the embedding, and retrieval drifts further as conversations get longer.
+        misconception: More conversational context in the query always improves retrieval
+      - text: Raise top_k so that chunks from the first question's topic are included as well
+        why: Ranking still comes from a query that lacks the topic, so the contractor notice policy is no more likely to appear.
+        misconception: A larger candidate count compensates for an underspecified query
+      - text: Reuse the chunks retrieved for the first question and answer the follow-up from them
+        why: The first question's chunks cover employees, and the contractor policy may live in a different document.
+        misconception: Retrieval results can be cached across turns of one conversation
+    explanation: |
+      Follow-up questions are often not self-contained. Query rewriting (condensing history plus the new message
+      into a standalone query) is the standard remedy and is cheap to add.
+
+  - id: D5-008
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    tags: [deploy.delivery]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      A team wants to move from embedding model A to a newer model B. Both produce 1,024-dimensional vectors,
+      so a proposal suggests embedding new queries with B while leaving the 8 million stored chunk vectors
+      as they are, to avoid a re-embedding bill. How should you respond?
+    options:
+      - text: Re-embed the corpus with B into a parallel index, compare retrieval quality offline, then cut over
+        correct: true
+        why: Vectors from different models live in unrelated spaces, so queries and chunks must come from the same model, and a parallel index allows a safe cutover.
+      - text: Approve it, since equal dimensionality means the vectors are comparable under cosine similarity
+        why: Matching dimensions only prevents a runtime error; the coordinates mean different things in each model, so similarities would be noise.
+        misconception: Same vector length implies the same embedding space
+      - text: Approve it after normalising all vectors to unit length so the scales match
+        why: Unit-normalising fixes scale, not meaning; the two spaces remain unaligned.
+        misconception: Normalisation aligns embeddings from different models
+      - text: Re-embed only the most frequently retrieved chunks with B and mix both sets in one index
+        why: Search would compare B-space queries against a mixture of spaces, giving inconsistent rankings across documents.
+        misconception: A partial migration degrades gracefully
+    explanation: |
+      An embedding model defines its own space. Query and document vectors must come from the same model and
+      version, so a model change means a full re-embed. Build the new index alongside the old one, evaluate on a
+      fixed question set, and switch traffic only after it wins.
+
+  - id: D5-009
+    version: 1
+    type: single
+    subtopic: rag.ingestion
+    tags: [gov.identity]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      An HR assistant retrieves the top 10 chunks from a shared index and then drops those the user may not
+      read according to the source system's ACLs. Managers with broad access are fine, but regular employees
+      often receive two or zero usable chunks, and the security team objects that restricted text is still
+      loaded into the application process. Where should the permission check move?
+    options:
+      - text: Into the search request as a metadata filter on ACL groups synced from the source, built from the caller's identity
+        correct: true
+        why: The index returns only readable chunks, so top-k is filled with permitted results and restricted text never leaves the store.
+      - text: Keep the post-filter but raise top_k to 200 so enough permitted chunks survive
+        why: It reduces empty results for most users but still loads restricted text and gives no guarantee for users with narrow access.
+        misconception: Over-fetching and filtering is equivalent to filtering in the query
+      - text: Build one separate index per employee so each can only ever search their own documents
+        why: Per-user copies explode storage and re-indexing work, and permissions then drift whenever the source ACLs change.
+        misconception: Hard isolation per user is the only safe pattern
+      - text: Instruct the LLM not to reveal content that the user's role should not see
+        why: The model would already have the restricted text in its context, and a prompt is not an access control.
+        misconception: A prompt instruction can serve as an authorization layer
+    explanation: |
+      Enforce authorization at retrieval time, using the caller's identity, before content reaches the model.
+      Pre-filtering on synced ACL metadata keeps results full and keeps restricted text out of memory and prompts.
+      The ACL metadata must be refreshed from the source system, or it becomes a stale copy of the permissions.
+
+  - id: D5-010
+    version: 1
+    type: single
+    subtopic: rag.ingestion
+    tags: [llm.failure-modes]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A finance assistant answers questions from digitally generated quarterly-report PDFs. Narrative questions
+      work, but "What was EMEA operating margin in Q3?" often returns the number from the wrong row or column.
+      Inspection shows that table cells were extracted as one stream of words in reading order. What should the
+      ingestion pipeline do?
+    options:
+      - text: Parse tables with a layout-aware extractor and index each table as structured rows with its headers and caption
+        correct: true
+        why: Keeping column headers attached to each value lets retrieval and the model tell which number belongs where.
+      - text: Run OCR at a higher resolution on every page to improve the extracted text
+        why: The PDFs are digitally generated, so characters are already exact; the loss is in table structure, not recognition.
+        misconception: Extraction errors on PDFs are always an image-quality problem
+      - text: Increase chunk overlap so that column headers and cell values appear together in more chunks
+        why: Overlap duplicates the same flattened word stream and still cannot say which value sits under which header.
+        misconception: Overlap restores relationships lost during parsing
+      - text: Keep the flattened text and ask a stronger model to work out which cells belong to which headers
+        why: Reconstructing a grid from a word stream is guesswork and yields confident wrong numbers in financial answers.
+        misconception: A more capable model can recover information that parsing discarded
+    explanation: |
+      Parsing quality caps RAG quality. Tables need structure-preserving extraction (cells with row and column
+      headers, often serialised as markdown or JSON) and should usually be chunked as units with their caption.
+      Garbage at ingestion cannot be repaired by better prompting or bigger models.
+
+  - id: D5-011
+    version: 1
+    type: multi
+    subtopic: rag.ingestion
+    tags: [adoption.handoff]
+    difficulty: 2
+    level: analyze
+    time_s: 110
+    stem: |
+      A nightly job re-indexes only the policy documents that the source system lists as modified since the last
+      run. Users now report answers quoting a policy that was withdrawn two months ago, and others that mix
+      clauses from an old and a new version of the same policy. Which changes address the root causes?
+    options:
+      - text: Remove every chunk of a document, keyed by its document id, when the source reports a deletion or a reconcile finds the id missing
+        correct: true
+        why: A modified-since query never lists deleted items, so removal needs explicit deletion events or a periodic id comparison.
+      - text: On a document change, replace all of its chunks as one operation rather than appending the new ones
+        correct: true
+        why: Appending leaves old-version chunks in the index next to the new ones, which produces the mixed-version answers.
+      - text: Store each document's status and effective date as metadata and filter retrieval to the currently valid ones
+        correct: true
+        why: It adds a second line of defence for superseded or withdrawn content even when an index update lags.
+      - text: Run the same incremental job twice a day instead of once
+        why: The job still never sees deletions, and it leaves old chunks in place; it only runs more often.
+        misconception: More frequent syncs cure missing-deletion bugs
+      - text: Expire all vectors after 30 days and force a full re-ingest
+        why: It blindly drops valid, unchanged content and still leaves stale chunks for up to a month.
+        misconception: Time-based expiry is a substitute for tracking change
+      - text: Tell the model in the prompt to prefer the most recent document when passages conflict
+        why: Chunks carry no reliable dates unless metadata is indexed, and a withdrawn policy has no newer version to prefer.
+        misconception: Prompt instructions can resolve staleness in the data layer
+    explanation: |
+      Freshness has two parts: detecting every kind of change (including deletes) and applying each change
+      atomically per document. Metadata for validity gives a safety net at query time, but the index itself must
+      mirror the source's lifecycle.
+
+  - id: D5-012
+    version: 1
+    type: single
+    subtopic: rag.ingestion
+    tags: [eval.rag-agent, gov.responsible-ai]
+    difficulty: 2
+    level: evaluate
+    time_s: 95
+    stem: |
+      A compliance team requires every claim in an assistant's answer to cite its source. The current system
+      prints a "Sources" list of the top three retrieved files below each answer. An internal audit found
+      sentences whose listed sources do not actually support them. Which change addresses this most directly?
+    options:
+      - text: Have the model attach chunk ids and supporting quotes to each claim, then check programmatically that every quote appears in its chunk
+        correct: true
+        why: Attribution becomes claim-level and verifiable, and unsupported or fabricated citations can be caught before display.
+      - text: Tell the model to cite only sources it is highly confident about
+        why: Model confidence is poorly calibrated, so this gives no way to detect a citation that does not support its claim.
+        misconception: Self-reported confidence is a reliable filter
+      - text: Keep the list of top retrieved files but raise it from three to five
+        why: A longer list makes support more likely by chance yet leaves the claim-to-source link unverified.
+        misconception: Listing retrieved documents counts as attribution
+      - text: Move to the largest available model so that its citations are more accurate
+        why: Stronger models cite better on average but still need verification when an audit requires evidence.
+        misconception: Model scale removes the need for verification
+    explanation: |
+      Retrieved is not the same as supporting. Claim-level citations (chunk id plus quoted span) can be verified
+      mechanically, and an unsupported claim can be blocked or flagged. Measuring citation precision on a sample
+      is the matching evaluation step.
+
+  - id: D5-013
+    version: 1
+    type: single
+    subtopic: rag.ingestion
+    tags: [obs.cost]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A knowledge base ingests shared drives and email attachments. The same 400-word legal footer and several
+      copies of each template exist in thousands of files, so the top five hits for many queries are the same
+      paragraph from different files. The team also wants to cut embedding and storage cost, yet auditors need
+      to know every location where a passage appears. What is the best approach?
+    options:
+      - text: Deduplicate at ingest by content hash, keep one canonical chunk, and store all source locations in its metadata
+        correct: true
+        why: It removes the repeated hits, cuts embedding and storage cost, and keeps the provenance auditors asked for.
+      - text: Apply maximal marginal relevance at query time to diversify the top results
+        why: It hides duplicates per query but still pays to embed and store every copy and adds work to every search.
+        misconception: Query-time diversification is equivalent to cleaning the index
+      - text: Delete the footers and templates from the corpus with a blocklist of known filenames
+        why: Filename lists miss renamed copies and lose the provenance the auditors need.
+        misconception: Deduplication means removing sources rather than merging records
+      - text: Increase the number of chunks returned from five to twenty so that unique passages also appear
+        why: The duplicates still occupy slots, and the model receives more repeated text for higher cost.
+        misconception: A larger result list overcomes duplicate crowding
+    explanation: |
+      Duplicate content wastes index budget and crowds out useful results. Hash-based dedup catches exact copies;
+      near-duplicate detection (for example MinHash) catches lightly edited ones. Store the list of origins on
+      the canonical record so the audit trail survives deduplication.
+
+  - id: D5-014
+    version: 1
+    type: single
+    subtopic: rag.architecture
+    tags: [agents.tools-mcp]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      Sales operations wants a chat assistant that answers questions like "What was Q3 revenue for EMEA by
+      product line?" from an 8-million-row ERP orders table. A colleague proposes exporting each row as a
+      sentence, embedding it, and retrieving the closest rows for each question. What do you recommend?
+    options:
+      - text: Give the assistant a read-only query tool over a governed view of the orders data and let the database do the aggregation
+        correct: true
+        why: Totals and group-bys are exact in SQL, always current, and auditable from the query that produced them.
+      - text: Embed the rows as proposed but retrieve 200 rows per question so the totals can be summed
+        why: Top-k similarity returns rows that resemble the question, not all rows in scope, so sums are incomplete and unverifiable.
+        misconception: Enough retrieved rows lets the model aggregate accurately
+      - text: Load the whole export into a long-context model as a CSV
+        why: Eight million rows will not fit, and even a subset invites arithmetic errors that a database would not make.
+        misconception: Large context windows replace analytical engines
+      - text: Fine-tune a model on the order history so it memorises the figures
+        why: Memorised numbers go stale at the next order and cannot be traced back to source rows.
+        misconception: Fine-tuning is a way to store facts
+    explanation: |
+      Structured, numeric, frequently changing data belongs in the system that is built to query it. Use the LLM
+      to translate a question into a constrained query (or choose a pre-built metric), run it with least privilege,
+      and show the query for transparency. Reserve vector search for unstructured text.
+
+  - id: D5-015
+    version: 1
+    type: single
+    subtopic: rag.architecture
+    tags: [llm.prompting, obs.cost]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A legal team uploads one acquisition agreement at a time (about 250,000 tokens including schedules) and
+      asks 5 to 10 questions about it, many of which require combining definitions, carve-outs and cross-references
+      from far-apart sections. Uploads differ every time, and the provider's model supports 1 million tokens and
+      prompt caching. Which design is the best fit?
+    options:
+      - text: Put the full document in the context of each session and use prompt caching so follow-up questions reuse it
+        correct: true
+        why: No indexing step is needed, cross-references stay intact, and cached input makes repeated questions much cheaper.
+      - text: Chunk and index each upload, then answer every question from the top 5 retrieved chunks
+        why: Questions needing several far-apart clauses are the weak spot of top-k retrieval, and per-upload indexing adds delay.
+        misconception: RAG is the default for any question over documents
+      - text: Replace the document with a 3,000-token summary and ask all questions against that
+        why: Summaries drop exactly the carve-outs and defined terms that the legal questions depend on.
+        misconception: Compressing the source loses nothing important
+      - text: Fine-tune the model on each uploaded agreement before the session starts
+        why: Training per upload is slow and costly, and gives no guarantee of faithful recall or citations.
+        misconception: Per-document fine-tuning is a way to give a model new documents
+    explanation: |
+      When a single document fits in context, the questions are cross-cutting, and the document is reused across
+      several turns, long context with caching is simple and strong. RAG becomes the right choice as the corpus grows
+      beyond the window, is shared across many users, or must be permission-filtered. Check quality on your own
+      questions, since accuracy can still drop on very long inputs.
+
+  - id: D5-016
+    version: 1
+    type: multi
+    subtopic: rag.architecture
+    tags: [llm.model-selection]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      A manufacturer wants an HR assistant with three requirements: answers must reflect policy changes made on
+      the first of each month within a day, every answer must cite the policy section, and replies must follow a
+      fixed formal template. The policy corpus is about 2 million tokens. Which choices fit these requirements?
+    options:
+      - text: Index the policies and retrieve relevant sections at query time, citing them in the answer
+        correct: true
+        why: A re-index picks up monthly changes quickly, and retrieved sections give a concrete thing to cite.
+      - text: Specify the template with instructions and examples in the prompt, and consider fine-tuning only if evals show it falls short
+        correct: true
+        why: Format and tone are behaviours that prompting usually handles, and fine-tuning adds cost and retraining only if needed.
+      - text: Fine-tune on the policy documents each month so the knowledge sits in the model weights
+        why: Retraining monthly is slow and costly, and the weights cannot point to the section that supports an answer.
+        misconception: Fine-tuning is the right way to teach a model changing facts
+      - text: Paste the entire policy corpus into the system prompt for every request
+        why: Two million tokens exceed many context windows and make every call slow and expensive for a few relevant sections.
+        misconception: Long context makes retrieval unnecessary at any corpus size
+      - text: Fine-tune the model to recall section numbers so that it can cite without any retrieval
+        why: Recalled section numbers are generated text and can be fabricated, so the citations are unverifiable.
+        misconception: A model can memorise a reliable citation index
+    explanation: |
+      Match the technique to the problem. Knowledge that changes and must be cited belongs in retrieval; style and
+      format are behaviours that prompts (or, if needed, fine-tuning) address. Fine-tuning is poor at storing
+      facts that change and cannot provide verifiable provenance.
+
+  - id: D5-017
+    version: 1
+    type: single
+    subtopic: rag.architecture
+    tags: [int.apis]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A support copilot must answer "What is the current status of TICKET-4821?" as well as questions about the
+      troubleshooting guide. The team plans to vectorise all Jira tickets nightly. Agents say that the status is
+      often wrong, and the Jira admin points out that visibility differs per project. What is the best
+      architecture for the ticket lookup?
+    options:
+      - text: Fetch tickets by id through a live Jira API tool that runs with the caller's own permissions, and keep the index for the guides
+        correct: true
+        why: An exact-id question needs the current record and the caller's own visibility, which a live call provides and an index cannot.
+      - text: Re-index tickets every five minutes to keep the vectors fresh
+        why: The status is still up to five minutes old, the ACL problem remains, and the extra indexing load buys little for an exact-id lookup.
+        misconception: Frequent re-indexing makes an index a real-time source
+      - text: Stream Jira webhook events into the vector store so each change updates its chunk
+        why: This narrows staleness but adds an ingestion pipeline, and permissions still have to be mirrored for exact lookups that one API call handles.
+        misconception: Event-driven indexing is the right path for every live record
+      - text: Include the ticket status as chunk metadata and tell the model to trust the newest chunk
+        why: Metadata is only as fresh as the last index run, so the model would still report a stale status.
+        misconception: Metadata in an index stays current without a sync
+    explanation: |
+      Index documents that benefit from similarity search and change slowly; call systems of record directly for
+      exact, fast-changing facts. Live calls made with the user's credentials also keep the source system's
+      permissions authoritative.
+
+  - id: D5-018
+    version: 1
+    type: single
+    subtopic: rag.architecture
+    tags: [agents.patterns]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      An operations team asks: "Which customers affected by incident INC-204 also have an open P1 ticket, and who
+      is their account owner?" The answer depends on three sources: the incident record in the wiki, a tickets
+      database, and a CRM. A single retrieval pass over a combined index returns plausible but incomplete answers.
+      What is the best architectural change?
+    options:
+      - text: Let the model plan the lookup in steps, calling search, SQL and CRM tools and feeding each result into the next, with a step limit
+        correct: true
+        why: The question is multi-hop and each hop needs a different source, so iterative tool use fits where one pass cannot.
+      - text: Index the CRM, tickets and wiki into one vector store and raise top_k to 50
+        why: Joins across customers, tickets and owners cannot be expressed as similarity search, however many hits come back.
+        misconception: A large enough retrieval set substitutes for joining data
+      - text: Build a nightly job that joins all three sources into pre-written summaries for every incident
+        why: It is expensive, stale by morning, and only covers question shapes someone anticipated.
+        misconception: Pre-computing every possible answer is more reliable than querying
+      - text: Fine-tune the model on previous incident reports so it infers which customers are affected
+        why: The answer depends on current records, which fine-tuning neither contains nor keeps current.
+        misconception: Learned patterns can replace lookups of live data
+    explanation: |
+      Multi-hop questions over heterogeneous sources are where agentic retrieval earns its cost: the model decides
+      which source to query next based on what it has found. Bound the loop (step and cost limits) and prefer
+      exact tools (SQL, API) for structured hops over similarity search.
+
+  - id: D5-019
+    version: 1
+    type: single
+    subtopic: data.sql
+    competencies: [x.sql]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A permissions audit lists documents that have no ACL entry at all. The team knows hundreds exist, yet this
+      query returns zero rows:
+
+      ```sql
+      SELECT d.id FROM docs d
+      WHERE d.id NOT IN (SELECT doc_id FROM acl);
+      ```
+
+      An import bug left some `acl.doc_id` values as NULL. Which rewrite returns the documents without ACL entries?
+    options:
+      - text: "`WHERE NOT EXISTS (SELECT 1 FROM acl a WHERE a.doc_id = d.id)`"
+        correct: true
+        why: NOT EXISTS tests row by row for a match, so NULL values in the subquery cannot make every comparison unknown.
+      - text: "`LEFT JOIN acl a ON a.doc_id = d.id WHERE a.doc_id = NULL`"
+        why: Comparing with = NULL is never true in SQL, so this also returns no rows; IS NULL would be needed.
+        misconception: NULL can be tested with the equals operator
+      - text: "`WHERE d.id NOT IN (SELECT DISTINCT doc_id FROM acl)`"
+        why: DISTINCT keeps one NULL in the list, and NOT IN against a list containing NULL still yields unknown for every row.
+        misconception: Removing duplicate values removes the NULL problem
+      - text: "`WHERE d.id NOT IN (SELECT doc_id FROM acl) OR d.id IS NULL`"
+        why: The added OR only matches documents whose own id is NULL; the NULL in the subquery still blocks the rest.
+        misconception: Adding an IS NULL branch neutralises NULLs in the subquery
+    explanation: |
+      `x NOT IN (list)` is false-or-unknown for every x when the list contains a NULL, so the filter returns
+      nothing. Prefer `NOT EXISTS` (or a LEFT JOIN with `IS NULL` on the joined key) for anti-joins, and clean
+      the NULLs at the source.
+
+  - id: D5-020
+    version: 1
+    type: single
+    subtopic: data.sql
+    competencies: [x.sql]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A customer-health report must list every customer with the number of their open tickets, showing 0 where
+      there are none. The current query omits customers with no open tickets:
+
+      ```sql
+      SELECT c.name, COUNT(t.id) AS open_tickets
+      FROM customers c
+      LEFT JOIN tickets t ON t.customer_id = c.id
+      WHERE t.status = 'open'
+      GROUP BY c.id, c.name;
+      ```
+
+      What is the right fix?
+    options:
+      - text: Move the status test into the join as `AND t.status = 'open'` and drop the WHERE clause
+        correct: true
+        why: The filter then restricts which tickets match, while customers with no matching ticket are kept with a count of 0.
+      - text: Change the WHERE clause to `t.status = 'open' OR t.status IS NULL`
+        why: Customers that have only closed tickets still fail both tests and vanish, so the report remains incomplete.
+        misconception: Allowing NULL in the WHERE clause restores unmatched rows
+      - text: Swap COUNT(t.id) for COUNT(*) so rows with no tickets are counted
+        why: The WHERE clause has already discarded those rows; COUNT(*) would also count a no-match row as 1 after any fix.
+        misconception: The aggregate function decides which rows survive
+      - text: Replace LEFT JOIN with RIGHT JOIN so that all customers are preserved
+        why: The same WHERE predicate on tickets still removes rows without an open ticket, whichever side is preserved.
+        misconception: Join direction determines whether a later filter keeps unmatched rows
+    explanation: |
+      A WHERE predicate on the nullable side of an outer join discards the unmatched rows and turns the join into an
+      inner join. Put conditions on the optional table in the ON clause (or use conditional aggregation).
+
+  - id: D5-021
+    version: 1
+    type: single
+    subtopic: data.sql
+    tags: [discovery.environment]
+    competencies: [x.sql]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      At a regional insurer you get read access to a 20-year-old policy database. The main table `POL_MST` has
+      columns like `STS_CD`, `FLG_3` and `DT_X`, with no data dictionary, no stored procedures to read, and the
+      original developers gone. Your first deliverable needs to know which policies are active. What is the best
+      first step?
+    options:
+      - text: Profile the columns (distinct values with counts, null rates, min and max) and check hypotheses against policies the business can confirm
+        correct: true
+        why: Value distributions plus known records quickly show what a code means, and the checks are cheap, read-only and verifiable.
+      - text: Infer each column's meaning from its name and build the active filter on the likeliest reading
+        why: Legacy abbreviations are ambiguous, and an unverified guess produces a confidently wrong list of active policies.
+        misconception: Column names in legacy schemas are self-explanatory
+      - text: Paste sample rows into an LLM and adopt the field meanings that it proposes
+        why: A model can suggest hypotheses, but without checks against real records its explanation is unverified speculation.
+        misconception: An LLM's reading of the data is a substitute for validating it
+      - text: Wait until the client finds the original schema documentation before querying anything
+        why: Documentation may never turn up, and profiling is safe, read-only, and will uncover most meanings quickly.
+        misconception: Analysis should not start until documentation exists
+    explanation: |
+      Undocumented schemas are discovered empirically: profile values and distributions, join to known facts, and
+      confirm each hypothesis with someone who knows individual records. LLMs help generate hypotheses but never
+      replace verification. Write down what you learn as the data dictionary the client lacked.
+
+  - id: D5-022
+    version: 1
+    type: single
+    subtopic: data.sql
+    tags: [obs.troubleshooting]
+    competencies: [x.sql]
+    difficulty: 3
+    level: analyze
+    time_s: 100
+    stem: |
+      A multi-tenant chunk store holds 40 million rows across about 300 tenants. This query is slow:
+
+      ```sql
+      SELECT id, title FROM chunks
+      WHERE tenant_id = ? AND updated_at > ?
+      ORDER BY updated_at DESC LIMIT 50;
+      ```
+
+      `EXPLAIN QUERY PLAN` shows `SCAN chunks` followed by `USE TEMP B-TREE FOR ORDER BY`. No index exists besides
+      the primary key. Which index is best?
+    options:
+      - text: "A composite index on `(tenant_id, updated_at)`"
+        correct: true
+        why: It narrows to one tenant by equality, then reads that tenant's rows already sorted by time, so no sort is needed.
+      - text: "A single-column index on `updated_at`"
+        why: It would walk recent rows of all tenants and discard most of them, which stays slow for tenants with sparse recent data.
+        misconception: Indexing the sort column is enough
+      - text: "Two separate indexes, one on `tenant_id` and one on `updated_at`"
+        why: The planner typically uses one index per table access, so it must still filter or sort the rest.
+        misconception: Separate indexes on each filtered column combine as a composite would
+      - text: "A composite index on `(updated_at, tenant_id)`"
+        why: With the range column first, it scans every tenant's recent rows in time order and filters out the other tenants.
+        misconception: Column order in a composite index does not matter
+    explanation: |
+      Put equality columns first and the range or sort column after them, so a single index lookup both filters
+      and orders. Read the plan after creating the index to confirm that the `SCAN` became a `SEARCH ... USING INDEX`
+      and the temp B-tree is gone.
+
+  - id: D5-023
+    version: 1
+    type: multi
+    subtopic: data.sql
+    tags: [gov.guardrails]
+    competencies: [x.sql]
+    difficulty: 2
+    level: evaluate
+    time_s: 110
+    stem: |
+      A client wants business users to ask questions in plain English, with an LLM generating SQL that runs
+      against their Postgres reporting database. The security reviewer asks how misuse and accidents will be
+      limited. Which controls should be in the design?
+    options:
+      - text: Execute with a dedicated database role that has read-only access to an approved set of views
+        correct: true
+        why: Privileges enforced by the database hold even if the generated SQL is wrong or manipulated.
+      - text: Apply a statement timeout and a row limit, and reject anything that is not a single SELECT after parsing
+        correct: true
+        why: It bounds accidental heavy scans and blocks multi-statement or write attempts before execution.
+      - text: Show users the generated SQL and the filters used alongside each answer
+        correct: true
+        why: Transparency lets analysts catch a wrong join or filter, which is the commonest failure of text-to-SQL.
+      - text: Tell the model in the system prompt never to write DELETE, UPDATE or DROP
+        why: A prompt is guidance and not enforcement; injected or confused outputs can ignore it.
+        misconception: Instructions to the model are a security control
+      - text: Run the queries under the application's shared service account, since it already has the access it needs
+        why: That account can usually write and reads tables beyond what any one user should see, defeating least privilege.
+        misconception: Reusing an existing credential is the simplest safe option
+      - text: Block the words DROP and DELETE with a regular expression on the generated text
+        why: A keyword blocklist misses other harmful statements and still allows expensive or sensitive reads.
+        misconception: A text filter is equivalent to authorisation
+    explanation: |
+      Treat generated SQL as untrusted input. Enforce limits where they cannot be talked around: database
+      privileges, query validation, timeouts and row caps. Showing the SQL helps users and reviewers verify the answer.
+
+  - id: D5-024
+    version: 1
+    type: single
+    subtopic: data.sql
+    competencies: [x.sql]
+    difficulty: 2
+    level: analyze
+    time_s: 95
+    stem: |
+      A finance lead complains that the report of support cost for billing-related tickets is too high:
+
+      ```sql
+      SELECT t.project, SUM(t.cost_usd) AS cost
+      FROM tickets t
+      JOIN ticket_tags g ON g.ticket_id = t.id
+      WHERE g.tag IN ('billing', 'refund')
+      GROUP BY t.project;
+      ```
+
+      A ticket can carry both tags. Which fix gives each ticket's cost counted exactly once?
+    options:
+      - text: Filter with `WHERE EXISTS (SELECT 1 FROM ticket_tags g WHERE g.ticket_id = t.id AND g.tag IN ('billing','refund'))` and drop the join
+        correct: true
+        why: A semi-join tests membership without multiplying rows, so each ticket contributes once.
+      - text: Use `SUM(DISTINCT t.cost_usd)` to remove repeated values
+        why: DISTINCT works on values, so two different tickets with the same cost would collapse into one.
+        misconception: DISTINCT inside an aggregate deduplicates entities
+      - text: Change the JOIN to a LEFT JOIN so that each ticket keeps one row
+        why: A LEFT JOIN still returns one row per matching tag, so a ticket with two tags still appears twice.
+        misconception: The join type controls row multiplication
+      - text: Add `g.tag` to the GROUP BY so that each tag gets its own total
+        why: A ticket with both tags is still counted once per tag, and the project totals are now split across tag rows.
+        misconception: Grouping by the duplicated column resolves the double counting
+    explanation: |
+      Joining to a one-to-many table multiplies parent rows, and any SUM over the parent column then overcounts.
+      Use EXISTS/IN for filtering, or aggregate the child table first and join the result.
+
+  - id: D5-025
+    version: 1
+    type: single
+    subtopic: data.modeling
+    tags: [obs.slo]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A SaaS company stores agent-run logs (about 500 million rows) in the same Postgres database that serves
+      its live application. Analysts run group-by queries over two years of history, and the dashboards must
+      respond in under a second; each heavy query now causes latency spikes in the product. What is the best direction?
+    options:
+      - text: Replicate the log data to a columnar analytical store and point dashboards there
+        correct: true
+        why: Columnar engines aggregate large histories quickly, and isolating the workload removes the contention with the product.
+      - text: Add indexes on every column the dashboards group by
+        why: Wide scans and aggregations still touch most rows, while each added index slows the product's writes.
+        misconception: Indexes make analytical aggregations cheap
+      - text: Move the heavy queries to run overnight on the same database
+        why: Dashboards need fresh sub-second answers during the day, and the nightly window shrinks as the data grows.
+        misconception: Scheduling alone resolves workload contention
+      - text: Move to a bigger instance class for the primary database
+        why: It buys headroom for a while, but analytical scans and transactional traffic still compete for the same resources.
+        misconception: Scaling up removes the need to separate workloads
+    explanation: |
+      OLTP stores are tuned for many small reads and writes of whole rows; OLAP stores are tuned for scans and
+      aggregations over columns. Offloading analytics through replication or ELT protects the product and makes the
+      dashboards fast. A read replica helps with isolation but remains a row store.
+
+  - id: D5-026
+    version: 1
+    type: single
+    subtopic: data.modeling
+    tags: [adoption.handoff]
+    difficulty: 2
+    level: apply
+    time_s: 85
+    stem: |
+      A pipeline cleans scanned-invoice extracts and loads only the cleaned, curated tables into the warehouse.
+      After three weeks, the team finds that a date-parsing rule has been silently mangling day and month for
+      one supplier format. They cannot recover the original files from the curated tables. Which design would
+      have made the repair straightforward?
+    options:
+      - text: Land the unmodified source files in an immutable raw layer, so the cleaned and curated layers can be rebuilt from it
+        correct: true
+        why: With raw data retained, the parsing fix is applied once and the downstream tables are regenerated.
+      - text: Keep an audit log of every transformation step that the pipeline applied
+        why: A log records what was done but cannot invert lossy parsing to recover the original values.
+        misconception: Recording transformations is equivalent to keeping the inputs
+      - text: Snapshot the curated tables weekly and restore the last good snapshot
+        why: Every snapshot contains the same mangled dates; none of them hold the original values.
+        misconception: Backups of derived data protect against logic errors
+      - text: Apply stricter validation rules to curated rows so errors are rejected on load
+        why: Mangled dates are still valid dates, so the rules would not flag them, and unrecoverable bad rows would be lost.
+        misconception: Validation can catch every semantic parsing error
+    explanation: |
+      Layered pipelines (raw, cleaned, curated) keep the source of truth immutable so transformations can be corrected
+      and replayed. Retention of raw data must be balanced against privacy rules, but dropping it removes the ability
+      to repair mistakes.
+
+  - id: D5-027
+    version: 1
+    type: multi
+    subtopic: data.modeling
+    tags: [adoption.handoff]
+    difficulty: 2
+    level: evaluate
+    time_s: 100
+    stem: |
+      An upstream CRM team renamed `cust_id` to `customer_id` without notice. The nightly pipeline that feeds
+      the RAG metadata store and the sales dashboards kept running but loaded NULL customer ids for a week.
+      Which actions reduce the chance of this class of failure?
+    options:
+      - text: Define a data contract for the feed (schema, types, nullability) and have the producer run compatibility checks before releasing changes
+        correct: true
+        why: The producer learns about a breaking change before it ships, and the consumers get a stable, versioned interface.
+      - text: Validate incoming batches against the expected schema and quarantine and alert on failures instead of loading
+        correct: true
+        why: Detecting the mismatch at load time turns a silent week of bad data into a same-day alert.
+      - text: Make the pipeline tolerant by loading whatever columns exist and defaulting missing ones to NULL
+        why: This is the behaviour that caused the failure, since missing data became silent NULLs.
+        misconception: A forgiving pipeline is a more reliable one
+      - text: Map columns by position, not by name, so renames no longer matter
+        why: Positional mapping breaks silently on any reorder or inserted column and makes the pipeline harder to debug.
+        misconception: Removing dependence on names removes dependence on schema
+      - text: Have an LLM infer the column mapping on each run when names change
+        why: A nondeterministic mapping on a production feed can silently attach the wrong field, and its choices are hard to audit.
+        misconception: An LLM can safely absorb schema drift in a data pipeline
+    explanation: |
+      Treat the interface between producer and consumer as a contract: explicit schema and semantics, change
+      management on the producer side, and fail-fast validation on the consumer side. Quiet tolerance of schema
+      drift hides problems until a dashboard or answer is wrong.
+
+  - id: D5-028
+    version: 1
+    type: numeric
+    subtopic: rag.ingestion
+    tags: [obs.cost, rag.retrieval]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      A pipeline splits each document into chunks of 512 tokens with a 64-token overlap (so each new chunk starts
+      448 tokens after the previous one). The last chunk of a document is shorter and is not padded, and it is
+      produced only if it contains tokens not already covered by the previous chunk. The corpus has 2,000 documents
+      of exactly 12,000 tokens each. How many tokens will be sent to the embedding model in total, in millions?
+    answer: {value: 27.328, tolerance: 0.05, tolerance_type: abs, unit: "million tokens"}
+    work: |
+      Chunk starts are 0, 448, 896, ... . A chunk starting at s covers tokens s to s+511. Starts at k*448 for
+      k = 0..26 (the last start is 11,648, since 27*448 = 12,096 exceeds the document length).
+      The chunks for k = 0..25 are full: 26 * 512 = 13,312 tokens. The chunk at 11,648 covers 12,000 - 11,648 = 352
+      tokens. Total per document = 13,312 + 352 = 13,664 tokens (equivalently 12,000 plus 26 overlaps of 64 tokens).
+      Across 2,000 documents: 13,664 * 2,000 = 27,328,000 tokens = 27.328 million.
+    explanation: |
+      Common mistakes: counting 12,000 / 448 = 26.8 chunks and rounding to 27 full chunks (27.648 million), or
+      forgetting the overlap altogether (24 million). Overlap adds about 14% to embedding cost here.
+
+  - id: D5-029
+    version: 1
+    type: numeric
+    subtopic: rag.retrieval
+    tags: [deploy.compute, obs.cost]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 120
+    stem: |
+      A vector index holds 12 million chunk embeddings of 1,024 dimensions each, stored as 32-bit floats. The team
+      considers 8-bit scalar quantisation, which stores each dimension in one byte. Ignoring index graph overhead,
+      metadata and the original-vector copies on disk, how much memory does the quantisation save for the vectors?
+      Use 1 GiB = 2^30 bytes and give the answer in GiB.
+    answer: {value: 34.33, tolerance: 0.3, tolerance_type: abs, unit: "GiB"}
+    work: |
+      Float32: 12,000,000 * 1,024 * 4 bytes = 49,152,000,000 bytes = 45.78 GiB.
+      Int8: 12,000,000 * 1,024 * 1 byte = 12,288,000,000 bytes = 11.44 GiB.
+      Saving = 45.78 - 11.44 = 34.33 GiB (75%).
+    explanation: |
+      Common mistakes: reporting the quantised size (11.44 GiB) instead of the saving, using 1 GB = 10^9 bytes
+      (giving 36.9). Quantisation trades a little recall for 4x less memory;
+      measure recall before adopting it.
+
+  - id: D5-030
+    version: 1
+    type: open
+    subtopic: rag.retrieval
+    tags: [eval.rag-agent, comms.stakeholders]
+    competencies: [x.written-comms, x.decomposition]
+    difficulty: 3
+    level: evaluate
+    time_s: 540
+    stem: |
+      You are three weeks into a claims-assistant pilot at an insurer. The assistant retrieves from 60,000 policy
+      and procedure documents. A quality review of 200 questions found 22% wrong or incomplete answers. The client's
+      VP of Operations has written: "Clearly the model is too weak. Please upgrade to the most expensive one before
+      the steering committee on Friday." Write your reply. Explain how you will find the actual cause, what you
+      will do before Friday, and what you will ask of the VP.
+    rubric:
+      - criterion: Bottom line first and respectful pushback
+        points: 2
+        guidance: 2 if the reply opens with a clear position (do not buy the upgrade yet, diagnose first) in a respectful tone; 1 if the position is present but buried or hedged; 0 if it simply agrees or never states one.
+      - criterion: Stage-by-stage diagnosis of the failures
+        points: 3
+        guidance: 3 if it proposes classifying the 200 failures by stage (retrieval miss, ranking, parsing or chunking, permissions, generation) using the retrieved chunks and measures retrieval recall separately; 2 if it separates retrieval from generation but stops there; 1 if it only says analyse errors; 0 if absent.
+      - criterion: Concrete plan and cheap test of the model hypothesis
+        points: 3
+        guidance: 3 if it includes a Friday-feasible plan (error taxonomy, a fix experiment such as hybrid search or parsing for the top failure category, and a side-by-side run of the larger model on the same failures to test the VP's hypothesis, with a cost comparison); 2 if plan or test is present but vague; 1 if only one element; 0 if none.
+      - criterion: Risks, success measure and the ask
+        points: 2
+        guidance: 2 if it states what result would change the plan, a measurable target on the same 200-question set, and a specific ask (domain experts to label, access to logs, decision rule for the upgrade); 1 if only one of these; 0 if none.
+    model_answer: |
+      Short answer: I would hold the upgrade decision until Thursday. We have not yet shown the model is the
+      bottleneck, and upgrading is the most expensive way to find out.
+
+      What I will do before Friday: take the 44 failing questions and, for each, look at what was retrieved and
+      classify the failure: the right document was not retrieved (a recall problem), it was retrieved but ranked too
+      low, the text was mangled at parsing (tables and scans are common in claims material), a permission filter removed
+      it, or the evidence was present and the model still got it wrong. That takes a day and tells us where the 22% comes
+      from. In parallel I will run the larger model on exactly those 44 questions with the same retrieved context, so
+      we get a measured answer on your hypothesis and a cost-per-answer comparison, instead of a guess.
+
+      My expectation, from similar pilots, is that most failures sit in retrieval and parsing, which a bigger model
+      cannot repair. If so, the fix is cheaper: hybrid search, better parsing of tables, and a reranker, each tested
+      on the same 200 questions. If instead the evidence is present and the model fails, I will recommend the upgrade.
+
+      For the steering committee I will show the failure breakdown, the first fix and its measured improvement, and
+      a target (for example, under 10% wrong on this set).
+
+      What I need from you: two claims specialists for two hours to confirm the correct answers on the failures, and
+      agreement that the upgrade is approved if the evidence points to the model.
+    max_chars: 2500
+
+  - id: D5-031
+    version: 1
+    type: sql
+    subtopic: rag.ingestion
+    tags: [gov.identity, data.sql]
+    competencies: [x.sql]
+    difficulty: 3
+    level: apply
+    time_s: 780
+    stem: |
+      A permission-aware search layer keeps document ACLs in three tables (see the schema below).
+
+      - `documents(doc_id, title)`
+      - `doc_acl(doc_id, principal, effect)`: `principal` is `'user:<user_id>'`, `'group:<group_id>'` or the literal
+        `'public'`; `effect` is `'allow'` or `'deny'`.
+      - `memberships(user_id, group_id)`
+
+      A user can read a document if at least one `allow` entry applies to them and no `deny` entry applies to them.
+      An entry applies to a user when its principal is `'public'`, is `'user:'` followed by their id, or is
+      `'group:'` followed by a group they belong to. Return `doc_id` and `title` of every document that user
+      `alice` can read, ordered by `doc_id`.
+    sql:
+      setup: |
+        CREATE TABLE documents(doc_id TEXT, title TEXT);
+        CREATE TABLE doc_acl(doc_id TEXT, principal TEXT, effect TEXT);
+        CREATE TABLE memberships(user_id TEXT, group_id TEXT);
+        INSERT INTO documents VALUES
+          ('d1','Travel policy'),('d2','Salary bands'),('d3','Incident runbook'),('d4','Board minutes'),
+          ('d5','Onboarding guide'),('d6','Vendor contracts'),('d7','Draft layoffs plan'),('d8','Orphan file');
+        INSERT INTO memberships VALUES
+          ('alice','eng'),('alice','managers'),('bob','finance'),('bob','eng'),('carol','managers');
+        INSERT INTO doc_acl VALUES
+          ('d1','public','allow'),
+          ('d2','group:finance','allow'),
+          ('d2','group:managers','allow'),
+          ('d3','group:eng','allow'),
+          ('d3','user:alice','deny'),
+          ('d4','user:alice','allow'),
+          ('d4','group:managers','allow'),
+          ('d5','public','allow'),
+          ('d5','group:eng','deny'),
+          ('d6','group:legal','allow'),
+          ('d6','user:bob','allow'),
+          ('d7','group:managers','allow'),
+          ('d7','group:eng','allow'),
+          ('d7','user:carol','deny');
+      reference: |
+        WITH me AS (
+          SELECT 'public' AS p
+          UNION SELECT 'user:' || 'alice'
+          UNION SELECT 'group:' || group_id FROM memberships WHERE user_id = 'alice'
+        )
+        SELECT d.doc_id, d.title
+        FROM documents d
+        WHERE EXISTS (SELECT 1 FROM doc_acl a JOIN me ON me.p = a.principal
+                      WHERE a.doc_id = d.doc_id AND a.effect = 'allow')
+          AND NOT EXISTS (SELECT 1 FROM doc_acl a JOIN me ON me.p = a.principal
+                          WHERE a.doc_id = d.doc_id AND a.effect = 'deny')
+        ORDER BY d.doc_id
+      order_matters: true
+      float_round: 2
+    explanation: |
+      Build the set of principals that apply to the user once, then test for at least one matching allow and no
+      matching deny, with EXISTS/NOT EXISTS so that multiple matching entries do not duplicate rows. Documents with
+      no ACL entries at all (`d8`) are correctly excluded: default deny. Deny-overrides-allow is the safe default
+      for access control.
+
+  - id: D5-032
+    version: 1
+    type: sql
+    subtopic: data.sql
+    tags: [rag.ingestion]
+    competencies: [x.sql]
+    difficulty: 2
+    level: apply
+    time_s: 600
+    stem: |
+      A nightly sync from Jira appends ticket snapshots to `ticket_snapshots(snapshot_id, ticket_key, status,
+      priority, synced_at)`. A ticket appears once for every sync in which it changed, so it can have several rows.
+      `synced_at` is an ISO-8601 text timestamp, `snapshot_id` is an increasing integer, and `priority` is NULL
+      when the field was empty. A ticket's current state is its latest snapshot (latest `synced_at`; if two share a
+      timestamp, the higher `snapshot_id`).
+
+      Return, for tickets whose current `status` is not `'Done'`, the number of tickets per priority as
+      `priority` and `tickets`, where a NULL priority is shown as `'unset'`. Order by `tickets` descending, then
+      `priority` ascending.
+    sql:
+      setup: |
+        CREATE TABLE ticket_snapshots(snapshot_id INT, ticket_key TEXT, status TEXT, priority TEXT, synced_at TEXT);
+        INSERT INTO ticket_snapshots VALUES
+          (1,'AI-1','To Do','High','2026-09-01T02:00:00'),
+          (2,'AI-2','To Do','Low','2026-09-01T02:00:00'),
+          (3,'AI-3','To Do',NULL,'2026-09-01T02:00:00'),
+          (4,'AI-1','In Progress','High','2026-09-02T02:00:00'),
+          (5,'AI-2','Done','Low','2026-09-02T02:00:00'),
+          (6,'AI-4','To Do','High','2026-09-02T02:00:00'),
+          (7,'AI-1','Done','High','2026-09-03T02:00:00'),
+          (8,'AI-3','In Progress','Medium','2026-09-03T02:00:00'),
+          (9,'AI-5','To Do',NULL,'2026-09-03T02:00:00'),
+          (10,'AI-6','To Do','Low','2026-09-03T02:00:00'),
+          (11,'AI-6','In Progress','Low','2026-09-03T02:00:00'),
+          (12,'AI-7','In Progress','Medium','2026-09-03T02:00:00'),
+          (13,'AI-4','In Progress','High','2026-09-03T02:00:00'),
+          (14,'AI-2','Done','Low','2026-09-04T02:00:00');
+      reference: |
+        WITH latest AS (
+          SELECT *, ROW_NUMBER() OVER (PARTITION BY ticket_key ORDER BY synced_at DESC, snapshot_id DESC) AS rn
+          FROM ticket_snapshots
+        )
+        SELECT COALESCE(priority, 'unset') AS priority, COUNT(*) AS tickets
+        FROM latest
+        WHERE rn = 1 AND status <> 'Done'
+        GROUP BY COALESCE(priority, 'unset')
+        ORDER BY tickets DESC, priority ASC
+      order_matters: true
+      float_round: 2
+    explanation: |
+      Rank each ticket's snapshots with `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC)` and keep rank 1
+      before filtering on status; filtering first would resurrect tickets whose latest snapshot is Done. COALESCE
+      handles the NULL priority group, which GROUP BY otherwise reports as NULL.
+
+  - id: D5-033
+    version: 1
+    type: sql
+    subtopic: data.sql
+    tags: [obs.troubleshooting]
+    competencies: [x.sql]
+    difficulty: 3
+    level: apply
+    time_s: 720
+    stem: |
+      The helpdesk exports status changes as `ticket_events(event_id, ticket_id, status, changed_at)`, where
+      `changed_at` is `'YYYY-MM-DD HH:MM:SS'` text and `event_id` breaks ties between events that share a timestamp
+      (higher is later). A ticket is *reopened* whenever an event with status `'open'` immediately follows (in time
+      order, for the same ticket) an event with status `'closed'`.
+
+      Return, for each ticket that was reopened at least once, `ticket_id`, `reopen_count`, and `max_gap_hours`:
+      the longest time in hours (rounded to 1 decimal) between a closure and the reopening that followed it.
+      Order by `ticket_id`.
+    sql:
+      setup: |
+        CREATE TABLE ticket_events(event_id INT, ticket_id TEXT, status TEXT, changed_at TEXT);
+        INSERT INTO ticket_events VALUES
+          (1,'T1','open','2026-03-01 09:00:00'),
+          (2,'T1','closed','2026-03-01 15:00:00'),
+          (3,'T1','open','2026-03-02 09:30:00'),
+          (4,'T1','closed','2026-03-02 12:00:00'),
+          (5,'T1','open','2026-03-05 12:00:00'),
+          (6,'T2','open','2026-03-01 10:00:00'),
+          (7,'T2','pending','2026-03-01 11:00:00'),
+          (8,'T2','closed','2026-03-01 16:00:00'),
+          (9,'T3','open','2026-03-02 08:00:00'),
+          (10,'T3','closed','2026-03-02 08:30:00'),
+          (11,'T3','open','2026-03-02 20:30:00'),
+          (12,'T4','open','2026-03-03 10:00:00'),
+          (13,'T4','closed','2026-03-03 10:00:00'),
+          (14,'T4','open','2026-03-03 10:00:00'),
+          (15,'T5','closed','2026-03-04 09:00:00'),
+          (16,'T5','pending','2026-03-04 10:00:00'),
+          (17,'T5','open','2026-03-04 11:00:00');
+      reference: |
+        WITH ordered AS (
+          SELECT ticket_id, status, changed_at,
+                 LAG(status) OVER (PARTITION BY ticket_id ORDER BY changed_at, event_id) AS prev_status,
+                 LAG(changed_at) OVER (PARTITION BY ticket_id ORDER BY changed_at, event_id) AS prev_at
+          FROM ticket_events
+        )
+        SELECT ticket_id,
+               COUNT(*) AS reopen_count,
+               ROUND(MAX((julianday(changed_at) - julianday(prev_at)) * 24), 1) AS max_gap_hours
+        FROM ordered
+        WHERE status = 'open' AND prev_status = 'closed'
+        GROUP BY ticket_id
+        ORDER BY ticket_id
+      order_matters: true
+      float_round: 1
+    explanation: |
+      `LAG` brings the previous event onto the same row so each transition can be tested directly, and the
+      secondary `event_id` ordering makes same-second events deterministic. Closed, then pending, then open is not
+      a reopening under this definition, which is why T2 and T5 do not appear.
+
+  - id: D5-034
+    version: 1
+    type: sql
+    subtopic: rag.ingestion
+    tags: [data.sql]
+    competencies: [x.sql]
+    difficulty: 3
+    level: analyze
+    time_s: 720
+    stem: |
+      To monitor a search index's freshness, you have two tables:
+
+      - `documents(doc_id, updated_at, is_deleted)`: `updated_at` is ISO-8601 text; `is_deleted` is 0 or 1.
+      - `chunks(chunk_id, doc_id, indexed_at)`: one row per indexed chunk; `indexed_at` is ISO-8601 text.
+
+      Report each document with a problem, as `doc_id` and `problem`:
+
+      - `'never_indexed'`: not deleted and has no chunks;
+      - `'stale'`: not deleted, has chunks, and `updated_at` is later than the latest `indexed_at` of its chunks;
+      - `'delete_pending'`: deleted but still has at least one chunk.
+
+      Documents without a problem are not returned. Order by `doc_id`.
+    sql:
+      setup: |
+        CREATE TABLE documents(doc_id TEXT, updated_at TEXT, is_deleted INT);
+        CREATE TABLE chunks(chunk_id INT, doc_id TEXT, indexed_at TEXT);
+        INSERT INTO documents VALUES
+          ('a','2026-05-01T10:00:00',0),
+          ('b','2026-05-03T10:00:00',0),
+          ('c','2026-05-04T08:00:00',0),
+          ('d','2026-05-02T09:00:00',1),
+          ('e','2026-05-02T09:00:00',1),
+          ('f','2026-05-05T12:00:00',0),
+          ('g','2026-05-05T12:00:00',0);
+        INSERT INTO chunks VALUES
+          (1,'a','2026-05-02T00:00:00'),
+          (2,'a','2026-05-02T00:00:00'),
+          (3,'b','2026-05-01T00:00:00'),
+          (4,'b','2026-05-02T00:00:00'),
+          (5,'c','2026-05-04T08:00:00'),
+          (6,'d','2026-05-02T00:00:00'),
+          (7,'f','2026-05-04T00:00:00'),
+          (8,'f','2026-05-06T00:00:00');
+      reference: |
+        SELECT d.doc_id,
+               CASE
+                 WHEN d.is_deleted = 1 THEN 'delete_pending'
+                 WHEN COUNT(c.chunk_id) = 0 THEN 'never_indexed'
+                 ELSE 'stale'
+               END AS problem
+        FROM documents d
+        LEFT JOIN chunks c ON c.doc_id = d.doc_id
+        GROUP BY d.doc_id, d.is_deleted, d.updated_at
+        HAVING (d.is_deleted = 1 AND COUNT(c.chunk_id) > 0)
+            OR (d.is_deleted = 0 AND COUNT(c.chunk_id) = 0)
+            OR (d.is_deleted = 0 AND COUNT(c.chunk_id) > 0 AND d.updated_at > MAX(c.indexed_at))
+        ORDER BY d.doc_id
+      order_matters: true
+      float_round: 2
+    explanation: |
+      A LEFT JOIN keeps documents with no chunks, and aggregating per document lets HAVING test the chunk count and
+      the latest index time together. Document `c` is not stale because its update time equals its latest index time,
+      and `f` is fine because one of its chunks was indexed after the update.
+
+  - id: D5-035
+    version: 1
+    type: sql
+    subtopic: data.sql
+    tags: [data.modeling, discovery.environment]
+    competencies: [x.sql]
+    difficulty: 3
+    level: apply
+    time_s: 780
+    stem: |
+      Finance wants monthly revenue from a legacy order table, `ORD_HDR`. Profiling and interviews established
+      the following about its columns:
+
+      - `ORD_DT` is text `'YYYYMMDD'`; the placeholder `'00000000'` marks orders with an unknown date (ignore them).
+      - `AMT` is an integer. For `SRC` values `'WEB'` and `'EDI'` it is in cents; for `SRC = 'LEGACY'` it is already in
+        whole currency units.
+      - `CUR` is the currency code. Only `'USD'` orders are wanted.
+      - `VOID_FLG` is `'Y'` for voided orders; it is `'N'` or NULL otherwise. Exclude voided orders.
+
+      Return `month` (formatted `'YYYY-MM'`) and `revenue_usd` (the sum of amounts in whole USD), ordered by month.
+    sql:
+      setup: |
+        CREATE TABLE ORD_HDR(ORD_NO INT, CUST_NO INT, ORD_DT TEXT, AMT INT, CUR TEXT, SRC TEXT, VOID_FLG TEXT);
+        INSERT INTO ORD_HDR VALUES
+          (1,10,'20260105',12500,'USD','WEB',NULL),
+          (2,11,'20260117',4000,'USD','EDI','N'),
+          (3,12,'20260121',300,'USD','LEGACY',NULL),
+          (4,10,'20260122',9900,'USD','WEB','Y'),
+          (5,13,'20260203',5000,'EUR','WEB',NULL),
+          (6,14,'20260204',20000,'USD','EDI',NULL),
+          (7,15,'20260215',750,'USD','LEGACY','N'),
+          (8,11,'00000000',7700,'USD','WEB',NULL),
+          (9,16,'20260301',1999,'USD','WEB',NULL),
+          (10,12,'20260302',120,'USD','LEGACY','Y'),
+          (11,17,'20260311',250,'USD','LEGACY',NULL);
+      reference: |
+        SELECT substr(ORD_DT, 1, 4) || '-' || substr(ORD_DT, 5, 2) AS month,
+               SUM(CASE WHEN SRC = 'LEGACY' THEN AMT ELSE AMT / 100.0 END) AS revenue_usd
+        FROM ORD_HDR
+        WHERE CUR = 'USD'
+          AND ORD_DT <> '00000000'
+          AND COALESCE(VOID_FLG, 'N') <> 'Y'
+        GROUP BY 1
+        ORDER BY 1
+      order_matters: true
+      float_round: 2
+    explanation: |
+      Legacy conventions are encoded in rules you must apply row by row: a CASE for mixed units, substr for text
+      dates, and a NULL-safe test for the void flag (`VOID_FLG <> 'Y'` would silently drop every NULL row).
+      Divide by `100.0`, not `100`, or integer division truncates the cents.
+
+  - id: D5-036
+    version: 1
+    type: sql
+    subtopic: data.sql
+    tags: [rag.architecture, eval.online]
+    competencies: [x.sql]
+    difficulty: 2
+    level: apply
+    time_s: 600
+    stem: |
+      A support portal logs article usage in `kb_articles(article_id, category, title, views_30d)`; `views_30d`
+      is NULL for articles published in the last few days (treat NULL as 0).
+
+      For each category, return the articles in the top two by `views_30d`, counting all articles tied with the
+      second-highest view count (so a category can return more than two). Return `category`, `article_id`,
+      `views_30d` (NULL shown as 0) and `share` — the article's views divided by the category's total views,
+      rounded to 3 decimals (0 if the category total is 0). Order by `category`, then `views_30d` descending, then
+      `article_id`.
+    sql:
+      setup: |
+        CREATE TABLE kb_articles(article_id INT, category TEXT, title TEXT, views_30d INT);
+        INSERT INTO kb_articles VALUES
+          (1,'billing','Refunds',500),
+          (2,'billing','Invoices',300),
+          (3,'billing','Tax IDs',300),
+          (4,'billing','Credits',50),
+          (5,'access','SSO setup',900),
+          (6,'access','Reset password',700),
+          (7,'access','API keys',200),
+          (8,'access','New SCIM guide',NULL),
+          (9,'agents','Tool limits',120),
+          (10,'agents','Run history',NULL),
+          (11,'agents','Retries',NULL),
+          (12,'onboarding','Welcome',NULL);
+      reference: |
+        WITH v AS (
+          SELECT article_id, category, COALESCE(views_30d, 0) AS views
+          FROM kb_articles
+        ),
+        r AS (
+          SELECT article_id, category, views,
+                 RANK() OVER (PARTITION BY category ORDER BY views DESC) AS rk,
+                 SUM(views) OVER (PARTITION BY category) AS total
+          FROM v
+        )
+        SELECT category, article_id, views AS views_30d,
+               CASE WHEN total = 0 THEN 0 ELSE ROUND(1.0 * views / total, 3) END AS share
+        FROM r
+        WHERE rk <= 2
+        ORDER BY category, views DESC, article_id
+      order_matters: true
+      float_round: 3
+    explanation: |
+      `RANK()` leaves ties at the same rank (so both 300-view articles appear), unlike `ROW_NUMBER()`, which would
+      arbitrarily cut one. The window `SUM(...) OVER (PARTITION BY category)` provides the denominator without a
+      separate join. The all-zero `onboarding` category exercises the division-by-zero guard, and `agents` shows
+      NULL views being treated as 0.
+
+  - id: D5-037
+    version: 1
+    type: code
+    subtopic: rag.retrieval
+    competencies: [x.python]
+    difficulty: 2
+    level: apply
+    time_s: 600
+    stem: |
+      Your hybrid search returns one ranked list of document ids from BM25 and another from a vector index (more
+      lists may be added later). Implement `reciprocal_rank_fusion(rankings, k=60, top_n=None)` that merges them.
+
+      - Each document's score is the sum over the lists of `1 / (k + rank)`, where `rank` starts at 1 for the first
+        item of a list. A list contributes nothing for a document it does not contain.
+      - If a document appears more than once within one list, only its first (best) position in that list counts.
+      - Return document ids ordered by score, highest first; break ties by id in ascending order.
+      - If `top_n` is not None, return at most that many ids (an empty list for `top_n <= 0`).
+    code:
+      function: reciprocal_rank_fusion
+      starter: |
+        def reciprocal_rank_fusion(rankings: list[list[str]], k: int = 60, top_n: int | None = None) -> list[str]:
+            ...
+      reference: |
+        def reciprocal_rank_fusion(rankings, k=60, top_n=None):
+            scores = {}
+            for ranking in rankings:
+                seen = set()
+                for pos, doc in enumerate(ranking, start=1):
+                    if doc in seen:
+                        continue
+                    seen.add(doc)
+                    scores[doc] = scores.get(doc, 0.0) + 1.0 / (k + pos)
+            ordered = sorted(scores, key=lambda d: (-scores[d], d))
+            if top_n is None:
+                return ordered
+            return ordered[:max(0, top_n)]
+      examples:
+        - args: [[["a", "b", "c"], ["b", "c", "d"]]]
+          expected: ["b", "c", "a", "d"]
+      tests:
+        - args: [[]]
+          expected: []
+        - args: [[["x", "y"], ["y", "x"]]]
+          expected: ["x", "y"]
+        - args: [[["a", "a", "b"], ["b"]]]
+          expected: ["b", "a"]
+        - kwargs: {rankings: [["a", "b"], ["c", "b"]], k: 0}
+          expected: ["a", "b", "c"]
+        - kwargs: {rankings: [["a", "b"], ["c", "b"]]}
+          expected: ["b", "a", "c"]
+        - kwargs: {rankings: [["a", "b", "c"], ["b", "c", "d"]], top_n: 2}
+          expected: ["b", "c"]
+        - kwargs: {rankings: [["a", "b"]], top_n: 0}
+          expected: []
+        - kwargs: {rankings: [["only"], []]}
+          expected: ["only"]
+      timeout_s: 5
+    explanation: |
+      RRF needs only ranks, so it combines retrievers whose scores are not comparable. The constant `k` (60 is the
+      common default) damps the weight of top ranks: with `k = 0` a first place dominates, with large `k` agreement
+      across lists matters more. Deduplicating within a list prevents a repeated id from being double-counted.
+    refs: [https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf]
+
+  - id: D5-038
+    version: 1
+    type: code
+    subtopic: rag.retrieval
+    tags: [rag.ingestion]
+    competencies: [x.python]
+    difficulty: 2
+    level: apply
+    time_s: 600
+    stem: |
+      Implement `chunk_words(text, size, overlap)` for a RAG ingestion job. Split `text` on whitespace into words and
+      return chunks of at most `size` words as strings (words joined by a single space).
+
+      - Each chunk starts `size - overlap` words after the previous chunk's start, so consecutive chunks share
+        `overlap` words.
+      - Stop after the first chunk that reaches the last word: never emit a trailing chunk made only of words that
+        an earlier chunk already contains.
+      - Return `[]` for text with no words, and also for an invalid configuration (`size <= 0`, `overlap < 0` or
+        `overlap >= size`).
+    code:
+      function: chunk_words
+      starter: |
+        def chunk_words(text: str, size: int, overlap: int) -> list[str]:
+            ...
+      reference: |
+        def chunk_words(text, size, overlap):
+            words = text.split()
+            if not words or size <= 0 or overlap < 0 or overlap >= size:
+                return []
+            step = size - overlap
+            chunks = []
+            for start in range(0, len(words), step):
+                chunks.append(" ".join(words[start:start + size]))
+                if start + size >= len(words):
+                    break
+            return chunks
+      examples:
+        - args: ["a b c d e f g h i j", 4, 1]
+          expected: ["a b c d", "d e f g", "g h i j"]
+      tests:
+        - args: ["", 4, 1]
+          expected: []
+        - args: ["   \n  ", 4, 1]
+          expected: []
+        - args: ["a b c d", 4, 1]
+          expected: ["a b c d"]
+        - args: ["a b c d e", 4, 2]
+          expected: ["a b c d", "c d e"]
+        - args: ["a b c d e f", 3, 0]
+          expected: ["a b c", "d e f"]
+        - args: ["a b c d e f g", 3, 0]
+          expected: ["a b c", "d e f", "g"]
+        - args: ["a  b\nc\td e f g h i j", 4, 2]
+          expected: ["a b c d", "c d e f", "e f g h", "g h i j"]
+        - args: ["a b c", 2, 2]
+          expected: []
+        - args: ["a b c", 0, 0]
+          expected: []
+        - args: ["a b c d", 3, -1]
+          expected: []
+      timeout_s: 5
+    explanation: |
+      The loop must stop once a window includes the final word; otherwise the stride produces a last chunk that
+      only repeats overlap text. Splitting on `str.split()` normalises whitespace. Real pipelines count model
+      tokens rather than words, but the windowing logic is identical.

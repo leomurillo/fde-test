@@ -1,0 +1,877 @@
+domain: D4
+items:
+  # ===================== llm.fundamentals =====================
+  - id: D4-001
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    tags: [obs.cost]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A support assistant sends about 6,000 tokens of fixed instructions, tool definitions and policy text on
+      every call, followed by the customer's message. Prompt caching was enabled and cut input cost by roughly
+      80%. After a release that added the current timestamp (to the second) as the first line of the system
+      prompt, the cache hit rate fell to near zero and the bill rose. Which change restores the savings?
+    options:
+      - text: Move the timestamp to the end of the request, after all the static content
+        correct: true
+        why: Prefix caching matches an identical leading span; with the volatile line last, the 6,000 static tokens match again on every call.
+      - text: Lengthen the cache lifetime so entries survive between customers' requests
+        why: Entries are not expiring early. Each request now starts with a unique line, so no stored prefix ever matches regardless of lifetime.
+        misconception: Cache misses are caused by entries expiring too soon
+      - text: Set temperature to 0 so identical questions produce identical, reusable responses
+        why: Prompt caching reuses processed input, not outputs. Sampling settings have no bearing on whether the prefix matches.
+        misconception: Prompt caching is the same as caching identical responses
+      - text: Put a semantic cache in front of the model to reuse answers to similar questions
+        why: It is a different mechanism that can return stale or wrong-customer answers, and it does nothing to make the model prefix cacheable again.
+        misconception: Any cache layer substitutes for prompt (prefix) caching
+    explanation: |
+      Prompt caching works on an exact leading span of the input. Anything that changes early in the prompt
+      (timestamps, request IDs, user names) invalidates everything after it. Order content from most static to
+      most volatile: instructions and tool definitions first, retrieved or per-request data last.
+    refs: [https://platform.openai.com/docs/guides/prompt-caching, https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching]
+
+  - id: D4-002
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    tags: [eval.methods]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A client's QA lead reports that one insurance claim, sent through a classification prompt at temperature 0,
+      returned `approve` on Monday and `review` on Wednesday. Request payloads are byte-identical, and she
+      concludes the integration has a bug. What is the most accurate response and next step?
+    options:
+      - text: Outputs can differ even at temperature 0, so store the decision when made and measure label agreement across repeated runs
+        correct: true
+        why: Hosted inference has residual non-determinism (batching, floating point, silent backend changes). The workable response is to persist the decision of record and quantify the variance.
+      - text: Fix a random seed in the request, which makes the response reproducible across days and servers
+        why: Seed parameters are best-effort at most; they do not promise identical output across hardware or backend updates.
+        misconception: A seed parameter guarantees reproducibility
+      - text: Also set top-p to its minimum, since greedy selection on both controls removes all remaining variation
+        why: Greedy settings narrow the sampling but do not remove numerical differences in the computed token probabilities.
+        misconception: Zeroing every sampling knob makes inference deterministic
+      - text: Treat it as a client-side defect, because identical input at temperature 0 must produce identical output
+        why: The premise is wrong. Hunting for a bug that is not there wastes time and leaves the real variance unmanaged.
+        misconception: Temperature 0 is a determinism guarantee
+    explanation: |
+      Temperature 0 makes token selection greedy, but the underlying probabilities can still vary slightly
+      between runs. Design for it: persist the result that downstream decisions used, constrain outputs to a
+      small label set, and measure run-to-run agreement on a fixed set rather than assuming repeatability.
+
+  - id: D4-003
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    tags: [int.async, obs.cost]
+    difficulty: 2
+    level: evaluate
+    time_s: 90
+    stem: |
+      An insurer classifies about 400,000 policy documents every night. During the run the interactive claims
+      assistant, which shares the same API quota, starts returning 429 (rate limit) errors. Results are needed
+      by 7 a.m.; nothing in the nightly job is user-facing. What is the best change?
+    options:
+      - text: Move the nightly job to the provider's asynchronous batch interface
+        correct: true
+        why: Batch work runs off the interactive quota, usually at a lower price, and a completion window of hours fits the 7 a.m. deadline.
+      - text: Add exponential backoff with jitter to the nightly job and cap its concurrency
+        why: Good hygiene, but the job still competes with the assistant for the same quota and is slower and costlier than batch for offline work.
+        misconception: Retry and backoff solve a structural quota-sharing problem
+      - text: Spread the job's calls over several API keys to multiply the available rate limit
+        why: Limits are commonly enforced per organization or project, so extra keys may not help, and evading limits can breach the provider's terms.
+        misconception: Rate limits are per key and can be multiplied
+      - text: Request a higher rate-limit tier so both workloads fit under the quota at peak
+        why: Pays for permanent peak capacity to serve a deadline-tolerant job, and the nightly burst still risks starving interactive users.
+        misconception: More quota is the right fix for any 429
+    explanation: |
+      Rate-limit errors from mixed workloads are a scheduling problem. Latency-tolerant bulk work belongs on an
+      asynchronous batch path, which isolates it from interactive traffic. Backoff is still needed for
+      the interactive path, but it does not separate the two workloads.
+    refs: [https://platform.openai.com/docs/guides/batch, https://docs.anthropic.com/en/docs/build-with-claude/batch-processing]
+
+  - id: D4-004
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    difficulty: 1
+    level: apply
+    time_s: 90
+    stem: |
+      Users of a claims-summary assistant stare at a blank panel and then get the whole answer after about
+      12 seconds. Traces show: time to first token 1.2 s, generation speed about 65 tokens per second, and
+      answers of roughly 700 tokens. Which change most improves the perceived wait?
+    options:
+      - text: Stream tokens to the UI as they are generated
+        correct: true
+        why: Total time stays near 12 s, but the first words appear after about 1.2 s, which is what users perceive as responsiveness.
+      - text: Enable prompt caching to cut the time to first token
+        why: It trims only the 1.2 s input-processing part; roughly 10.8 s of the wait is generation, which caching does not shorten.
+        misconception: Caching speeds up output generation
+      - text: Cap answers at 150 tokens with a hard output limit
+        why: It would cut the wait, but by truncating answers mid-thought, which fails the summary's purpose.
+        misconception: Hard truncation is a way to shorten answers
+      - text: Send the request to two replicas and use whichever responds first
+        why: Both replicas generate at the same speed, so the total duration barely changes while cost doubles.
+        misconception: Redundant requests reduce generation time
+    explanation: |
+      Latency is roughly time to first token plus output tokens divided by generation speed: 1.2 + 700/65 is
+      about 12 s. Streaming does not change that total, but it moves the first visible output to the start.
+      For long answers, perceived latency is dominated by decode time, so caching and replicas help little.
+
+  - id: D4-005
+    version: 1
+    type: multi
+    subtopic: llm.fundamentals
+    tags: [obs.cost]
+    difficulty: 2
+    level: analyze
+    time_s: 100
+    stem: |
+      A chat assistant for field technicians keeps cost per turn roughly flat for the first three turns, then
+      input cost per turn climbs steadily although the technicians' messages stay short. The team calls the
+      model through a stateless chat API. Which statements explain the growth?
+    options:
+      - text: The application resends prior turns on every call, so input tokens grow with conversation length
+        correct: true
+        why: The model keeps no session memory; the full history is part of every request and is billed as input.
+      - text: Tool outputs such as manual excerpts stay in the history and are re-billed on each later turn
+        correct: true
+        why: Large tool results are often the biggest part of the accumulated context, even when user messages are short.
+      - text: The assistant's own earlier replies are resent too and count as input tokens
+        correct: true
+        why: Generated text becomes input on the following turn, so verbose answers inflate every later call.
+      - text: The provider keeps the conversation server-side, so only the newest message is charged but at a higher rate
+        why: A stateless API does not hold session state, and there is no per-turn rate increase for this reason.
+        misconception: Chat APIs hold conversation state on the server
+      - text: Prompt caching makes resent history free, so the growth must come from the system prompt
+        why: Cached tokens are cheaper, not free, and need identical prefixes; the system prompt is constant here.
+        misconception: Cached input costs nothing
+    explanation: |
+      With a stateless API every call carries the full context, so cumulative input cost grows faster than
+      linearly with turn count. Levers: trim or summarize old turns, drop stale tool results, keep answers
+      concise, and structure the prompt for prefix caching.
+
+  - id: D4-006
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    tags: [obs.cost]
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A pilot budget for an HR chatbot was built from an English prototype using "tokens ≈ words × 1.3". In
+      production the client's staff write in Japanese and paste in tables and code-like config, and token usage
+      per request is far above the forecast. How should the FDE re-forecast?
+    options:
+      - text: Count tokens with the target model's own tokenizer on a sample of the client's real inputs
+        correct: true
+        why: Token counts depend on the tokenizer and the language and content mix, so a sample of real data measured with the actual tokenizer gives a defensible forecast.
+      - text: Apply a rule of four characters per token, which holds across languages
+        why: That heuristic is calibrated on English prose and is poor for CJK text, tables and code.
+        misconception: One characters-per-token rule is language-independent
+      - text: Scale the English forecast by a single multiplier measured on one Japanese request
+        why: One sample is noisy, and the multiplier would also be wrong for the table and config content.
+        misconception: A single multiplier transfers across content types
+      - text: Use another vendor's public tokenizer, since token counts are standardized across models
+        why: Tokenizers differ between model families, so counts from another vendor's tokenizer can be well off.
+        misconception: Tokenization is standardized across models
+    explanation: |
+      Tokenizers are model-specific and treat languages, numbers, whitespace and code very differently. Forecast
+      from representative real inputs counted with the tokenizer of the model you will actually call, and
+      re-check whenever you change models.
+
+  - id: D4-007
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    difficulty: 1
+    level: analyze
+    time_s: 75
+    stem: |
+      A summarization service for 40-page reports sometimes ends summaries mid-sentence. Logs show the stop
+      reason is a length limit. The input (about 30,000 tokens) is well inside the model's 200,000-token context
+      window, and the request sets a maximum of 1,024 output tokens. What is going on, and what is the fix?
+    options:
+      - text: The output cap was hit; raise it within the model's maximum and ask for a bounded summary length
+        correct: true
+        why: The stop reason points to the output limit, which is a separate setting from the context window. Raising it and asking for a target length fixes the cut-offs.
+      - text: The context window is exhausted; split each report into smaller chunks before summarizing
+        why: At 30,000 of 200,000 tokens the window is nowhere near full. Chunking adds complexity without addressing the cap.
+        misconception: Truncated output means the context window is full
+      - text: The model is too small for long inputs; switch to a model with a larger context window
+        why: A bigger window does not change the 1,024-token output cap that is actually being reached.
+        misconception: A larger context window raises the output limit
+      - text: Streaming responses cut off long outputs; return the full response in one non-streaming call
+        why: Streaming delivers the same tokens and does not impose a length cap; the stop reason says the limit was reached.
+        misconception: Streaming truncates responses
+    explanation: |
+      The context window bounds input plus output together, while a separate maximum-output setting caps how many
+      tokens one response may contain. A "length" stop reason means a cap was reached; read the stop reason
+      before changing models or architecture.
+
+  - id: D4-008
+    version: 1
+    type: numeric
+    subtopic: llm.fundamentals
+    tags: [obs.cost]
+    competencies: [x.estimation]
+    difficulty: 1
+    level: apply
+    time_s: 150
+    stem: |
+      A contract-review service sends 20,000 requests per day. Each request has a 10,000-token static prefix
+      (instructions and policy text), 400 tokens of request-specific input and 250 output tokens. Prices:
+      input $3.00 per million tokens, cached input $0.30 per million tokens, output $15.00 per million tokens.
+      Assume that with prompt caching every request's static prefix is read from cache (ignore the one-time cache
+      write) and that output is not discounted. How many US dollars per day does prompt caching save?
+    answer: {value: 540, tolerance: 2, tolerance_type: abs, unit: "USD per day"}
+    work: |
+      Without caching, per request: input 10,400 tokens × $3/M = $0.0312; output 250 × $15/M = $0.00375;
+      total $0.03495. × 20,000 = $699.
+      With caching, per request: cached 10,000 × $0.30/M = $0.0030; fresh input 400 × $3/M = $0.0012;
+      output $0.00375; total $0.00795. × 20,000 = $159.
+      Savings = $699 − $159 = $540 per day.
+    explanation: |
+      Only the cached prefix gets the discount: 10,000 tokens drop from $3 to $0.30 per million, saving
+      $0.027 per request. Common mistakes: discounting the 400 fresh tokens, discounting output, or
+      reporting the with-caching cost ($159) instead of the saving.
+
+  # ===================== llm.prompting =====================
+  - id: D4-009
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    tags: [eval.datasets]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A telecom's ticket-triage prompt assigns one of 12 categories. Overall accuracy is 91%, but most errors
+      are confusions between `billing_dispute` and `refund_request`. The prompt has a one-line description per
+      category and no examples. The team has 300 labeled tickets and wants a prompt-level fix before anything
+      heavier. What should they try first?
+    options:
+      - text: Add a few contrastive examples from real misclassified tickets, plus a sentence on what separates the two categories
+        correct: true
+        why: Targets the observed confusion with boundary cases and an explicit decision rule, at a small token cost.
+      - text: Add 30 randomly sampled labeled tickets as examples to cover the whole category set
+        why: Random examples mostly show easy cases, add large prompt cost and can skew the label distribution, without addressing the specific boundary.
+        misconception: More few-shot examples always beat targeted ones
+      - text: Write the two category names in capitals and state that accuracy on them is critical
+        why: Emphasis adds no information about where the boundary lies, so the model's confusion remains.
+        misconception: Stressing importance changes model behavior
+      - text: Fine-tune a model on the 300 tickets before touching the prompt
+        why: A heavier step that is premature; 300 examples is thin, and cheaper prompt-level fixes have not been tried.
+        misconception: Fine-tuning is the next step whenever prompting is imperfect
+    explanation: |
+      Few-shot examples are most valuable when they show the cases the model gets wrong, especially pairs that
+      sit on either side of a boundary, together with the rule that separates them. Pull them from error
+      analysis rather than sampling at random, and keep a held-out part of the labeled set to check the fix.
+
+  - id: D4-010
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    tags: [llm.model-selection]
+    difficulty: 3
+    level: evaluate
+    time_s: 100
+    stem: |
+      A team moved a loan-document reconciliation task from a standard chat model to a reasoning model. They
+      kept the old prompt: a 25-step numbered procedure plus "think step by step and show your work".
+      Accuracy is unchanged and latency is three times higher. Which prompt revision is most likely to help?
+    options:
+      - text: State the goal, constraints and acceptance criteria, drop the step list, and tune the reasoning effort setting
+        correct: true
+        why: Reasoning models plan their own intermediate steps. A clear objective with checkable criteria plus a lower effort budget reduces cost and latency without hampering the plan.
+      - text: Add finer-grained intermediate steps so the model has less room to take shortcuts
+        why: More prescriptive scaffolding duplicates the model's own reasoning, adds latency and can lock it into a worse procedure.
+        misconception: More explicit steps always help reasoning
+      - text: Ask the model to print its complete chain of thought so reviewers can audit each step
+        why: This adds output tokens and latency and does not improve accuracy; a visible rationale is also not a guaranteed faithful record.
+        misconception: Showing reasoning improves correctness and is reliable audit evidence
+      - text: Append three worked examples that each walk through all 25 steps
+        why: Lengthens the prompt and reinforces the same procedure, so cost rises and the model is still steered along the old path.
+        misconception: Few-shot walk-throughs transfer to reasoning models
+    explanation: |
+      Step-by-step scaffolding was a workaround for models that did not reason before answering. Reasoning
+      models do this internally, so prompts work best as a clear objective, relevant context, constraints and
+      a definition of done. Use the effort or thinking-budget control for the cost/latency trade-off, and
+      verify with a held-out set rather than assuming.
+    refs: [https://platform.openai.com/docs/guides/reasoning-best-practices]
+
+  - id: D4-011
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      An assistant compares three vendor contracts pasted into one prompt (about 90,000 tokens in all),
+      followed by "Which contract has the shortest termination notice? Answer in a table." Answers sometimes
+      attribute a clause to the wrong vendor and ignore the table format. The contracts are separated only by
+      blank lines. What should the FDE change first?
+    options:
+      - text: Wrap each contract in an ID-labeled tag, put the question and format after the documents, and request supporting quotes
+        correct: true
+        why: Labeled boundaries stop clauses blending across vendors, trailing instructions are fresh at generation time, and quotes anchor each claim to its source.
+      - text: Move the question above the contracts so the model reads the documents already knowing the goal
+        why: Reads naturally, but it leaves the contracts unlabeled so attribution errors persist, and instructions placed far before a long context tend to be followed less reliably.
+        misconception: Putting the question first helps long-document reading
+      - text: Summarize each contract in a separate call and compare the summaries in a final call
+        why: Summaries may drop the clause the question depends on, and the extra calls add cost and latency for a problem that is a prompt-structure issue.
+        misconception: Decomposing into summaries is safer than structured long context
+      - text: Switch to a model with a longer context window so the documents are handled more reliably
+        why: 90,000 tokens already fits; a bigger window does not give the model any way to tell the contracts apart.
+        misconception: Window size determines how well the model uses the content
+    explanation: |
+      With long, multi-document inputs, give each document an explicit identifier and boundary (tags or
+      headings), place the task and output format after the material, and ask for relevant quotes or
+      citations before the conclusion. Structure fixes attribution; capacity does not.
+
+  - id: D4-012
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    tags: [rag.architecture, gov.identity]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A bank's HR assistant must answer from a 250,000-token policy handbook. A product manager proposes
+      putting the whole handbook in every prompt, since the chosen model has a 1-million-token window.
+      Constraints: p95 latency under 4 seconds, 40 requests per second at peak, weekly handbook updates, and
+      some sections (executive compensation, investigations) visible only to certain roles. What is the best
+      design?
+    options:
+      - text: Retrieve the few relevant passages from sections the user may see, and pass only those
+        correct: true
+        why: Keeps prompts small for the latency target, picks up weekly updates by re-indexing, and enforces access in code before the model sees anything.
+      - text: Put the whole handbook in every prompt and rely on prompt caching to keep it cheap and fast
+        why: Caching helps cost but 250k tokens per call still strains latency at 40 requests per second, and restricted sections would be in every prompt.
+        misconception: Caching makes full-context stuffing equivalent to retrieval
+      - text: Fine-tune a model on the handbook each week so that no context is needed at query time
+        why: Weekly retraining is slow and costly, recall of specific clauses is unreliable, and weights cannot enforce per-role visibility.
+        misconception: Fine-tuning is a good way to add changing facts
+      - text: Put the whole handbook in the prompt and add a rule listing which roles may see which sections
+        why: Access control by instruction can be bypassed by a phrasing the model follows anyway, and restricted text has already been disclosed to the model.
+        misconception: A prompt rule is an adequate permission boundary
+    explanation: |
+      A big window does not mean everything should go in it. Per-request context costs latency and money, long
+      inputs degrade retrieval accuracy, and anything in the prompt can be surfaced to the user. Retrieve
+      only what is needed, filtered by the caller's entitlements in code, and keep fast-changing knowledge out
+      of weights.
+
+  - id: D4-013
+    version: 1
+    type: multi
+    subtopic: llm.prompting
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      A bank's internal Q&A assistant answers from policy excerpts supplied in the prompt. Reviewers find it
+      sometimes answers from general knowledge when the excerpts lack the answer, and its formatting varies
+      between answers. Which system-prompt changes are likely to improve reliability?
+    options:
+      - text: Say what to do when the excerpts lack the answer, such as replying that it is not covered and naming the closest section
+        correct: true
+        why: Gives the model a sanctioned alternative to guessing, which directly targets the observed behavior.
+      - text: Explain the reason behind key rules, for example that answers are pasted into customer emails and must avoid internal jargon
+        correct: true
+        why: A stated purpose lets the model generalize to cases the rule did not list, which improves format and tone consistency.
+      - text: Keep durable rules in the system prompt and put each question with its excerpts in the user turn inside labeled tags
+        correct: true
+        why: Separates stable policy from per-request data and makes it clear what is material to answer from.
+      - text: Open with an expert persona such as a compliance officer with 30 years of experience to raise factual accuracy
+        why: A role can shift tone and vocabulary, but it does not stop the model answering beyond the excerpts.
+        misconception: A persona improves factual grounding
+      - text: Add a prohibition for every failure seen in review so that each past mistake has its own "do not" line
+        why: The list grows without bound, rules begin to conflict, and negatives say what to avoid rather than what to do.
+        misconception: Exhaustive prohibitions are the most reliable way to steer
+      - text: Show five examples that share the same length and sentence structure so the format is unmistakable
+        why: Models copy surface features of examples, so uniform examples produce rigid, over-fitted output.
+        misconception: Identical examples give the strongest format signal
+    explanation: |
+      Reliable prompts specify the output contract and the fallback behavior, give reasons rather than bare
+      commands, and separate stable instructions from changing data. Personas help tone, long blacklists
+      are brittle, and examples should vary in surface form so the model learns the pattern, not the template.
+
+  - id: D4-014
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    tags: [agents.state]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      An internal IT-helpdesk agent works well for about 15 turns. In sessions of 80 or more turns it forgets
+      constraints the user stated early, repeats earlier suggestions and once followed an instruction the user
+      had retracted 40 turns before. Sessions reach about 120,000 tokens, inside the model's window. Which
+      change is most likely to help?
+    options:
+      - text: Replace older turns with a running summary, pin the current constraints, and drop stale tool output
+        correct: true
+        why: Curating context keeps the live constraints prominent and removes retracted or irrelevant content that competes for attention.
+      - text: Move to a model with a larger context window so that nothing has to be dropped
+        why: The history already fits; the problem is attention across noisy content, which a bigger window does not fix.
+        misconception: Fitting in the window means the model uses all of it well
+      - text: Restart the session every 20 turns with only the system prompt
+        why: Resets lose the user's task state and constraints, forcing them to start again.
+        misconception: Fresh context is always better than managed context
+      - text: Re-append the original system prompt after every user message so the rules stay recent
+        why: The context keeps growing, so recent rules compete with ever more noise, and retracted instructions stay in the history.
+        misconception: Repetition of rules compensates for context clutter
+    explanation: |
+      Long sessions suffer from context clutter: stale, superseded and bulky content dilutes what matters. Manage
+      the context actively: summarize or compact old turns, maintain an explicit state block for current
+      constraints and decisions, and remove tool results that are no longer needed.
+
+  - id: D4-015
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    tags: [eval.gates, deploy.delivery]
+    difficulty: 1
+    level: analyze
+    time_s: 75
+    stem: |
+      On Friday a product owner edits the live system prompt of an invoice-extraction service to make error
+      messages friendlier. On Monday finance reports that extracted totals are wrong more often. Nobody
+      recorded the previous prompt text. Which process change addresses the root cause?
+    options:
+      - text: Version prompts like code, and gate every change on a frozen regression set before release
+        correct: true
+        why: Gives a revert point and an objective check that an edit for one goal did not break extraction.
+      - text: Freeze the prompt and route all change requests through a quarterly release
+        why: Slows legitimate improvement a great deal and still gives no way to check each change.
+        misconception: Slower change control is the same as quality control
+      - text: Release prompt edits to 5% of live traffic first and compare user feedback
+        why: A good practice after offline checks, but feedback on wrong totals arrives slowly and finance users are already affected.
+        misconception: Live canaries replace offline regression tests
+      - text: Split tone and extraction into separate prompts so that edits to one cannot affect the other
+        why: Reduces coupling but provides no revert point and no check that either prompt still meets accuracy.
+        misconception: Modular prompts remove the need for testing
+    explanation: |
+      Prompts are production logic. Store them in version control, tie each release to its eval results, and
+      require a regression run on a frozen set before shipping. Canary releases and prompt modularity are useful
+      complements, not substitutes.
+
+  - id: D4-016
+    version: 1
+    type: numeric
+    subtopic: llm.prompting
+    tags: [rag.retrieval]
+    competencies: [x.estimation]
+    difficulty: 2
+    level: apply
+    time_s: 150
+    stem: |
+      An assistant uses a model with a 32,000-token context window. Each request carries a 2,500-token system
+      prompt, 1,800 tokens of tool definitions and 9,200 tokens of conversation history, and the team reserves
+      3,000 tokens for the model's output. Retrieved chunks are 850 tokens each, plus 50 tokens of citation
+      wrapper per chunk. What is the largest whole number of chunks that can be added without exceeding the
+      window?
+    answer: {value: 17, tolerance: 0, tolerance_type: abs, unit: "chunks"}
+    work: |
+      Fixed usage: 2,500 + 1,800 + 9,200 + 3,000 (output reserve) = 16,500 tokens.
+      Remaining: 32,000 − 16,500 = 15,500 tokens.
+      Cost per chunk: 850 + 50 = 900 tokens. 15,500 / 900 = 17.2, so 17 whole chunks (15,300 tokens).
+    explanation: |
+      The window must hold input and the reserved output together. Omitting the output reserve gives 20,
+      omitting the wrapper gives 18, and omitting the tool definitions gives 19. Round down: a partial chunk
+      cannot be included.
+
+  # ===================== llm.structured-tools =====================
+  - id: D4-017
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A logistics client extracts shipment fields using a prompt that says "Return ONLY valid JSON". About 3% of
+      responses fail to parse: a lead-in sentence, a trailing comma or a missing closing brace. The pipeline
+      handles 200,000 documents a month. What is the best fix?
+    options:
+      - text: Use the provider's schema-constrained output mode and still validate results in the application
+        correct: true
+        why: Constrained decoding removes the syntax failures at the source, and application-side validation covers what the schema cannot express.
+      - text: Strengthen the prompt with more emphatic wording and two further examples of clean JSON
+        why: Prompt wording lowers the failure rate but cannot guarantee well-formed output, so a residual percentage keeps failing at this volume.
+        misconception: Instructions alone can make format compliance reliable
+      - text: Extract the first braces-delimited span with a regex and repair common syntax errors with a lenient parser
+        why: Patches symptoms case by case and can silently accept malformed or truncated content, while the failure class is avoidable.
+        misconception: Post-hoc string repair is as safe as preventing malformed output
+      - text: Set temperature to 0 so that the model stops adding free text around the JSON
+        why: Temperature changes sampling randomness, not whether the model chooses to add prose or finish the object.
+        misconception: Temperature 0 enforces output format
+    explanation: |
+      "Please return JSON" is a request; schema-constrained decoding is a guarantee about syntax and schema shape.
+      Use it where available, and keep a validate step for business rules, with a bounded repair path for
+      the cases that still fail.
+    refs: [https://platform.openai.com/docs/guides/structured-outputs]
+
+  - id: D4-018
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      An invoice extractor uses schema-constrained output where `due_date` is a required string matching a date
+      pattern. Parse failures are zero, but an audit finds that about 6% of invoices that show no due date come
+      back with a plausible date anyway. What explains this, and what is the right fix?
+    options:
+      - text: The schema forces a value; make the field nullable, tell the model to return null when absent, and check values against the source
+        correct: true
+        why: A required field leaves no valid way to say "not present", so the model fills it in. Allowing null plus a source check removes the pressure and catches the rest.
+      - text: The date pattern is too loose, so tighten the pattern and add an enum of valid formats
+        why: A stricter pattern only constrains how a fabricated date is written, not whether it exists in the document.
+        misconception: Format constraints guarantee content correctness
+      - text: Constrained decoding is the cause; return to free-form JSON so that the model can omit the field
+        why: Brings back parse failures, and the real defect is the schema's lack of an "absent" value, which can be fixed within constrained mode.
+        misconception: Constrained output inherently makes models hallucinate
+      - text: Add a second pass where a model re-reads each result and confirms it is correct
+        why: The second pass faces the same pressure to accept a date-shaped value and adds cost, while the schema keeps forcing fabrication.
+        misconception: A model reviewer can fix a flaw in the schema
+    explanation: |
+      Schema-constrained decoding guarantees shape, not truth. When a field is mandatory the model must emit
+      something, so missing information becomes invented information. Model optional or unknown values
+      explicitly (nullable fields, an "unknown" enum value), and verify extracted values against the source text.
+
+  - id: D4-019
+    version: 1
+    type: code
+    subtopic: llm.structured-tools
+    tags: [int.resilience]
+    competencies: [x.python]
+    difficulty: 3
+    level: apply
+    time_s: 900
+    stem: |
+      Model output arrives as raw text and must be checked before it reaches downstream systems. Implement
+      `validate_output(raw, schema)`, where `schema` maps field names to specs such as
+      `{"type": "integer", "required": true, "enum": [1, 2]}`. Supported types are `string`, `integer`, `number`
+      and `boolean`; `required` and `enum` are optional (`required` defaults to false).
+
+      **Parsing.** Strip `raw`, then try `json.loads` on the whole text. If that fails, try again on the
+      substring from the first `{` to the last `}` (this recovers fenced or chatty output). If neither parses,
+      return errors `["invalid_json"]`. If the parsed value is not a JSON object, return `["not_object"]`. In both
+      cases `data` is `{}`.
+
+      **Fields**, processed in schema order; keys not in the schema are ignored. A missing required field adds
+      `"missing:<field>"`; a missing optional field is skipped. A present value is coerced, then checked:
+      - `string`: must already be a string.
+      - `boolean`: a boolean, or a string `"true"`/`"false"` (case-insensitive, surrounding spaces ignored).
+      - `integer`: an integer, a float with a whole value (`2.0` becomes `2`), or a string of an optional `-` and digits
+        (surrounding spaces ignored).
+      - `number`: an integer or float, or a string of an optional `-`, digits and optionally a `.` and digits
+        (surrounding spaces ignored; `"1e3"` is invalid), converted with `float`.
+      - Booleans are never valid integers or numbers, and `null` is never valid for any type.
+
+      A failed coercion adds `"type:<field>"`. If coercion succeeded and an `enum` is given, a value not in it
+      adds `"enum:<field>"` (compared after coercion). Only fields that pass all checks appear in `data`.
+      Return `{"ok": <no errors>, "data": <valid fields>, "errors": <list in schema order>}`.
+    code:
+      function: validate_output
+      starter: |
+        def validate_output(raw: str, schema: dict) -> dict:
+            ...
+      reference: |
+        import json
+        import re
+
+        def validate_output(raw, schema):
+            text = raw.strip()
+            start, end = text.find("{"), text.rfind("}")
+            candidates = [text] + ([text[start:end + 1]] if 0 <= start < end else [])
+            obj, parsed = None, False
+            for cand in candidates:
+                try:
+                    obj, parsed = json.loads(cand), True
+                    break
+                except ValueError:
+                    pass
+            if not parsed:
+                return {"ok": False, "data": {}, "errors": ["invalid_json"]}
+            if not isinstance(obj, dict):
+                return {"ok": False, "data": {}, "errors": ["not_object"]}
+
+            def coerce(value, kind):
+                if kind == "string":
+                    return isinstance(value, str), value
+                if kind == "boolean":
+                    if isinstance(value, bool):
+                        return True, value
+                    ok = isinstance(value, str) and value.strip().lower() in ("true", "false")
+                    return ok, ok and value.strip().lower() == "true"
+                if isinstance(value, bool):
+                    return False, None
+                if kind == "integer":
+                    if isinstance(value, int):
+                        return True, value
+                    if isinstance(value, float) and value.is_integer():
+                        return True, int(value)
+                    if isinstance(value, str) and re.fullmatch(r"-?\d+", value.strip()):
+                        return True, int(value)
+                if kind == "number":
+                    if isinstance(value, (int, float)):
+                        return True, value
+                    if isinstance(value, str) and re.fullmatch(r"-?\d+(\.\d+)?", value.strip()):
+                        return True, float(value)
+                return False, None
+
+            data, errors = {}, []
+            for name, spec in schema.items():
+                if name not in obj:
+                    if spec.get("required"):
+                        errors.append("missing:" + name)
+                    continue
+                ok, value = coerce(obj[name], spec["type"])
+                if not ok:
+                    errors.append("type:" + name)
+                elif "enum" in spec and value not in spec["enum"]:
+                    errors.append("enum:" + name)
+                else:
+                    data[name] = value
+            return {"ok": not errors, "data": data, "errors": errors}
+      examples:
+        - args: ["```json\n{\"claim_type\": \"home\", \"amount\": \"300\", \"count\": \"4\", \"urgent\": \"True\"}\n```", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": true, "data": {"claim_type": "home", "amount": 300.0, "count": 4, "urgent": true}, "errors": []}
+        - args: ["{\"claim_type\": \"auto\", \"amount\": 120.5}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": true, "data": {"claim_type": "auto", "amount": 120.5}, "errors": []}
+      tests:
+        - args: ["Sure! Here is the JSON: {\"claim_type\": \"auto\", \"amount\": 10, \"count\": 2.0} Hope that helps.", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": true, "data": {"claim_type": "auto", "amount": 10, "count": 2}, "errors": []}
+        - args: ["{\"claim_type\": \"boat\", \"amount\": 5}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {"amount": 5}, "errors": ["enum:claim_type"]}
+        - args: ["{\"amount\": 5, \"count\": true}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {"amount": 5}, "errors": ["missing:claim_type", "type:count"]}
+        - args: ["[1, 2]", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {}, "errors": ["not_object"]}
+        - args: ["no json here", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {}, "errors": ["invalid_json"]}
+        - args: ["{\"claim_type\": \"auto\", \"amount\": 1,}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {}, "errors": ["invalid_json"]}
+        - args: ["{\"claim_type\": \"auto\", \"amount\": null, \"extra\": 1}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {"claim_type": "auto"}, "errors": ["type:amount"]}
+        - args: ["{\"claim_type\": \"home\", \"amount\": true, \"count\": 2.5, \"urgent\": \"yes\"}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {"claim_type": "home"}, "errors": ["type:amount", "type:count", "type:urgent"]}
+        - args: ["  {\"claim_type\": \"home\", \"amount\": \" -7.25 \", \"count\": \" -3 \"}  ", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": true, "data": {"claim_type": "home", "amount": -7.25, "count": -3}, "errors": []}
+        - args: ["{\"claim_type\": 5, \"amount\": 1, \"urgent\": false}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {"amount": 1, "urgent": false}, "errors": ["type:claim_type"]}
+        - args: ["{\"claim_type\": \"auto\", \"amount\": \"1e3\"}", {"claim_type": {"type": "string", "required": true, "enum": ["auto", "home"]}, "amount": {"type": "number", "required": true}, "count": {"type": "integer"}, "urgent": {"type": "boolean"}}]
+          expected: {"ok": false, "data": {"claim_type": "auto"}, "errors": ["type:amount"]}
+      timeout_s: 5
+    explanation: |
+      Model output is untrusted input: parse defensively, coerce only what is unambiguous, report precise
+      machine-readable errors (these can be fed back to the model in a bounded retry), and keep invalid fields out
+      of the data you pass on. Two classic traps: Python's `bool` is a subclass of `int`, and `float("1e3")`
+      or `float("nan")` accept strings that a schema would not.
+
+  - id: D4-020
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    tags: [gov.approvals, agents.tools-mcp, gov.identity]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A bank's pilot assistant has an `issue_refund(account_id, amount)` tool. In a demo, a user asks it to
+      refund $5,000 to an account that is not theirs, and the model proposes exactly that call. An engineer
+      suggests adding "never refund more than $100 or on other people's accounts" to the system prompt. Where
+      should this control live?
+    options:
+      - text: In the code that executes the tool, checking the authenticated user's ownership and refund limit first
+        correct: true
+        why: The application, not the model, performs the action, so a deterministic check against the real identity cannot be talked around.
+      - text: In the tool description, so the model sees the limit at the moment it chooses the tool
+        why: A description guides selection and arguments but is still text the model can misread or be persuaded to ignore.
+        misconception: Instructions placed close to the tool are enforcement
+      - text: In a fine-tuned model trained on refusals of out-of-policy refund requests
+        why: Training lowers the rate of bad proposals without any guarantee, and cannot know who the authenticated caller is.
+        misconception: Behavior training substitutes for authorization
+      - text: In a second model call that reviews each proposed tool call and approves or blocks it
+        why: A useful extra layer, but it is another probabilistic component rather than an authorization boundary tied to the user's identity.
+        misconception: A model-based reviewer is a security control
+    explanation: |
+      In tool calling the model only proposes a call; the application executes it. Authorization, limits and
+      approvals therefore belong in the executing code, evaluated with the real user's identity and the
+      tool's arguments. Prompts and reviewer models reduce bad proposals but cannot be the last line of defense.
+
+  - id: D4-021
+    version: 1
+    type: multi
+    subtopic: llm.structured-tools
+    tags: [agents.tools-mcp]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      An operations assistant has two tools. `search_customers` is described as "searches customers" and
+      `find_account` as "finds an account"; both take a parameter named `id`. Logs show the model picks the wrong
+      tool about a third of the time and often passes order numbers as `id`. Which changes would make the tool
+      definitions easier for the model to use correctly?
+    options:
+      - text: Describe what each tool returns, when to use it and when not to, naming the sibling tool
+        correct: true
+        why: Disambiguating guidance in the description is what the model uses to choose between overlapping tools.
+      - text: Rename parameters to say what they hold, such as `customer_email` and `account_number`, with types and formats in the schema
+        correct: true
+        why: Descriptive names and typed fields prevent the order-number-as-id mistake at the source.
+      - text: Merge the tools into one if they differ only in lookup key, using an enum to select the key type
+        correct: true
+        why: Removing near-duplicate tools eliminates the choice that the model keeps getting wrong.
+      - text: Add ten narrower tools so that each has one obvious use
+        why: A larger menu of similar tools raises selection errors and token cost rather than lowering them.
+        misconception: More granular tools are easier to choose between
+      - text: Add a table of 30 if-then rules to the system prompt saying which tool to call for which phrase
+        why: Compensates for poor definitions with a brittle, growing prompt that will not cover unseen phrasing.
+        misconception: Routing rules in the prompt are a substitute for clear tool definitions
+      - text: Force a specific tool on every turn with the tool-choice setting so that ambiguity cannot arise
+        why: Forcing a tool removes the model's ability to choose or to reply directly, which breaks other requests.
+        misconception: Forced tool choice is a general fix for wrong selection
+    explanation: |
+      Tool definitions are prompts. Write them as you would documentation for a new colleague: what the tool
+      does, when to use it, what each argument means and what shape it takes. Consolidate overlapping tools and
+      avoid ambiguous generic names such as `id`.
+
+  - id: D4-022
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    tags: [agents.tools-mcp]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A BI assistant's `run_query` tool can return up to 200 rows, but to protect the context window it cuts
+      its output at 4,000 characters without saying so. Users report totals that are too low, and the model
+      never mentions missing data. What is the best fix?
+    options:
+      - text: Return an explicit truncation flag with the total row count, and let the tool page, filter or aggregate
+        correct: true
+        why: The model can only compensate for missing data it is told about, and aggregating in the tool keeps results small and exact.
+      - text: Raise the cut-off to 100,000 characters so that truncation almost never happens
+        why: Truncation would still be silent when it does occur, and large results waste context and slow every call.
+        misconception: A larger limit removes the truncation problem
+      - text: Instruct the model in the system prompt to warn users whenever the numbers may be incomplete
+        why: The model has no signal that the data was cut, so it cannot know when to issue the warning.
+        misconception: The model can detect information it was never shown
+      - text: Have the tool return a model-written summary of the rows instead of the rows themselves
+        why: Summaries of tabular data introduce arithmetic and omission errors, and users cannot trace numbers back to rows.
+        misconception: Summarization is a lossless way to shrink data
+    explanation: |
+      Tool results are the model's only view of the world. Silent truncation produces confident, wrong answers.
+      Make limits visible (counts, "truncated", next-page cursors), push aggregation into the tool where it is
+      exact, and keep payloads bounded.
+
+  - id: D4-023
+    version: 1
+    type: multi
+    subtopic: llm.structured-tools
+    tags: [int.resilience]
+    difficulty: 2
+    level: apply
+    time_s: 100
+    stem: |
+      A claims pipeline asks a model for JSON with `claim_type`, `amount` and `currency`, using schema-constrained
+      output. Occasionally the result is well formed but wrong, for example an `amount` that disagrees with the
+      figure in the source text, or a `currency` that does not match the policy's country. Which practices
+      belong in the production handling of this step?
+    options:
+      - text: Run application-side checks the schema cannot express, such as cross-field and source-consistency rules
+        correct: true
+        why: Schema validity says nothing about whether values are consistent with each other or with the document.
+      - text: On failure, retry a bounded number of times, feeding the specific validation errors back to the model
+        correct: true
+        why: Concrete error feedback lets the model correct itself, and a limit keeps cost and latency predictable.
+      - text: When retries are exhausted, send the item to a review queue and record the failure for analysis
+        correct: true
+        why: Prevents bad data flowing downstream and creates examples for improving prompts and checks.
+      - text: Coerce failing fields to safe defaults so that the batch always completes
+        why: Silently inserting defaults corrupts claim data in ways that are hard to detect later.
+        misconception: Pipeline completion matters more than data correctness
+      - text: Skip validation in constrained mode, since the output is guaranteed to be correct
+        why: The guarantee covers syntax and schema shape, not factual accuracy or consistency.
+        misconception: Constrained decoding guarantees correct content
+      - text: Resend the identical request until a response passes validation, with no attempt limit
+        why: Unbounded retries inflate cost and can loop on inputs the model consistently gets wrong.
+        misconception: Retrying the same request always eventually succeeds
+    explanation: |
+      Treat model output as untrusted input. Validate structure and business rules, retry a limited number of
+      times with the errors included, and fail safe to a human path with logging. Silent defaults and endless
+      retries trade visible failures for hidden ones.
+
+  - id: D4-024
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    difficulty: 1
+    level: apply
+    time_s: 75
+    stem: |
+      A mail-routing service defines an `extract_fields` tool and expects a call to it for every message. About
+      4% of the time the model replies in plain prose instead, and the parser crashes. This step never needs a
+      conversational reply. What should the engineer change?
+    options:
+      - text: Set the tool-choice option to require a call to `extract_fields`
+        correct: true
+        why: The step always needs this tool, so forcing it at the API level removes the prose-reply path entirely.
+      - text: Repeat the instruction to call `extract_fields` at both the start and the end of the prompt
+        why: Repetition may lower the failure rate but offers no guarantee for a step that must always return a call.
+        misconception: Prompt repetition enforces behavior
+      - text: Pass any prose reply to a second model call that produces the fields
+        why: Adds cost and latency to patch a path that should not exist, and a second call can fail too.
+        misconception: A fallback model call is simpler than configuring the API correctly
+      - text: Catch the parser exception and resend the same request until it returns a tool call
+        why: Retries hide the defect, multiply cost for 4% of traffic and still give no guarantee.
+        misconception: Retry loops are a fix for a deterministic configuration gap
+    explanation: |
+      Most APIs let you choose whether the model may reply directly, must call some tool, or must call a named
+      tool. For pipeline steps where the structured result is the product, require the call and validate the arguments.
+
+  - id: D4-025
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    tags: [eval.methods]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      A triage service uses schema-constrained output with fields in this order:
+      `{"decision": "escalate|resolve", "rationale": "..."}`. On 1,000 labeled cases, `decision` accuracy is 78%.
+      With `rationale` listed first and everything else unchanged, accuracy is 86% across five repeated runs. A
+      reviewer says JSON key order cannot matter. Which explanation is correct?
+    options:
+      - text: Tokens are generated left to right, so a rationale written first lets the decision be conditioned on it
+        correct: true
+        why: Placing reasoning before the verdict gives the model a chance to work through the case before committing to the label.
+      - text: The reviewer is right that order is irrelevant to JSON, so the gap is most likely sampling noise
+        why: Key order is irrelevant to the JSON's meaning, but not to generation, and a consistent 8-point gap over five runs is unlikely to be noise.
+        misconception: Semantic equivalence of JSON implies identical model behavior
+      - text: Models treat the first key as the most important, so listing the rationale first signals that explanation matters most
+        why: There is no importance weighting by key position; the effect comes from what is already generated when the decision is chosen.
+        misconception: Position in a schema encodes priority for the model
+      - text: Longer responses are generally more accurate, and putting the long field first lengthens the response
+        why: Length is the same in both orders; accuracy improves because of the reasoning preceding the decision, not output length.
+        misconception: Output length by itself improves accuracy
+    explanation: |
+      Autoregressive models condition each token on the ones before it. In structured outputs, place reasoning,
+      evidence or scratch fields before the final answer field. Putting the verdict first forces a commitment
+      before any reasoning has been generated.
+
