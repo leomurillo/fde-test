@@ -138,8 +138,9 @@ items:
     stem: |
       A bank is putting an assistant on its phone line. Callers ask for three things: balance, card block, or a transfer between
       their own accounts. The end-to-end response target is under one second, each action is backed by an existing internal API,
-      and compliance requires fixed, pre-approved wording when confirming a card block or a transfer. Which architecture is most
-      appropriate?
+      and compliance requires fixed, pre-approved wording when confirming a card block or a transfer. It also does not allow
+      a model to choose the arguments of a money-moving call, which must come from a validated form or slot-filling step.
+      Which architecture is most appropriate?
     options:
       - text: "A reasoning agent that plans each turn, chooses among the three APIs, and verifies results before replying"
         why: Each plan-act-observe cycle is at least one extra model round trip, which breaks a one-second budget for a three-way choice.
@@ -149,9 +150,9 @@ items:
         misconception: One specialist per function improves accuracy and speed
       - text: "A fast intent classifier routing to deterministic API handlers, with an LLM only for unclear requests"
         correct: true
-        why: Known intents with known APIs need routing, not planning; deterministic handlers meet the latency target and produce the approved wording.
+        why: Known intents with known APIs need routing, not planning; deterministic handlers meet the latency target, collect arguments through validated steps and produce the approved wording.
       - text: "A single small-model call with the three APIs as tools, which writes both the API arguments and the reply in one pass"
-        why: Fits the latency budget, but model-written confirmations and arguments on money-moving actions conflict with the fixed-wording rule and leave no deterministic gate.
+        why: Fits the latency budget, but here the model would choose the arguments and write the confirmation on money-moving actions, which compliance does not allow.
         misconception: One fast function-calling call is the simplest safe design
     explanation: |
       When the set of intents is small and each maps to a known action, routing to deterministic handlers beats an agent loop on latency,
@@ -850,15 +851,16 @@ items:
     time_s: 90
     stem: |
       A client's single internal support agent needs three of the company's REST APIs: orders, shipments and refunds. One team
-      owns the agent, which runs as its own service on an agent SDK. No other team has asked to reuse these integrations, and the
-      deployment budget is small. The platform group urges building each API as a separate remote MCP server "because MCP is the
+      owns the agent, which runs as its own service on an agent SDK. No other team has asked to reuse these integrations and none
+      is on the platform group's roadmap, and the budget and six-week deadline leave no room for new services to deploy and
+      secure. The platform group urges building each API as a separate remote MCP server "because MCP is the
       standard". What is the best first step?
     options:
       - text: "Implement them as tools inside the agent service behind a thin interface, and move to MCP servers once a second consumer appears"
         correct: true
         why: MCP pays off when several hosts share an integration; with one consumer it adds deployments and auth to operate for no present benefit, and the thin interface keeps the move cheap.
       - text: "Build three remote MCP servers with OAuth now, so that future agents can reuse them without any rework"
-        why: Defensible for a platform strategy, but it spends the small budget on infrastructure for a consumer that does not exist yet.
+        why: Three new services to deploy and secure do not fit the budget and deadline, and no second consumer is planned to benefit.
         misconception: Build for hypothetical reuse
       - text: "Build one MCP gateway that fronts these three APIs and any other internal API the company might want to expose"
         why: Scope balloons well beyond the three APIs the agent needs, and a gateway carries its own security and ownership burden.

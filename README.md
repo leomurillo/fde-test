@@ -1,38 +1,65 @@
 # FDE Test
 
-A practice exam for the Forward Deployed Engineer (FDE) role, styled after CandiTech assessments. It will be a Python website you can clone and run locally. Single-choice questions are auto-graded; open-ended and AI-assisted questions are graded by Gemini (bring your own key).
+A local practice exam for the **Forward Deployed Engineer** role, modelled on CandiTech-style assessments.
+It runs as a Python website on your machine and tracks every answer by item version, with telemetry suited to
+a later move to adaptive testing (CAT/IRT).
 
-**Status: phase 1 (topics).** The exam taxonomy, the research behind it, and the reading-time estimate are done. The website and question bank come next.
-
-## What's here
-
-| Path | What it is |
-|---|---|
-| [`docs/taxonomy.md`](docs/taxonomy.md) | **Weighted topic taxonomy**: 11 domains, 49 subtopics, tags, MCQ allocation, JD coverage, terminology policy (generated) |
-| [`docs/research.md`](docs/research.md) | CandiTech formats and reviews, comparison of the two handbooks, other FDE exams, weighting method |
-| [`docs/reading-time.md`](docs/reading-time.md) | **Reading-time estimate** for both handbooks at 300 wpm |
-| [`data/taxonomy.yaml`](data/taxonomy.yaml) | Source of truth for domains, weights, tags, formats and JD coverage |
-| [`data/terminology.yaml`](data/terminology.yaml) | Which terms are mainstream and which are book-coined, and what questions may use |
-| [`data/reading_time.json`](data/reading_time.json) | Raw word counts per file |
-| [`tools/reading_time.py`](tools/reading_time.py) | Word counter and reading-time estimator (stdlib only) |
-| [`tools/taxonomy.py`](tools/taxonomy.py) | Validates the taxonomy and renders `docs/taxonomy.md` |
+- **362 items** across 11 weighted domains and 49 subtopics. Every item went through two stages: misconception-first authoring, then an adversarial review whose job was to make sure you can't find the answer by eliminating options.
+- **Seven formats**, mapped to CandiTech's question types: single choice, multiple select, numeric value,
+  open text (AI-graded), SQL, Python code, and spoken answers (CandiTech's "Video" format, recorded with your microphone).
+- **Tests are assembled on demand** from a scope (a preset or any subtopics), a length and a set of formats. Items are drawn in
+  proportion to the taxonomy weights; unseen items come first, then the ones you got wrong.
+- **Two modes:** real-time feedback after every item, or exam conditions with a review at the end.
+- **Progress:** seen, never seen, right and wrong, per item and per subtopic. **Feedback:** a 💬 button on every item, exportable to send back
+  for item fixes.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/leomurillo/fde-test.git && cd fde-test
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate        # Python 3.11+
 pip install -r requirements.txt
-
-python tools/reading_time.py          # clones the two handbooks into .cache/ and prints the estimate
-python tools/taxonomy.py --check      # validate weights, tags and JD coverage
-python tools/taxonomy.py --render     # regenerate docs/taxonomy.md after editing the YAML
+python -m app                                             # → http://127.0.0.1:8000
 ```
+
+AI grading for open and spoken answers is optional. Set `GEMINI_API_KEY`, or paste a key on the Settings page.
+Without a key, you score those answers yourself against the rubric and a model answer.
+
+Full guide: [`docs/running.md`](docs/running.md). It covers modes, shortcuts, the Gemini key, where data lives, exports and item versioning.
+
+## Repository map
+
+| Path | What it is |
+|---|---|
+| `app/` | FastAPI app: assembly, grading, telemetry, exports (`python -m app`) |
+| `bank/items/D*.yaml` | The item bank, one file per domain |
+| `bank/SCHEMA.md`, `bank/AUTHORING.md` | Item format, and the authoring process including confounder design |
+| `bank/quotas.yaml`, `bank/scopes/` | Per-subtopic minimums; test presets (full exam, Gorilla Logic JD) |
+| `bank/lock.json` | Content hash per `id@version`; `--check` fails if locked content changes without a version bump |
+| `data/taxonomy.yaml` | Domains, weights, tags and JD coverage. Rendered as [`docs/taxonomy.md`](docs/taxonomy.md) |
+| `data/terminology.yaml` | Mainstream terms vs terms the handbooks coined; what questions may test |
+| `docs/research.md` | CandiTech formats, the two handbooks, other FDE exams, how the weights were set |
+| `docs/reading-time.md` | Word counts and reading-time estimate for the two handbooks |
+| `docs/app-spec.md` | App specification: data model, telemetry, assembly, grading |
+| `docs/taxonomy-backlog.md` | Gaps noticed while writing v1 |
+| `tools/` | `reading_time.py`, `taxonomy.py`, `bank_similarity.py` (near-duplicate scan) |
+
+## Working on the bank
+
+```bash
+python -m app.bank --check            # validate (runs SQL/code reference solutions)
+python -m app.bank --lint             # elimination-cue heuristics (e.g. correct option is the longest)
+python -m app.bank --stats            # counts vs quotas
+python tools/bank_similarity.py       # near-duplicate items
+python -m app.bank --lock             # after a release: pin content hashes of new id@version pairs
+pip install -r requirements-dev.txt && python -m pytest -q
+```
+
+To fix an item after it has been locked, edit it **and** bump its `version`. Past answers stay tied to the
+exact version you saw.
 
 ## Sources
 
-- [RichardXu001/the-fde-handbook](https://github.com/RichardXu001/the-fde-handbook/tree/master/en) (`en/`)
-- [goday-org/FDE-Handbook](https://github.com/goday-org/FDE-Handbook/tree/main/book_en) (`book_en/`)
-- Primary sources and exam syllabi are cited in [`docs/research.md`](docs/research.md).
-
-Questions test principles and mainstream terminology, not either book's coined frameworks; see [`data/terminology.yaml`](data/terminology.yaml).
+- [RichardXu001/the-fde-handbook](https://github.com/RichardXu001/the-fde-handbook/tree/master/en) and
+  [goday-org/FDE-Handbook](https://github.com/goday-org/FDE-Handbook/tree/main/book_en)
+- Primary sources and exam syllabi are cited in [`docs/research.md`](docs/research.md) and on individual items.

@@ -510,45 +510,49 @@ items:
     level: apply
     time_s: 150
     stem: |
-      A support agent sends, per request, an 8,000-token cacheable prefix, 500 other input tokens and receives 400
-      output tokens, at 10,000 requests a day. Prices: input $3.00 per million tokens; writing the prefix to the
-      cache costs 125% of the input price; reading it costs 10% of the input price; output $15.00 per million. In
-      production 90% of requests read the prefix from the cache and the other 10% write it (the 500 other input
-      tokens are always charged at the normal input price). What is the daily model cost, in USD?
-    answer: {value: 126.6, tolerance: 1.0, tolerance_type: abs, unit: "USD"}
+      A multi-tenant assistant attaches the same 8,000-token knowledge block to every call. When a call finds the
+      block in the cache, the block is billed at 10% of the normal input rate. When it does not, the call pays 125%
+      of the normal input rate to store it again. Small tenants send sparse traffic, so their cached block often
+      expires before the next call. Looking only at the cost of this block, what is the lowest cache hit rate, in
+      percent, at which caching costs no more than not caching at all? Answer to one decimal place.
+    answer: {value: 21.7, tolerance: 0.5, tolerance_type: abs, unit: "%"}
     work: |
-      Prefix read: 8,000 x $0.30/M = $0.0024. Prefix write: 8,000 x $3.75/M = $0.0300. Expected prefix cost = 0.9 x
-      0.0024 + 0.1 x 0.0300 = $0.00516. Other input: 500 x $3/M = $0.0015. Output: 400 x $15/M = $0.0060.
-      Per request $0.01266; x 10,000 = $126.60 per day.
+      Take the normal input rate as 1 per token. Without caching the block costs 8,000 × 1.00 = 8,000 units; a hit costs
+      8,000 × 0.10 = 800; a miss costs 8,000 × 1.25 = 10,000.
+      With hit rate h: 800·h + 10,000·(1 − h) = 8,000, so 2,000 = 9,200·h and h = 0.2174, i.e. 21.7%.
+      (Same result from the ratios: (1.25 − 1) / (1.25 − 0.10) = 0.25 / 1.15.)
     explanation: |
-      Common wrong methods: charging the 10% of requests that miss at the normal input price rather than the write
-      premium ($120.60); treating every request as a hit ($99.00); leaving out output tokens ($66.60);
-      or applying the cache price to the 500 non-cached tokens. Without caching the same traffic costs $315.
-      A cache-write premium is why hit rate, not just the read discount, decides whether caching pays.
+      Every miss pays a write premium, so caching loses money below a break-even hit rate; at fleet level this is
+      decided per tenant or feature from measured hit rates, not assumed from the read discount. Common wrong
+      methods: ignoring the read price (0.25 / 1.25 gives 20.0%), dividing the premium by 0.9 (27.8%), or treating
+      the 25% write premium as the break-even rate itself. Tenants whose measured hit rate sits below the break-even
+      are better served by turning caching off.
 
   - id: D11-018
     version: 1
     type: numeric
     subtopic: obs.cost
-    tags: [llm.model-selection]
+    tags: [int.resilience]
     competencies: [x.estimation]
     difficulty: 2
     level: apply
-    time_s: 120
+    time_s: 150
     stem: |
-      In a cascade, every request first goes to a small model costing $0.004 per request. Requests judged
-      unreliable are then also sent to the large model at $0.030 per request, and the small model's call is still
-      paid for them. Ignoring quality, what is the highest escalation rate, in percent, at which the cascade costs
-      no more per request than sending every request straight to the large model?
-    answer: {value: 86.7, tolerance: 0.5, tolerance_type: abs, unit: "%"}
+      A multi-tenant platform gives each tenant a daily model budget of $230, and a spend circuit breaker blocks the
+      tenant's calls once the day's spend reaches it. A typical request has 4,000 input tokens and 600 output tokens,
+      at $2.50 per million input tokens and $10.00 per million output tokens. 15% of requests fail and are retried
+      once; every attempt, including the failed one, is billed in full. How many requests can a tenant make in a day
+      before the breaker trips?
+    answer: {value: 12500, tolerance: 0.01, tolerance_type: rel, unit: "requests"}
     work: |
-      Cascade cost per request = 0.004 + f x 0.030. Large-only cost = 0.030. Break-even: 0.004 + 0.030 f = 0.030, so
-      f = 0.026 / 0.030 = 0.8667, i.e. 86.7%.
+      Cost per attempt: input 4,000 × $2.50/M = $0.0100; output 600 × $10/M = $0.0060; total $0.0160.
+      Attempts per request: 1 + 0.15 = 1.15, so expected cost per request = 1.15 × $0.0160 = $0.0184.
+      Requests before the budget is spent: $230 / $0.0184 = 12,500.
     explanation: |
-      Escalated requests pay twice, so the cascade only wins while escalation stays below 1 - small/large. Common
-      wrong answers are 100% (forgetting that the small model is paid for every request) and 13.3%
-      (0.004 / 0.030, the small model's price as a share of the large one's). In practice quality, not break-even,
-      sets the usable escalation rate, so monitor it in production.
+      A budget breaker has to count what the provider bills, which includes retries. Common wrong methods: ignoring
+      retries ($230 / $0.016 = 14,375), leaving out output tokens (20,000), or treating the 15% of failed requests
+      as free (about 12,219). Setting the breaker from real per-attempt cost, and alerting before it trips, keeps
+      one tenant's retry storm from spending the fleet's budget.
 
   - id: D11-019
     version: 1
@@ -619,20 +623,24 @@ items:
     subtopic: obs.cost
     tags: [int.async, llm.model-selection]
     competencies: [x.estimation]
-    difficulty: 1
+    difficulty: 2
     level: apply
     time_s: 120
     stem: |
-      A nightly enrichment job processes 200,000 documents, each with 1,500 input tokens and 200 output tokens.
-      Prices are $1.00 per million input tokens and $5.00 per million output tokens; asynchronous batch processing
-      costs 50% less for both. What does the nightly job cost in batch mode, in USD?
-    answer: {value: 250.0, tolerance: 1.0, tolerance_type: abs, unit: "USD"}
+      A platform processes 3,000,000 documents a month, each with 1,500 input tokens and 200 output tokens. Prices
+      are $1.00 per million input tokens and $5.00 per million output tokens. 60% of the documents are not
+      time-sensitive and run through asynchronous batch processing, which costs 50% less for both input and output;
+      the other 40% run interactively at standard prices. What is the monthly model cost, in USD?
+    answer: {value: 5250, tolerance: 25, tolerance_type: abs, unit: "USD"}
     work: |
-      Input: 200,000 x 1,500 = 300M tokens -> $300. Output: 200,000 x 200 = 40M tokens -> $200. Standard total
-      $500; batch 50% -> $250.
+      Standard cost per document: input 1,500 × $1/M = $0.0015; output 200 × $5/M = $0.0010; total $0.0025.
+      Batch documents: 1,800,000 × $0.0025 × 0.5 = $2,250. Interactive documents: 1,200,000 × $0.0025 = $3,000.
+      Total $5,250 (against $7,500 if everything ran interactively).
     explanation: |
-      Forgetting output tokens gives $150; forgetting the discount gives $500. Batch suits work that can wait for
-      completion within a window, not interactive requests.
+      Apply the discount only to the share that can wait, and to both input and output. Common wrong methods:
+      discounting every document ($3,750), swapping the shares so that 40% is batched ($6,000), or leaving out
+      output tokens ($3,150). Batch suits work that can wait for completion within a window; splitting traffic by
+      urgency is a fleet-level cost lever.
 
   # ---------------------------------------------------------------- open
   - id: D11-023

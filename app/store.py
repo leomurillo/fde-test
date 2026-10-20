@@ -186,6 +186,31 @@ def mark_presented(conn: sqlite3.Connection, sid: str, pos: int) -> str:
     return ts
 
 
+def add_server_event(conn: sqlite3.Connection, sid: str, pos: int, si: dict, type_: str, payload: dict) -> str:
+    eid = new_id()
+    conn.execute("""INSERT INTO events(event_id, session_id, position, item_id, item_version, type, client_ts_ms,
+                    server_ts, payload_json) VALUES (?,?,?,?,?,?,?,?,?)""",
+                 (eid, sid, pos, si["item_id"], si["item_version"], type_, None, now_iso(),
+                  dumps({**payload, "source": "server"})))
+    conn.commit()
+    return eid
+
+
+def audio_attempt(conn: sqlite3.Connection, sid: str, pos: int) -> dict | None:
+    """The spoken-item attempt marker for (session, position): {token, started_at, interrupted_at} or None."""
+    rows = conn.execute("""SELECT type, server_ts, payload_json FROM events WHERE session_id = ? AND position = ?
+                           AND type IN ('audio_attempt', 'audio_attempt_interrupted') ORDER BY server_ts""",
+                        (sid, pos)).fetchall()
+    att = None
+    for r in rows:
+        if r["type"] == "audio_attempt" and att is None:
+            att = {"token": loads(r["payload_json"], {}).get("token"), "started_at": r["server_ts"],
+                   "interrupted_at": None}
+        elif r["type"] == "audio_attempt_interrupted" and att is not None and not att["interrupted_at"]:
+            att["interrupted_at"] = r["server_ts"]
+    return att
+
+
 def finish_session(conn: sqlite3.Connection, sid: str, status: str = "finished") -> None:
     conn.execute("UPDATE sessions SET status = ?, finished_at = ? WHERE session_id = ? AND status = 'in_progress'",
                  (status, now_iso(), sid))

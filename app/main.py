@@ -358,6 +358,14 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                 s = store.get_session(c, sid)
             item = store.snapshot(c, si["item_id"], si["item_version"])
             pub = views.public_item(item, si["presented_order"])
+            attempt_used = False
+            if item["type"] == "audio" and not answered:
+                att = store.audio_attempt(c, sid, pos)
+                if att is not None:
+                    # The page was reloaded (or revisited) after the prep countdown started: no new recording.
+                    attempt_used = True
+                    if not att["interrupted_at"]:
+                        store.add_server_event(c, sid, pos, si, "audio_attempt_interrupted", {"token": att["token"]})
             states = store.position_states(items, responses)
         strip = [{"pos": x["position"], "state": states[x["position"]], "section": x["section"]} for x in items]
         sections = [sec for sec in SECTION_ORDER if any(x["section"] == sec for x in items)]
@@ -366,11 +374,11 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             "answered": answered, "nOptions": len(pub.get("options") or []), "nCorrect": pub.get("n_correct"),
             "maxChars": pub.get("max_chars"), "prepS": pub.get("prep_s"), "maxS": pub.get("max_s"),
             "startedAt": s["started_at"], "timeLimitS": (s["scope"] or {}).get("time_limit_s"),
-            "itemId": si["item_id"], "itemVersion": si["item_version"],
+            "itemId": si["item_id"], "itemVersion": si["item_version"], "attemptUsed": attempt_used,
         }
         return page(request, "runner.html", nav="run", session=s, si=si, item=pub, pos=pos, total=len(items),
                     strip=strip, sections=sections, resp=resp if answered else None, reveal_html=reveal_html,
-                    config=config)
+                    config=config, attempt_used=attempt_used)
 
     def _telemetry(payload: dict) -> dict:
         tel = payload.get("telemetry") or {}
@@ -411,11 +419,30 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             out = {}
             if raw.get("fallback") == "text":
                 out = {"fallback": "text", "text": str(raw.get("text", ""))[:10000]}
-            for k in ("duration_ms", "mic_error"):
+            for k in ("duration_ms", "mic_error", "encode_error"):
                 if raw.get(k) is not None:
-                    out[k] = raw[k] if k == "mic_error" else _int_or_none(raw[k])
+                    out[k] = _int_or_none(raw[k]) if k == "duration_ms" else str(raw[k])[:200]
             return out
         return {}
+
+    def _check_audio_attempt(c, sid: str, pos: int, payload: dict, answer: dict, has_file: bool) -> None:
+        """Single take, enforced server-side. Once the prep countdown started (marker), a page reload marks the
+        attempt interrupted: from then on only the timed written fallback is accepted."""
+        att = store.audio_attempt(c, sid, pos)
+        if att is None:
+            answer["attempt"] = "unmarked"
+            return
+        answer["attempt_started_at"] = att["started_at"]
+        if att["interrupted_at"]:
+            if has_file:
+                raise HTTPException(409, "The single recording attempt for this item was already used; "
+                                         "submit a written answer instead.")
+            answer["attempt_used"] = True
+            answer["attempt_interrupted_at"] = att["interrupted_at"]
+            answer.setdefault("fallback", "text")
+            answer.setdefault("text", "")
+        elif payload.get("attempt_token") != att["token"]:
+            raise HTTPException(409, "This recording does not belong to the current attempt.")
 
     def _record(request: Request, c, s: dict, si: dict, payload: dict, background: BackgroundTasks,
                 audio: bytes | None = None, audio_mime: str | None = None, audio_name: str | None = None) -> dict:
@@ -428,14 +455,17 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
         skipped = bool(payload.get("skipped"))
         answer = {} if skipped else _normalize_answer(item, si, payload.get("answer") or {})
         rid = new_id()
+        if item["type"] == "audio" and not skipped:
+            _check_audio_attempt(c, sid, pos, payload, answer, has_file=audio is not None)
         if audio is not None and not skipped:
             if len(audio) > MAX_AUDIO_BYTES:
                 raise HTTPException(413, "Recording too large")
             ext = views.audio_ext(audio_mime, audio_name)
             path = ctx.data_dir / "audio" / f"{rid}.{ext}"
             path.write_bytes(audio)
-            answer.update({"audio": f"audio/{rid}.{ext}", "mime": (audio_mime or views.AUDIO_MIME[ext]).split(";")[0],
-                           "bytes": len(audio)})
+            # canonical mime per stored extension (audio/x-wav -> audio/wav etc.); this is what Gemini receives
+            mime = views.AUDIO_MIME.get(ext) or (audio_mime or "application/octet-stream").split(";")[0]
+            answer.update({"audio": f"audio/{rid}.{ext}", "mime": mime, "bytes": len(audio)})
         realtime = s["mode"] == "realtime"
         grade_in_background = False
         if skipped:
@@ -540,6 +570,27 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             s, si = _load_for_submit(c, sid, pos)
             return _record(request, c, s, si, payload, background, audio, mime, name)
 
+    @app.post("/api/s/{sid}/item/{pos}/audio-attempt")
+    async def api_audio_attempt(request: Request, sid: str, pos: int):
+        """Called when the prep countdown starts. One attempt per (session, position)."""
+        try:
+            body = await request.json()
+        except ValueError:
+            body = {}
+        with ctx.conn() as c:
+            s, si = _load_for_submit(c, sid, pos)
+            if store.snapshot(c, si["item_id"], si["item_version"])["type"] != "audio":
+                raise HTTPException(400, "Not a spoken item")
+            prev = store.latest_responses(c, sid).get(pos)
+            if prev is not None and not prev["skipped"]:
+                raise HTTPException(409, "This item has already been answered.")
+            if store.audio_attempt(c, sid, pos) is not None:
+                raise HTTPException(409, "The single attempt for this item was already used.")
+            token = new_id()
+            store.add_server_event(c, sid, pos, si, "audio_attempt",
+                                   {"token": token, "fallback": bool(body.get("fallback"))})
+        return {"ok": True, "attempt_token": token}
+
     @app.post("/api/s/{sid}/item/{pos}/run")
     async def api_run(request: Request, sid: str, pos: int):
         body = await request.json()
@@ -568,11 +619,7 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                               "passed": sum(1 for x in result["cases"] if x["passed"]), "total": len(examples)}
             else:
                 raise HTTPException(400, "Only SQL and code items can be run")
-            c.execute("""INSERT INTO events(event_id, session_id, position, item_id, item_version, type, client_ts_ms,
-                         server_ts, payload_json) VALUES (?,?,?,?,?,?,?,?,?)""",
-                      (new_id(), sid, pos, si["item_id"], si["item_version"], ev_type, None, now_iso(),
-                       dumps({**ev_payload, "source": "server"})))
-            c.commit()
+            store.add_server_event(c, sid, pos, si, ev_type, ev_payload)
         return result
 
     @app.post("/api/responses/{rid}/selfgrade")

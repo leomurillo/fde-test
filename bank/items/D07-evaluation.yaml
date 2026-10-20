@@ -564,33 +564,35 @@ items:
     level: evaluate
     time_s: 120
     stem: |
-      A customer-facing refund agent is evaluated with 5 independent trials per task. The release report must lead
-      with either pass@5 or pass^5 (the two ways of turning a task's 5 trial results into one pass or fail).
-      Assume the agent succeeds on any trial with probability 0.9. Which statements are accurate?
+      A team runs 5 independent trials per task for two agents. The first is a customer-facing refund agent that acts
+      on its own, so a customer gets one attempt per request. The second is an internal coding agent whose patches
+      are run against a test suite before anyone sees them, and failed attempts are retried automatically at low
+      cost. The release report must lead with either pass@5 (at least one of the 5 trials succeeds) or pass^5 (all 5
+      succeed) for each agent. Which positions are sound?
     options:
-      - text: A task that succeeds in 4 of its 5 trials passes under pass@5 and fails under pass^5
+      - text: Lead with pass^5 for the refund agent, since each customer meets a single attempt and any failed trial is a failure they could have met
         correct: true
-        why: pass@k needs at least one success in k trials; pass^k needs all k.
-      - text: For a given task, pass@5 is above 0.99 and pass^5 is about 0.59
+        why: A customer-facing agent has to be consistent across attempts, and pass^k measures exactly that.
+      - text: Lead with pass@5 for the coding agent, since the test suite filters out failed attempts and one success among several is enough
         correct: true
-        why: pass@5 = 1 - 0.1^5 = 0.99999; pass^5 = 0.9^5 = 0.59. The same agent looks near-perfect or mediocre depending on the metric.
-      - text: A customer who gets one attempt per request and cannot silently retry experiences pass^k, so it is the better headline here
+        why: Where a verifier and cheap retries exist, the question is whether the agent can solve the task at all, which pass@k answers.
+      - text: A large gap between pass@5 and pass^5 for the refund agent points to inconsistent behavior to fix, even when pass@5 looks near-perfect
         correct: true
-        why: Consistency across attempts is what a customer-facing agent has to deliver; one failed refund is a failure.
-      - text: For a given task, pass^5 is about 0.41, since pass^5 measures how often at least one of the 5 trials fails
-        why: 0.41 is 1 - 0.9^5, the chance that at least one trial fails; pass^5 itself is the chance that none fail, 0.9^5 = 0.59.
-        misconception: pass^k is the failure-side complement
-      - text: Raising the number of trials from 5 to 10 would raise pass^k, because more trials give a more reliable estimate
-        why: More trials make pass^k stricter (0.9^10 = 0.35); extra trials sharpen the estimate of the task's pass^k, they do not raise it.
-        misconception: More trials always improve the reported score
-      - text: pass@k is the better headline because a user can always rephrase and retry after a wrong refund
-        why: Fits settings where one success is enough, such as code that is tested before use; a refund already issued wrongly is not undone by a retry.
+        why: The two metrics diverge as k grows when per-trial success is below 1; the gap is the inconsistency a customer would experience.
+      - text: Lead with pass@5 for the refund agent, since a customer can always rephrase and try again after a wrong refund
+        why: A refund already issued wrongly is not undone by a retry, and the report should reflect the single attempt the customer actually gets.
         misconception: Retry availability makes any failure recoverable
+      - text: Moving from 5 to 10 trials per task raises pass^k, because more trials give a more reliable estimate
+        why: More trials make pass^k stricter; they sharpen the estimate of the task's pass^k but do not raise it.
+        misconception: More trials always improve the reported score
+      - text: A gap between the two metrics shows that the trials are not independent, so the eval should be rerun before either number is used
+        why: For independent trials the metrics are expected to diverge as k grows, so a gap alone is not evidence of a broken harness.
+        misconception: Different metrics over the same trials should agree
     explanation: |
       pass@k is the chance of at least one success in k tries and rises with k; pass^k is the chance that all k
-      succeed and falls with k (Anthropic's agent-eval guidance gives the same definitions, with 0.75^3 = 42% as its
-      example). Which to headline depends on whether one success is enough (exploration, code generation) or
-      consistency is required (customer-facing automation).
+      succeed and falls with k (Anthropic's agent-eval guidance gives the same definitions). Which to headline depends
+      on whether one success is enough (a verified, retryable setting such as code generation) or consistency is
+      required (customer-facing automation). Reporting both exposes how consistent the agent is.
     refs: [https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents]
 
   - id: D7-020

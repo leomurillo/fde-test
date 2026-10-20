@@ -709,17 +709,18 @@ items:
     level: apply
     time_s: 150
     stem: |
-      A pilot assistant helps process supplier invoices. The client handles 3,000 invoices a month at 11 minutes of
-      staff time each. The assistant covers 60% of invoices and cuts handling to 6 minutes for those. The other
-      40% are processed as before. Loaded staff cost is $48 per hour, and each invoice the assistant handles costs
-      $0.40 in model and infrastructure fees. What is the net monthly saving, in US dollars?
+      A pilot assistant helps a clinic network's staff prepare insurance pre-authorization requests. The clinics
+      handle 3,000 requests a month at 11 minutes of staff time each. The assistant covers 60% of requests and cuts
+      handling to 6 minutes for those. The other 40% are prepared as before. Loaded staff cost is $48 per hour, and
+      each request the assistant handles costs $0.40 in model and infrastructure fees. What is the net monthly
+      saving, in US dollars?
     answer: {value: 6480, tolerance: 50, tolerance_type: abs, unit: "USD"}
     work: |
-      Covered invoices: 3,000 x 0.6 = 1,800. Minutes saved: 1,800 x (11 - 6) = 9,000 min = 150 h. Labor saving:
+      Covered requests: 3,000 x 0.6 = 1,800. Minutes saved: 1,800 x (11 - 6) = 9,000 min = 150 h. Labor saving:
       150 x $48 = $7,200. Run cost: 1,800 x $0.40 = $720. Net: $7,200 - $720 = $6,480 per month.
     explanation: |
       Apply savings only to the share the assistant handles. Common errors: applying the 5-minute saving to all
-      3,000 invoices ($12,000 before costs), ignoring run cost ($7,200), or charging run cost on all 3,000 invoices
+      3,000 requests ($12,000 before costs), ignoring run cost ($7,200), or charging run cost on all 3,000 requests
       ($6,000). Net savings, not gross, are the figure to compare with the pilot's success target.
 
   # ===================== delivery.go-live =====================

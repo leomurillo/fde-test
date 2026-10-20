@@ -300,6 +300,12 @@
 
   async function submit(skipped) {
     if (busy || T.submitted) return;
+    if (T.burstTimer !== null) {
+      clearTimeout(T.burstTimer);
+      T.burstTimer = null;
+      const el = codeInput || openInput || numericInput;
+      if (el) FDE.track("input", { len: el.value.length });
+    }
     let payload = { skipped: !!skipped, flagged, telemetry: telemetry() };
     if (!skipped) {
       const a = collectAnswer();
@@ -364,7 +370,12 @@
   });
 
   // ---------------------------------------------------------------- audio (CandiTech "Video")
-  const audio = { started: false, stream: null, recorder: null, chunks: [], mime: "", recStart: 0, fallback: false, timer: null, done: false, micError: null };
+  // Single take: when the prep countdown starts we POST an attempt marker; the server refuses a second one and,
+  // if the page is reloaded afterwards, renders the timed written fallback instead of a new recording.
+  // Recordings are converted in the browser to 16 kHz mono 16-bit PCM WAV (a format Gemini documents);
+  // the original MediaRecorder blob is uploaded only if decoding fails.
+  const audio = { started: false, stream: null, recorder: null, chunks: [], mime: "", recStart: 0, fallback: false,
+                  timer: null, done: false, micError: null, token: null, attemptUsed: !!C.attemptUsed };
   const box = $("#audio-box");
   function stage(name) { $$(".audio-stage", box).forEach((s) => (s.hidden = s.dataset.stage !== name)); }
   function pickMime() {
@@ -381,8 +392,21 @@
       if (left <= 0) { clearInterval(audio.timer); onDone(); }
     }, 1000);
   }
-  function startPrep() {
+  async function markAttempt() {
+    try {
+      const r = await FDE.postJSON(`/api/s/${C.sessionId}/item/${C.position}/audio-attempt`, { fallback: audio.fallback });
+      audio.token = r.attempt_token;
+      return true;
+    } catch (err) {
+      if (err.status === 409) { location.reload(); return false; }  // attempt already used: server shows fallback
+      say(err.message, true);
+      return false;
+    }
+  }
+  async function startPrep() {
     interacted();
+    $$("#audio-begin, #audio-text").forEach((b) => (b.disabled = true));
+    if (!(await markAttempt())) return;
     FDE.track("audio_prep", { prep_s: C.prepS, fallback: audio.fallback });
     stage("prep");
     countdown(C.prepS, $("#prep-left"), startAnswer);
@@ -422,7 +446,7 @@
       const ta = $("#fallback-input");
       noEdit(ta);
       ta.focus();
-      FDE.track("audio_start", { fallback: "text" });
+      FDE.track("audio_start", { fallback: "text", attempt_used: audio.attemptUsed });
     } else {
       audio.recorder = new MediaRecorder(audio.stream, audio.mime ? { mimeType: audio.mime } : undefined);
       audio.recorder.ondataavailable = (ev) => { if (ev.data && ev.data.size) audio.chunks.push(ev.data); };
@@ -454,27 +478,66 @@
     ["click", "select", "focus", "mouseup"].forEach((t) => ta.addEventListener(t, toEnd));
     ta.addEventListener("input", interacted);
   }
+
+  const WAV_RATE = 16000;
+  async function toWav(blob) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    let decoded;
+    try {
+      decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+    } finally {
+      if (ctx.close) ctx.close();
+    }
+    const frames = Math.max(1, Math.ceil(decoded.duration * WAV_RATE));
+    const off = new OfflineAudioContext(1, frames, WAV_RATE);  // 1 channel: the graph downmixes to mono
+    const src = off.createBufferSource();
+    src.buffer = decoded;
+    src.connect(off.destination);
+    src.start(0);
+    const pcm = (await off.startRendering()).getChannelData(0);
+    const view = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); view.setUint32(4, 36 + pcm.length * 2, true); str(8, "WAVE");
+    str(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, WAV_RATE, true); view.setUint32(28, WAV_RATE * 2, true); view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true); str(36, "data"); view.setUint32(40, pcm.length * 2, true);
+    for (let i = 0; i < pcm.length; i++) {
+      const v = Math.max(-1, Math.min(1, pcm[i]));
+      view.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+    }
+    return new Blob([view], { type: "audio/wav" });
+  }
+
+  let uploadFile = null;
   async function upload() {
     stage("upload");
     const meta = {
-      skipped: false, flagged, telemetry: telemetry(),
+      skipped: false, flagged, telemetry: telemetry(), attempt_token: audio.token,
       answer: audio.fallback
         ? { fallback: "text", text: $("#fallback-input").value, duration_ms: audio.durationMs, mic_error: audio.micError }
         : { duration_ms: audio.durationMs },
     };
     meta.confidence = meta.telemetry.confidence;
+    if (!audio.fallback && !uploadFile) {
+      const type = (audio.recorder && audio.recorder.mimeType) || audio.mime || "audio/webm";
+      const raw = new Blob(audio.chunks, { type });
+      try {
+        uploadFile = { blob: await toWav(raw), name: "answer.wav" };
+      } catch (err) {
+        meta.answer.encode_error = String((err && err.name) || err);
+        const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
+        uploadFile = { blob: raw, name: `answer.${ext}` };
+      }
+    }
     const fd = new FormData();
     fd.append("meta", JSON.stringify(meta));
-    if (!audio.fallback) {
-      const type = (audio.recorder && audio.recorder.mimeType) || audio.mime || "audio/webm";
-      const blob = new Blob(audio.chunks, { type });
-      const ext = type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm";
-      fd.append("file", blob, `answer.${ext}`);
-    }
+    if (uploadFile) fd.append("file", uploadFile.blob, uploadFile.name);
     try {
       const res = await fetch(`/api/s/${C.sessionId}/item/${C.position}/audio`, { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+      $("[data-stage=upload]", box).innerHTML = `<p class="muted">${audio.fallback ? "Written answer saved." : "Answer recorded and saved."}</p>`;
       afterSubmit(data, false);
     } catch (err) {
       stage("upload");
@@ -489,21 +552,31 @@
     startPrep();
   }
   if (box && C.type === "audio") {
-    $("#audio-begin").addEventListener("click", async () => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
-        useTextFallback("recording not supported in this browser");
-        return;
-      }
-      try {
-        audio.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audio.mime = pickMime();
-        startPrep();
-      } catch (err) {
-        say("Microphone unavailable: switching to a timed written answer.", true);
-        useTextFallback(err && err.name ? err.name : "microphone unavailable");
-      }
-    });
-    $("#audio-text").addEventListener("click", () => useTextFallback(null));
+    if (audio.attemptUsed) {
+      // attempt already used on an earlier page load: timed written answer only, no new recording, no prep
+      $("#audio-text-used").addEventListener("click", () => {
+        interacted();
+        audio.fallback = true;
+        FDE.track("audio_fallback", { reason: "attempt_used" });
+        startAnswer();
+      });
+    } else {
+      $("#audio-begin").addEventListener("click", async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+          useTextFallback("recording not supported in this browser");
+          return;
+        }
+        try {
+          audio.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audio.mime = pickMime();
+          startPrep();
+        } catch (err) {
+          say("Microphone unavailable: switching to a timed written answer.", true);
+          useTextFallback(err && err.name ? err.name : "microphone unavailable");
+        }
+      });
+      $("#audio-text").addEventListener("click", () => useTextFallback(null));
+    }
     $("#audio-start-now").addEventListener("click", startAnswer);
     $("#audio-stop").addEventListener("click", stopAnswer);
   }

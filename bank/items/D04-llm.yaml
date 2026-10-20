@@ -235,22 +235,22 @@ items:
     level: apply
     time_s: 150
     stem: |
-      A contract-review service sends 20,000 requests per day. Each request has a 10,000-token static prefix
-      (instructions and policy text), 400 tokens of request-specific input and 250 output tokens. Prices:
-      input $3.00 per million tokens, cached input $0.30 per million tokens, output $15.00 per million tokens.
-      Assume that with prompt caching every request's static prefix is read from cache (ignore the one-time cache
-      write) and that output is not discounted. How many US dollars per day does prompt caching save?
-    answer: {value: 540, tolerance: 2, tolerance_type: abs, unit: "USD per day"}
+      A contract-review assistant sends each request with a 10,000-token static prefix (instructions and policy
+      text), 400 tokens of request-specific input and receives 250 output tokens. Prices: input $3.00 per million
+      tokens, cached input $0.30 per million tokens, output $15.00 per million tokens. Assume that the prefix is read
+      from the cache on this request (ignore the one-time cache write) and that output is not discounted. By what
+      percentage does prompt caching reduce the cost of this single request? Answer in percent, to one decimal place.
+    answer: {value: 77.3, tolerance: 0.5, tolerance_type: abs, unit: "%"}
     work: |
-      Without caching, per request: input 10,400 tokens × $3/M = $0.0312; output 250 × $15/M = $0.00375;
-      total $0.03495. × 20,000 = $699.
-      With caching, per request: cached 10,000 × $0.30/M = $0.0030; fresh input 400 × $3/M = $0.0012;
-      output $0.00375; total $0.00795. × 20,000 = $159.
-      Savings = $699 − $159 = $540 per day.
+      Without caching: input 10,400 tokens × $3/M = $0.0312; output 250 × $15/M = $0.00375; total $0.03495.
+      With caching: cached 10,000 × $0.30/M = $0.0030; fresh input 400 × $3/M = $0.0012; output $0.00375;
+      total $0.00795.
+      Saving = $0.03495 − $0.00795 = $0.0270 per request; $0.0270 / $0.03495 = 0.7725, so 77.3%.
     explanation: |
-      Only the cached prefix gets the discount: 10,000 tokens drop from $3 to $0.30 per million, saving
-      $0.027 per request. Common mistakes: discounting the 400 fresh tokens, discounting output, or
-      reporting the with-caching cost ($159) instead of the saving.
+      Only the cached prefix gets the discount: 10,000 tokens drop from $3 to $0.30 per million, saving $0.027.
+      Output tokens and the fresh input are paid in full, so the reduction is well short of the 90% input discount.
+      Common mistakes: discounting the 400 fresh tokens as well (80.3%), measuring against an input-only baseline
+      that leaves out output (86.5%), or reporting the share of cost that remains (22.7%).
 
   # ===================== llm.prompting =====================
 
@@ -1101,26 +1101,28 @@ items:
     level: analyze
     time_s: 90
     stem: |
-      A retailer's support assistant has three problems: it does not know the company's return policies, its
-      answers vary in house style, and it cannot say where a customer's order currently is. Which pairing of
-      problem to remedy is most appropriate?
+      A retailer's support assistant has three problems: it does not know the company's return policies, which are
+      revised monthly and must be quoted with a link; its answers vary in house style; and it cannot say where a
+      customer's order is, although customers often ask minutes after checkout. The team has no spare time to
+      retrain models every month. Which design fits best?
     options:
-      - text: Retrieval for policies, examples or fine-tuning for style, and a tool call for order status
+      - text: Search the policy pages with source links, put style examples in the prompt, and look up the order live from the order system
         correct: true
-        why: "Each fix matches what is missing: reference knowledge, behavior, and live transactional data."
-      - text: Fine-tuning on the policy documents, prompt rules for style, retrieval over order records for status
-        why: Policies drift and cannot be cited from weights, and order status is live data that a search index would serve stale.
+        why: Each gap gets a fix that matches its nature, and none of them needs retraining when policies change.
+      - text: Fine-tune on the policy pages and past agent replies to cover policy and style, and look up the order live from the order system
+        why: Policy text baked into weights goes stale at each monthly revision and cannot be quoted with a link.
         misconception: Fine-tuning is the way to add knowledge
-      - text: Retrieval for both policies and order status, with fine-tuning for style
-        why: Retrieval suits documents; order status is a point lookup against a system of record, and an index would lag it.
-        misconception: Retrieval is the universal answer for external information
-      - text: A larger model for policies and style, and a tool call for order status
-        why: A larger model still does not have the company's private policies, so the policy gap remains.
-        misconception: Model scale substitutes for missing private knowledge
+      - text: Search the policy pages and style guide together, and sync order records into the same index every hour
+        why: An hourly index lags orders placed minutes ago, so the assistant would report stale or missing status.
+        misconception: One search index can serve every kind of external data
+      - text: Place the policy handbook, style guide and a nightly order export in every prompt, using a long-context model
+        why: The nightly export cannot answer questions about orders placed today, and every call pays for the whole handbook.
+        misconception: A long context window replaces retrieval and live lookups
     explanation: |
-      Match the remedy to the gap. Missing or changing reference knowledge calls for retrieval; consistent
-      behavior or format calls for prompting, examples or fine-tuning; fresh or transactional data and actions
-      call for tools. Capacity alone fixes none of these.
+      Match the remedy to the gap. Reference knowledge that changes calls for retrieval with sources; consistent
+      tone or format can come from examples in the prompt; fresh transactional data comes from a live lookup of the
+      system of record. Fine-tuning, indexes and long contexts all go stale where the data moves faster than they
+      are refreshed.
 
   # ===================== llm.failure-modes =====================
 
@@ -1136,28 +1138,29 @@ items:
       A legal-research assistant answers from a case-law corpus, but it sometimes cites case names and
       holdings that do not exist in the corpus. Which mitigations address the cause?
     options:
-      - text: Supply retrieved passages with IDs, require every claim to cite one, and reject answers citing IDs outside the supplied set
+      - text: Number each retrieved passage, require a passage number on every claim, and reject answers citing a number that was not supplied
         correct: true
         why: Ties each statement to provided text and makes fabricated citations mechanically detectable.
-      - text: Allow an explicit "not found in the sources" answer and test that it is used when retrieval returns nothing relevant
+      - text: Let the model reply that the sources do not cover the question, and test that it does so when retrieval returns nothing relevant
         correct: true
         why: Without a sanctioned way to decline, models tend to fill gaps with plausible content.
-      - text: Verify quoted text and case identifiers against the corpus in code before showing the answer
+      - text: Look up every case name and quoted holding in the corpus index in code, and block the answer when one is missing
         correct: true
         why: A deterministic check catches fabrications that prompt-level measures miss.
-      - text: Lower temperature to 0 so the model sticks to what it knows and stops improvising citations
-        why: Reduces variation, not fabrication; a fully greedy model can still produce a confident invented case.
+      - text: Fine-tune the model on the corpus's case summaries so that holdings are learned rather than recalled from general training
+        why: Weights hold a blurry impression of the corpus and still produce fluent citations that do not exist; nothing checks them against the source.
+        misconception: Training on the corpus removes the need to ground answers
+      - text: Ask a second model, shown only the draft answer, to flag citations that look invented before the answer is displayed
+        why: The reviewer cannot see the corpus, so it judges plausibility, and a well-formed invented case looks plausible.
+        misconception: A model review without the source data detects fabrication
+      - text: Set temperature to 0 with a fixed seed, so that each query returns the same citations on every run
+        why: This makes outputs repeatable, not true; a deterministic model can repeat the same invented case every time.
         misconception: Lower temperature prevents hallucination
-      - text: Add a system-prompt instruction not to hallucinate and to cite just cases that really exist
-        why: The model does not know when it is inventing, so the instruction cannot be reliably followed.
-        misconception: Telling the model to be truthful makes it truthful
-      - text: Move to a larger model, which has seen far more case law and will therefore stop inventing citations
-        why: Larger models hallucinate less often but still do, and fluent invented citations are harder to spot.
-        misconception: Scale eliminates hallucination
     explanation: |
       Hallucination comes from models producing plausible text without a reliable sense of what they know. The
       effective mitigations are structural: ground answers in supplied text, give the model a legitimate way to
-      say "not found", and verify citations outside the model.
+      say "not found", and verify citations outside the model. Measures that only change the model's weights,
+      sampling or a reviewer's view leave the citations unchecked against the corpus.
 
   - id: D4-034
     version: 1
@@ -1169,18 +1172,21 @@ items:
     time_s: 75
     stem: |
       A contract assistant computes notice deadlines such as "30 days from today" and is off by many months.
-      The prompt never states the date. What is the right fix?
+      The prompt never states the date, and users work in different time zones. What is the right fix?
     options:
-      - text: Pass the current date and time zone from the application in each request
+      - text: Have the application insert today's date and the user's time zone into every request
         correct: true
-        why: The model has no clock; supplying the date as input is exact and simple.
-      - text: Instruct the model to ask the user for today's date before it computes any deadline
-        why: Workable but fragile; users mistype or skip it, and the application already knows the date and can supply it exactly on every call.
+        why: The application knows the date exactly; supplying it as input is simple and does not depend on the user or the model.
+      - text: Have users type the date they want counted from, and tell the model to rely on it
+        why: Users mistype or skip it, and the application already holds the exact date and time zone.
         misconception: Missing context is best collected from the user at run time
-      - text: Fine-tune on recent contracts so the model's sense of the present is up to date
+      - text: Retrieve the matter's latest documents and tell the model to treat the newest date found as today
+        why: The newest document date is the date of the last filing, not today, so deadlines would start from the wrong day.
+        misconception: The present can be inferred from recent documents
+      - text: Fine-tune on recent contracts and notices so that the model's sense of the present matches this quarter
         why: Training bakes in a snapshot that ages immediately; it never gives the model a live clock.
         misconception: Fine-tuning can keep a model current
-      - text: Switch to the newest model, which has a later knowledge cutoff
+      - text: Move to the newest model release, which has a later knowledge cutoff than the current one
         why: A later cutoff is still in the past; the date at call time is unknown to any model.
         misconception: A recent knowledge cutoff equals knowing the date
     explanation: |
@@ -1237,20 +1243,21 @@ items:
     stem: |
       A contract-review assistant rates a clause "high risk". When the reviewing lawyer replies "I think that's
       standard, you're wrong, right?", it apologizes and downgrades the clause to "low risk" without any new
-      evidence. About 30% of the team's test pushbacks produce this flip. What should the team do?
+      evidence. About 30% of the team's test pushbacks produce this flip. The team can change prompts and run evals
+      this week but cannot retrain models. What should it do?
     options:
-      - text: Add pushback cases to the evals, require new evidence before revising, and phrase requests neutrally
+      - text: Add pushback cases to the evals and change the prompt to require new evidence before a rating is revised
         correct: true
-        why: Measures the behavior directly, gives the model a rule for when to change its answer, and removes leading phrasing that invites agreement.
-      - text: Set temperature to 0 so that the rating cannot change from one turn to the next in a conversation
-        why: The flip is a response to the pushback text in context, not sampling randomness, so greedy decoding does not prevent it.
-        misconception: Determinism settings prevent sycophancy
+        why: Measures the behavior directly and gives the model a rule for when changing its answer is justified.
+      - text: Sample the rating several times at the pushback turn and take the majority answer, to smooth out the wobble
+        why: The flip is driven by the pushback text in context, so most samples flip together and the majority follows them.
+        misconception: Sampling variance is the cause of the flip
       - text: Instruct the model to keep any rating it has already given for the rest of the review session
         why: Blocks legitimate corrections when the lawyer supplies real evidence, trading one failure for another.
         misconception: Rigid consistency is the same as correctness
-      - text: Switch to a larger model, on the view that sycophancy comes mainly from limited model capacity
-        why: More capable models can still be sycophantic, because it arises from preference training, not a lack of ability.
-        misconception: Scale removes sycophancy
+      - text: Fine-tune on transcripts where the assistant holds its rating under pushback, then re-run the evals
+        why: Targets the right behavior but needs a training run and data the team cannot produce this week, and nothing yet measures whether it worked.
+        misconception: Training is the first-line fix for a prompt-level behavior
     explanation: |
       Sycophancy is a systematic tendency to agree with the user, strengthened by preference-based training. Test for
       it explicitly with pushback and leading-question cases, prompt for independent judgment with a clear rule

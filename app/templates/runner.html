@@ -114,13 +114,24 @@
         {% if resp %}
           <p class="muted">Answer recorded.</p>
         {% else %}
+        {% if attempt_used %}
+        <div class="audio-stage" data-stage="intro">
+          <div class="notice warn" id="attempt-used">
+            <strong>Your one recording attempt for this item was already started</strong> (the page was reloaded or left after the countdown began).
+            Recording again is not allowed. Submit what you have as a timed written answer: you get {{ item.max_s|dur }}, and you cannot edit what you write.
+          </div>
+          <button type="button" class="btn primary" id="audio-text-used">Start timed written answer</button>
+        </div>
+        {% else %}
         <div class="audio-stage" data-stage="intro">
           <p>You will get <strong>{{ item.prep_s }} s</strong> to prepare, then up to <strong>{{ item.max_s|dur }}</strong> to answer out loud. <strong>One take</strong>: recording stops automatically and cannot be redone.</p>
           <div class="row wrap">
             <button type="button" class="btn primary" id="audio-begin">Begin (allow microphone)</button>
             <button type="button" class="btn ghost" id="audio-text">No microphone? Answer in writing</button>
           </div>
+          <p class="small muted">Single take: once the countdown starts, reloading the page will not give you a new recording.</p>
         </div>
+        {% endif %}
         <div class="audio-stage" data-stage="prep" hidden>
           <p class="big-count"><span id="prep-left">{{ item.prep_s }}</span><span class="muted"> s to prepare</span></p>
           <button type="button" class="btn" id="audio-start-now">Start answering now</button>

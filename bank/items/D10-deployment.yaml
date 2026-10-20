@@ -80,9 +80,9 @@ items:
       - text: "Add more replicas so that each deployment step replaces a smaller fraction of the serving capacity"
         why: Fewer users are affected per step, but each terminated pod still kills its in-flight streams.
         misconception: Capacity headroom prevents interrupted requests
-      - text: "Tighten the liveness probe so that unhealthy pods are restarted faster while the rollout is running"
-        why: Faster restarts increase interruptions; the pods are being terminated by design, not failing health checks.
-        misconception: Liveness probes govern graceful shutdown
+      - text: "Add a preStop hook that sleeps ten seconds so the load balancer deregisters the pod, keeping the default grace period"
+        why: The sleep covers endpoint propagation, but the default 30-second grace period still ends before a three-minute stream does.
+        misconception: A short preStop delay is enough for graceful shutdown
       - text: "Switch to a Recreate strategy so that old and new versions never run at the same time in the cluster"
         why: It stops the old pods all at once, causing downtime and still cutting every in-flight stream.
         misconception: Avoiding version overlap avoids interruption
@@ -263,15 +263,15 @@ items:
       - text: "Promote one immutable release containing prompts and pinned model IDs through each environment"
         correct: true
         why: What was tested is exactly what runs in production, with differences limited to injected configuration.
-      - text: "Add more unit tests around the prompt text so that differences are caught earlier in the pipeline"
-        why: Tests of the text cannot detect a different model or an out-of-band edit in another environment.
-        misconception: More tests compensate for inconsistent environments
-      - text: "Create a Git branch per environment so that each one can be tuned independently of the others"
-        why: Independent branches institutionalize the differences that caused the surprise.
-        misconception: Per-environment tuning is acceptable for parity
-      - text: "Document a manual checklist comparing staging and production settings before each release goes out"
-        why: Manual comparison is slow and error-prone, and does not stop a console edit after the check.
-        misconception: Process documents replace automation
+      - text: "Pin the same dated model version in staging, and keep editing prompts in each environment's console"
+        why: Fixes the model mismatch but leaves the prompts free to diverge, so staging still does not test what production runs.
+        misconception: Aligning one component aligns the environments
+      - text: "Copy production's prompts and model settings into staging every night with a scheduled sync job"
+        why: Staging then tests a moving copy rather than the candidate release, and a console edit in production flows back unreviewed.
+        misconception: Syncing environments after the fact gives parity
+      - text: "Add a deploy-time check that diffs prompts and model IDs between environments and warns on any difference"
+        why: A warning detects drift but does not remove it, and nothing stops a console edit made after the check.
+        misconception: Detecting drift is the same as preventing it
     explanation: |
       Environment parity means building an artifact once and promoting it unchanged. Treat prompts, model versions
       and tool schemas as versioned release content, and vary only environment-specific configuration and secrets.
@@ -390,6 +390,9 @@ items:
       - text: "A NAT gateway with a fixed address that the provider adds to its own allowlist for your account"
         why: A fixed source address helps the provider authenticate callers but still crosses the public internet.
         misconception: Static egress IPs are private connectivity
+      - text: "A forward proxy in a dedicated subnet that inspects and re-encrypts every call before it leaves the VPC"
+        why: Inspection adds visibility, but the proxy's outbound hop to the provider still crosses the public internet.
+        misconception: Routing through a controlled proxy makes the path private
       - text: "A private endpoint to the provider, with the public endpoint left enabled as a failover for availability"
         why: The fallback path still crosses the public internet, so a failure of the private route silently breaks the policy.
         misconception: Keeping a public fallback is harmless once a private path exists
@@ -478,6 +481,9 @@ items:
       - text: "Instruct the model in the system prompt to search with the tenant ID that was supplied at login time"
         why: The instruction can be overridden by the user or an injected document, so isolation still depends on model behavior.
         misconception: Prompt instructions enforce tenant isolation
+      - text: "Declare `tenant_id` as an enum in the tool's JSON schema so the model can only emit valid tenant values"
+        why: Every tenant is a valid value, so the schema accepts another customer's ID; the model still chooses which one.
+        misconception: Schema validation is an authorization check
       - text: "Check retrieved chunks with a second model call that confirms they belong to the user's tenant"
         why: The data has already been retrieved and the reviewer is a probabilistic filter reading the same content.
         misconception: A model-based post-filter is an isolation boundary

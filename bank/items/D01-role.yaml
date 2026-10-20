@@ -259,8 +259,9 @@ items:
     stem: |
       Three months into a good engagement, a customer's VP asks the vendor's FDE to take tickets from the VP's own
       engineering backlog for six months: internal dashboards, a data migration, some scripting. Most items do not use
-      the vendor's product. The VP offers to pay the FDE's full day rate. The vendor has few FDEs and other accounts
-      are waiting for one. How should the vendor respond?
+      the vendor's product. The VP offers to pay the FDE's full day rate. The vendor has few FDEs, other accounts
+      are waiting for one, and its engagement policy staffs FDEs only against outcomes that run on the product.
+      How should the vendor respond?
     options:
       - text: Offer a scoped outcome covering the items that connect to the product, and decline the rest of the open-ended backlog
         correct: true
@@ -269,10 +270,10 @@ items:
         why: Profitable on paper but turns the FDE into contract staff, with no productization, no outcome link and no capacity for the waiting accounts.
         misconception: Any billable work at full rate is good work
       - text: Accept a capped share, two days a week for six months at the full rate, and protect the remaining time for the outcome work
-        why: Limits the damage, but the capped days are still staff augmentation on work that does not build on the product, and the scarce FDE is not available to other accounts.
+        why: Limits the damage, but the capped days still break the outcomes-on-the-product policy, and the scarce FDE is not available to other accounts.
         misconception: A cap makes staff augmentation acceptable
       - text: Accept the backlog only after the original outcome is delivered, and track both in one plan
-        why: Sequencing helps, but the open-ended arrangement still shifts the role to staff augmentation and the plan has no end.
+        why: Sequencing helps, but the open-ended backlog still breaks the outcomes-on-the-product policy and the plan has no end.
         misconception: Capacity problems can be solved by sequencing alone
     explanation: |
       Staff augmentation drifts away from what makes an FDE valuable: a defined outcome, work built on the product, and
@@ -592,19 +593,19 @@ items:
     level: apply
     time_s: 150
     stem: |
-      An accounts-payable team processes 40,000 invoices per month. The current fully loaded cost is $4.20 per
-      invoice. With an AI pipeline, every invoice incurs $0.55 of model and infrastructure cost, and 18% of
-      invoices are exceptions that a person still handles at $6.00 each (on top of the pipeline cost). What are the
-      monthly net savings against the current process, in US dollars?
+      An insurer's claims-intake team processes 40,000 claims per month. The current fully loaded cost is $4.20 per
+      claim. With an AI pipeline, every claim incurs $0.55 of model and infrastructure cost, and 18% of claims are
+      exceptions that an adjuster still handles at $6.00 each (on top of the pipeline cost). What are the monthly net
+      savings against the current process, in US dollars?
     answer: {value: 102800, tolerance: 0.01, tolerance_type: rel, unit: "USD"}
     work: |
       Current cost: 40,000 × 4.20 = $168,000.
-      New cost: pipeline 40,000 × 0.55 = $22,000; exceptions 0.18 × 40,000 = 7,200 invoices × 6.00 = $43,200.
+      New cost: pipeline 40,000 × 0.55 = $22,000; exceptions 0.18 × 40,000 = 7,200 claims × 6.00 = $43,200.
       Total $65,200. Savings = 168,000 − 65,200 = $102,800.
     explanation: |
       Compare against the real baseline and include the human work that remains. Common errors: forgetting the exception
       handling cost (gives $146,000), or treating the pipeline cost as applying only to the 82% handled automatically
-      (gives $106,760), when in fact the pipeline processes every invoice.
+      (gives $106,760), when in fact the pipeline processes every claim.
 
   - id: D1-021
     version: 1

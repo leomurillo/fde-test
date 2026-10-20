@@ -260,15 +260,15 @@ items:
     level: evaluate
     time_s: 100
     stem: |
-      In a steering meeting, the customer's CEO, impressed by a demo of invoice triage, says: "Great, have it handling
-      all customer email by month end." The team estimates that is five months of work, and he will repeat the
-      month-end date to the board on Thursday. The sponsor looks at the FDE. What should the FDE do in the room?
+      In a steering meeting, the customer's CEO, impressed by a demo of support-ticket triage, says: "Great, have it handling
+      all customer email by month end." The team estimates that is five months of work, and the month-end date goes into the
+      board pack that is sent out this evening. The sponsor looks at the FDE. What should the FDE do in the room?
     options:
       - text: "Affirm the goal, show the first slice that can land by month end, and ask what should give way for the rest"
         correct: true
-        why: "Keeps the CEO's ambition, makes the trade-off visible before he repeats the date, and puts the choice with the person entitled to make it."
-      - text: "Say you will look into it and report back by Wednesday, then reset expectations with the sponsor privately so nobody is contradicted publicly"
-        why: "Avoids friction now, but leaves the CEO believing the date is feasible when he speaks to the board on Thursday."
+        why: "Keeps the CEO's ambition, makes the trade-off visible before the date goes into the board pack, and puts the choice with the person entitled to make it."
+      - text: "Say you will look into it and report back tomorrow, then reset expectations with the sponsor privately so nobody is contradicted publicly"
+        why: "Avoids friction now, but the board pack goes out tonight, before the reset, with a date the team knows is infeasible."
         misconception: "Never disagree with a senior person in public"
       - text: "Explain that the request is not feasible in that time, listing the data, integration and evaluation steps that are involved"
         why: "May be accurate, but a list of obstacles reads as a refusal and lands badly. It offers the CEO no route to progress."
@@ -381,7 +381,8 @@ items:
     time_s: 110
     stem: |
       A sales-operations VP wants AI-drafted customer emails sent automatically to keep response time under an hour.
-      Legal wants every message reviewed before it goes out. Both are senior and both have a legitimate point. Most
+      Legal wants every message reviewed before it goes out, because a wrong statement on pricing, contracts or
+      complaints could bind the company in writing. Both are senior and both have a legitimate point. Most
       of the volume is routine order-status and scheduling replies; a minority involve pricing, contracts or
       complaints. The COO, who is the project's executive sponsor, has authority over both functions. What should the
       FDE do?
@@ -390,7 +391,7 @@ items:
         correct: true
         why: "Turns a binary conflict into a risk-based design that gives each side most of what it needs, with a decision from the person who has authority over both."
       - text: "Propose auto-sending everything for now, with Legal reviewing a daily sample afterwards and the rules tightened if problems appear"
-        why: "A real compromise, but it gives up Legal's pre-send review on exactly the messages where an error is costly, and the FDE is choosing that trade-off for the COO."
+        why: "Sampling after the fact lets pricing, contract and complaint messages go out unreviewed, which is the exposure Legal raised, and the FDE is choosing that trade-off for the COO."
         misconception: "Sampling after the fact is equivalent to review before sending"
       - text: "Side with Legal, since a wrongly sent message carries legal exposure while a slow reply costs only a little goodwill"
         why: "Plausible on risk, but a unilateral choice sacrifices the business goal and the FDE does not own that trade-off."

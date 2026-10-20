@@ -1,1 +1,8 @@
-PyYAML>=6.0
+# Runtime (python -m app). Python >= 3.11.
+fastapi==0.156.3
+starlette==1.9.0
+uvicorn==0.54.0
+Jinja2==3.1.6
+python-multipart==0.0.32
+httpx==0.28.1
+PyYAML==6.0.3
