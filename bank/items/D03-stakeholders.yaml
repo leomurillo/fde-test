@@ -172,7 +172,7 @@ items:
       A smaller model costs 60% less per case but gets about four more cases wrong per hundred. The business-unit head
       who sponsors the project must choose between the two. How should the FDE frame the choice?
     options:
-      - text: "Express the gap in business terms: extra corrections per thousand cases, their cost, against the monthly saving, with a recommendation"
+      - text: "Put the gap in business terms: extra corrections per thousand cases, their cost, against the saving, and recommend one"
         correct: true
         why: "Translates the technical difference into units the sponsor can weigh, and offers a view."
       - text: "Show cost per case and error rate for both models side by side and let the sponsor pick, since that keeps engineering neutral"
@@ -235,13 +235,13 @@ items:
       privacy and security reviews had both passed. Which discovery practice would most likely have caught this
       earlier?
     options:
-      - text: "Mapping stakeholders by who controls data, policy and sign-off as well as who sponsors and uses the system"
+      - text: "Mapping stakeholders by who controls data, policy and sign-off, not only who sponsors and uses the system"
         correct: true
         why: "Records management is neither sponsor nor user but controls a constraint; mapping by control surfaces them."
       - text: "Starting the privacy impact assessment and security review earlier and making them deeper"
         why: "Those reviewers own privacy and security. Retention of derived copies sits with a group that neither review involves, so a deeper review by the same people misses it."
         misconception: "More thorough standard reviews cover every compliance constraint"
-      - text: "Asking the sponsor to list every constraint at kickoff, and treating the list as complete"
+      - text: "Asking the sponsor to list every constraint at kickoff, and treating the resulting list as complete"
         why: "The sponsor can only name constraints they know about, and they may not know about retention rules."
         misconception: "The sponsor knows all the constraints"
       - text: "Interviewing a larger sample of the General Counsel's lawyers about how they would use the system"
@@ -416,13 +416,13 @@ items:
       Interviews show managers still ask for the weekly report from the legacy tool, and the assistant sits in a separate
       browser tab. What is the best next step?
     options:
-      - text: "Put the assistant inside the system people already work in, and have managers take the weekly report from its output"
+      - text: "Put the assistant inside the system people already work in, and have managers take the report from its output"
         correct: true
         why: "Removes the reason for the old path and puts the new one where the work happens."
       - text: "Recruit a respected user in each team as a champion and pair every non-user with one for a week"
         why: "Peer support helps, but champions cannot remove the manager's report requirement or the extra tab that pull people back."
         misconception: "Peer influence outweighs structural friction"
-      - text: "Run another round of interviews and a survey of non-users, since the cause of low usage is not yet established"
+      - text: "Run another round of interviews and a survey of non-users, since the cause of the low usage is not yet established"
         why: "The existing interviews already show the cause. More research delays the fix."
         misconception: "More research is needed before acting"
       - text: "Have the sponsor email a mandate to use the assistant from next month, with usage reported to managers"
@@ -447,13 +447,13 @@ items:
       - text: "Share of agents with access who complete a real customer case with the assistant within two weeks"
         correct: true
         why: "Measures completion of the core task, which is what activation means, relative to the people who could use it."
-      - text: "Share of the 900 agents who opened the assistant at least once in the first two weeks"
+      - text: "Share of the 900 agents who opened the assistant on at least one working day in the first two weeks"
         why: "Counts a single visit as use. Agents can open it once, find nothing useful and leave, so it measures curiosity rather than adoption."
         misconception: "Any activity counts as adoption"
       - text: "Average handling time of agents who use the assistant compared with those who do not"
         why: "An outcome comparison, not a usage measure. Early adopters are often the most capable agents, so it is confounded and says nothing about how many people use it."
         misconception: "An outcome comparison shows whether adoption is happening"
-      - text: "Average satisfaction score agents give the assistant in a short in-app rating prompt"
+      - text: "Average satisfaction score that agents give the assistant when asked in a short in-app rating prompt"
         why: "Only people who engaged answer, and a high score from a small group can sit alongside very low use."
         misconception: "Sentiment from users measures how many people use it"
     explanation: |
@@ -598,7 +598,7 @@ items:
       an LLM application, and will own this one after handoff. Which runbook content will help them most on their
       first incident, such as a sudden rise in wrong answers?
     options:
-      - text: "Symptom-based playbooks for known failures such as stale index, provider outage and quality drop, with actions and contacts"
+      - text: "Symptom-based playbooks for known failures such as stale index, provider outage and quality drop, each with actions"
         correct: true
         why: "Operators under pressure need to go from a symptom to an action, not from theory to diagnosis."
       - text: "Step-by-step procedures for redeploying and rolling back the application and its configuration"
