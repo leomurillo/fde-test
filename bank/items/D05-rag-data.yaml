@@ -13,7 +13,7 @@ items:
       obligation. Clauses in these contracts run from about 80 to 900 tokens, and each one carries a numbered
       heading such as "12.3 Termination for convenience". Which change to ingestion is most likely to fix this?
     options:
-      - text: Split on the contracts' own clause boundaries and prepend each clause's section path to its chunk text
+      - text: "Split on the contracts' own clause boundaries and prepend each clause's section path"
         correct: true
         why: Chunks then align with the unit lawyers reason about, and the heading path restores the context a bare clause loses.
       - text: Raise the fixed size to 2,000 tokens so that nearly every clause fits whole inside one chunk
@@ -104,7 +104,7 @@ items:
       would have found. Query latency is 25 ms at p95 against a 150 ms budget, and rebuilding the index would
       take two days the team would rather avoid. What is the best first adjustment?
     options:
-      - text: Increase the query-time search breadth (`ef_search`) and re-measure recall and latency
+      - text: "Raise the query-time search breadth (ef_search) and re-measure recall against latency"
         correct: true
         why: It widens graph exploration per query, raises recall at the cost of latency the team has spare, and needs no rebuild.
       - text: Reduce `M` (links per node) to make the graph sparser and the search more focused
@@ -113,7 +113,7 @@ items:
       - text: Lower `ef_construction` and rebuild, because a quickly built graph is cheaper to search
         why: Build effort sets graph quality; lowering it generally hurts recall and does not make queries faster in a way that helps here.
         misconception: Index build parameters trade off like query parameters
-      - text: Switch to exact (flat) search so recall is 1.0
+      - text: "Switch to exact (flat) search over all 20 million vectors so that recall is 1.0"
         why: Exact search over 20 million vectors costs far more than the 125 ms of slack and would need much more compute.
         misconception: Exact search is always affordable when the corpus fits in memory
     explanation: |
@@ -135,7 +135,7 @@ items:
       requests per second with a p95 latency budget of 2.5 seconds for the whole response. Which pipeline change
       fits best?
     options:
-      - text: "Retrieve 50 candidates, rerank with a cross-encoder, send the top 5 to the LLM"
+      - text: "Retrieve 50 candidates, rerank with a cross-encoder for precision, send the top 5"
         correct: true
         why: A cross-encoder reads query and chunk together for more accurate ordering, and scoring 50 short pairs fits the latency and throughput budget.
       - text: "Send the top 30 chunks straight to the LLM so the best one is included in the prompt"
@@ -227,7 +227,7 @@ items:
       so a proposal suggests embedding new queries with B while leaving the 8 million stored chunk vectors
       as they are, to avoid a re-embedding bill. How should you respond?
     options:
-      - text: "Re-embed the corpus with B in a parallel index, compare offline, then cut over"
+      - text: "Re-embed the whole corpus with B into a parallel index, then compare and cut over"
         correct: true
         why: Vectors from different models live in unrelated spaces, so queries and chunks must come from the same model, and a parallel index allows a safe cutover.
       - text: Approve it, since equal dimensionality means the vectors are comparable under cosine similarity
@@ -261,7 +261,7 @@ items:
       - text: "Filter the search by the caller's groups, using ACL metadata synced from the source"
         correct: true
         why: The index returns only readable chunks, so top-k is filled with permitted results and restricted text never leaves the store.
-      - text: "Keep the post-filter after retrieval but raise top_k to 200 so enough permitted chunks survive"
+      - text: "Keep the post-filter after retrieval but raise top_k to 200 so that enough permitted chunks survive the filter"
         why: It reduces empty results for most users but still loads restricted text and gives no guarantee for users with narrow access.
         misconception: Over-fetching and filtering is equivalent to filtering in the query
       - text: Build one separate index per employee so each can only ever search their own documents
@@ -289,7 +289,7 @@ items:
       Inspection shows that table cells were extracted as one stream of words in reading order. What should the
       ingestion pipeline do?
     options:
-      - text: "Parse tables with a layout-aware extractor and index each row together with its column headers and caption"
+      - text: "Parse tables with a layout-aware extractor and index each row with its column headers"
         correct: true
         why: Keeping column headers attached to each value lets retrieval and the model tell which number belongs where.
       - text: Run OCR at a higher resolution on every page to improve the extracted text
@@ -364,7 +364,7 @@ items:
       - text: "Keep the list of top retrieved files but raise it from three to five so more support is shown"
         why: A longer list makes support more likely by chance yet leaves the claim-to-source link unverified.
         misconception: Listing retrieved documents counts as attribution
-      - text: "Move to the largest available model so that its citations become more accurate than today"
+      - text: "Move to the largest available model for generating the cited answers"
         why: Stronger models cite better on average but still need verification when an audit requires evidence.
         misconception: Model scale removes the need for verification
     explanation: |
@@ -395,7 +395,7 @@ items:
       - text: "Delete the footers and templates from the corpus with a blocklist of known filenames and paths"
         why: Filename lists miss renamed copies and lose the provenance the auditors need.
         misconception: Deduplication means removing sources rather than merging records
-      - text: "Increase the number of chunks returned from five to twenty so that unique passages also appear"
+      - text: "Increase the number of chunks returned from five to twenty, leaving the index as it is"
         why: The duplicates still occupy slots, and the model receives more repeated text for higher cost.
         misconception: A larger result list overcomes duplicate crowding
     explanation: |
@@ -416,7 +416,7 @@ items:
       product line?" from an 8-million-row ERP orders table. A colleague proposes exporting each row as a
       sentence, embedding it, and retrieving the closest rows for each question. What do you recommend?
     options:
-      - text: "Give the assistant a read-only query tool over a governed view and let SQL compute the totals exactly"
+      - text: "Give the assistant a read-only query tool over a governed view and let SQL do the totals"
         correct: true
         why: Totals and group-bys are exact in SQL, always current, and auditable from the query that produced them.
       - text: "Embed the rows as proposed but retrieve 200 rows for each question so that the model can sum them"
@@ -490,7 +490,7 @@ items:
       - text: "Paste the entire policy corpus into the system prompt of every request to avoid building any index"
         why: Two million tokens exceed many context windows and make every call slow and expensive for a few relevant sections.
         misconception: Long context makes retrieval unnecessary at any corpus size
-      - text: Fine-tune the model to recall section numbers so that it can cite without any retrieval
+      - text: "Fine-tune the model to recall section numbers and cite them without any retrieval"
         why: Recalled section numbers are generated text and can be fabricated, so the citations are unverifiable.
         misconception: A model can memorise a reliable citation index
     explanation: |
@@ -518,7 +518,7 @@ items:
       - text: "Re-index tickets every five minutes so the vectors stay close to the live Jira state"
         why: The status is still up to five minutes old, the ACL problem remains, and the extra indexing load buys little for an exact-id lookup.
         misconception: Frequent re-indexing makes an index a real-time source
-      - text: "Stream Jira webhook events into the vector store so that each change updates its chunk right away"
+      - text: "Stream Jira webhook events into the vector store, updating the matching chunk on every change"
         why: This narrows staleness but adds an ingestion pipeline, and permissions still have to be mirrored for exact lookups that one API call handles.
         misconception: Event-driven indexing is the right path for every live record
       - text: "Include ticket status as chunk metadata and tell the model to trust the newest chunk it sees"
@@ -621,13 +621,13 @@ items:
       - text: "Move the status test into the join as `AND t.status = 'open'`, dropping the WHERE"
         correct: true
         why: The filter then restricts which tickets match, while customers with no matching ticket are kept with a count of 0.
-      - text: "Change the WHERE clause to `t.status = 'open' OR t.status IS NULL` so unmatched rows pass"
+      - text: "Change the WHERE clause to `t.status = 'open' OR t.status IS NULL`"
         why: Customers that have only closed tickets still fail both tests and vanish, so the report remains incomplete.
         misconception: Allowing NULL in the WHERE clause restores unmatched rows
       - text: "Swap COUNT(t.id) for COUNT(*) so that customers without tickets are still counted"
         why: The WHERE clause has already discarded those rows; COUNT(*) would also count a no-match row as 1 after any fix.
         misconception: The aggregate function decides which rows survive
-      - text: "Replace LEFT JOIN with RIGHT JOIN so that all customers are preserved by the join"
+      - text: "Replace LEFT JOIN with RIGHT JOIN and keep the WHERE clause as it is"
         why: The same WHERE predicate on tickets still removes rows without an open ticket, whichever side is preserved.
         misconception: Join direction determines whether a later filter keeps unmatched rows
     explanation: |
@@ -646,8 +646,8 @@ items:
     stem: |
       At a regional insurer you get read access to a 20-year-old policy database. The main table `POL_MST` has
       columns like `STS_CD`, `FLG_3` and `DT_X`, with no data dictionary, no stored procedures to read, and the
-      original developers gone. Your first deliverable needs to know which policies are active. What is the best
-      first step?
+      original developers gone. A decade-old spreadsheet report lists "active" policies, but nobody can explain its
+      logic. Your first deliverable needs to know which policies are active. What is the best first step?
     options:
       - text: "Profile the columns and check each hypothesis against policies the business can confirm"
         correct: true
@@ -658,9 +658,9 @@ items:
       - text: Paste sample rows into an LLM and adopt the field meanings that it proposes
         why: A model can suggest hypotheses, but without checks against real records its explanation is unverified speculation.
         misconception: An LLM's reading of the data is a substitute for validating it
-      - text: Wait until the client finds the original schema documentation before querying anything
-        why: Documentation may never turn up, and profiling is safe, read-only, and will uncover most meanings quickly.
-        misconception: Analysis should not start until documentation exists
+      - text: "Reproduce the legacy report's list and treat its definition of active as the truth"
+        why: The report's logic is unexplained and may be wrong or out of date, so copying it only hides the question of what each column means.
+        misconception: An existing report is an authoritative definition of the business rule
     explanation: |
       Undocumented schemas are discovered empirically: profile values and distributions, join to known facts, and
       confirm each hypothesis with someone who knows individual records. LLMs help generate hypotheses but never
@@ -761,16 +761,16 @@ items:
 
       A ticket can carry both tags. Which fix gives each ticket's cost counted exactly once?
     options:
-      - text: "Test tag membership with `EXISTS` on `ticket_tags` instead of joining the two tables"
+      - text: "Test tag membership with `EXISTS` on `ticket_tags` rather than joining to it"
         correct: true
         why: A semi-join tests membership without multiplying rows, so each ticket contributes once.
-      - text: "Use `SUM(DISTINCT t.cost_usd)` so that repeated cost values are removed from the total"
+      - text: "Use `SUM(DISTINCT t.cost_usd)` in place of `SUM(t.cost_usd)` to drop repeated values"
         why: DISTINCT works on values, so two different tickets with the same cost would collapse into one.
         misconception: DISTINCT inside an aggregate deduplicates entities
-      - text: "Change the JOIN to a LEFT JOIN so that each ticket keeps just one row in the result"
+      - text: "Change the JOIN to a LEFT JOIN and keep the same WHERE clause on the tag column"
         why: A LEFT JOIN still returns one row per matching tag, so a ticket with two tags still appears twice.
         misconception: The join type controls row multiplication
-      - text: "Add `g.tag` to the GROUP BY so that each tag gets its own total per project"
+      - text: "Add `g.tag` to the GROUP BY and total each tag separately within each project"
         why: A ticket with both tags is still counted once per tag, and the project totals are now split across tag rows.
         misconception: Grouping by the duplicated column resolves the double counting
     explanation: |

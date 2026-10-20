@@ -84,7 +84,7 @@ items:
       - text: Raise the limit to the maximum page size so that fewer pages are fetched while the data moves
         why: Fewer pages shrink the exposure window, but every offset boundary can still shift when rows change.
         misconception: Bigger pages remove the offset drift problem
-      - text: Sort by `created_at` ascending and keep using offsets so that new tickets land at the end
+      - text: "Sort by `created_at` ascending, where new tickets land at the end, and keep using offsets"
         why: Inserts then land at the end, but deleted or re-sorted rows still shift offsets, and edits to older tickets are missed.
         misconception: An insert-only ordering makes offset paging safe
       - text: "Schedule the export for the quietest hour of the night and keep using offset paging"
@@ -184,9 +184,9 @@ items:
       - text: "Key de-duplication on the receipt handle the broker issues with each delivery attempt"
         why: A redelivery gets a new receipt handle, so the second copy would look new and be inserted again.
         misconception: Any identifier attached to a message is a stable de-duplication key
-      - text: "Skip events whose timestamp is within one second of an event that is already stored"
-        why: Distinct cases can be created in the same second, so valid events are dropped while duplicates arriving later pass.
-        misconception: Time proximity identifies duplicates
+      - text: "Hash the event payload and skip any payload hash already seen within the last hour"
+        why: Two distinct events can carry identical content and be dropped, and a duplicate redelivered after the window passes through.
+        misconception: Identical content within a time window identifies a duplicate
     explanation: |
       Most brokers guarantee at-least-once delivery, so consumers must be idempotent. Use an identifier fixed by
       the producer and record it atomically with the side effect (unique constraint, or an upsert). Identifiers
@@ -213,9 +213,9 @@ items:
       - text: Catch every exception in the worker and acknowledge the message so it leaves the queue
         why: Failures disappear silently and the customer's document is lost with no trace or retry path.
         misconception: Acknowledging on error is graceful handling
-      - text: Pause consumption until an engineer inspects the message and removes it by hand
-        why: Everyone's documents wait on a manual action, turning one poison message into an outage.
-        misconception: Stopping the line is the safe response to a bad message
+      - text: "Send the failing message to the back of the queue so other messages are processed first"
+        why: The message fails again whenever it comes up, consuming attempts and worker time, and it keeps blocking the shard with every retry cycle.
+        misconception: Moving a poison message to the back of the line contains it
     explanation: |
       A message that always fails (a poison message) must not block the stream. Bound retries, then park it in a
       dead-letter queue, alert on its depth and keep a way to redrive messages once the cause is fixed.
@@ -421,16 +421,16 @@ items:
       resulting synchronised waves trigger more 429s. The responses include a `Retry-After` header. What retry
       policy should the client adopt?
     options:
-      - text: Wait at least the `Retry-After` value, then add exponential backoff with random jitter up to a cap
+      - text: "Honour `Retry-After`, then add exponential backoff with random jitter up to a cap"
         correct: true
         why: It respects the server's hint and spreads retries so workers stop arriving in lockstep.
-      - text: Double the delay on each attempt up to 60 seconds, with no randomness, so that waits grow predictably
+      - text: "Double the delay on each attempt up to 60 seconds, with no randomness added"
         why: All workers that failed together still retry together at each step, so the waves remain, just further apart.
         misconception: Exponential growth alone prevents synchronised retries
       - text: Retry immediately up to five times so that most requests succeed before the limit window resets
         why: Immediate retries add load while the limit is exhausted, extending the period of rejections for everyone.
         misconception: Fast retries recover capacity sooner
-      - text: Lengthen the fixed delay to 10 seconds so that the system has time to recover
+      - text: "Lengthen the fixed delay from 2 to 10 seconds for every retry attempt"
         why: A fixed delay still synchronises the workers and also adds latency for the many requests that would succeed sooner.
         misconception: A longer constant delay is equivalent to backoff
     explanation: |
@@ -452,7 +452,7 @@ items:
       hangs until timeout, the service's request threads are exhausted, and even the health-check and FAQ pages stop
       responding. The business wants customers to still get some help during provider outages. What pattern fits?
     options:
-      - text: "A circuit breaker that fails fast after repeated errors, plus a fallback path"
+      - text: "A circuit breaker that fails fast after repeated errors, with a fallback path"
         correct: true
         why: Threads are freed immediately, and the fallback (backup model, cached answer, or handoff to a human) keeps serving users.
       - text: "Raise the timeout from 60 to 120 seconds so that slow provider responses can complete"
@@ -461,7 +461,7 @@ items:
       - text: "Retry each failed call up to five times before returning an error to the customer"
         why: Retries multiply the load and the time each request ties up a thread during the outage.
         misconception: More retries improve availability during an outage
-      - text: "Add more instances of the service behind the load balancer so more threads are available"
+      - text: "Add more instances of the service behind the load balancer to get more request threads"
         why: Each new thread is consumed by the same hanging calls, so capacity is exhausted a little later at more cost.
         misconception: Scaling out compensates for a failing dependency
     explanation: |
@@ -522,7 +522,7 @@ items:
       - text: Keep the request-count limiter and lower it to 300 per minute, which leaves ample slack for large requests
         why: It wastes capacity for small requests and still fails if enough large requests arrive in the same minute.
         misconception: A lower request cap is a safe proxy for a token limit
-      - text: Give each worker a fixed sleep between calls so that no worker exceeds its share
+      - text: "Give each worker a fixed sleep between calls that divides the limit by the worker count"
         why: Per-worker sleeps ignore request size and the number of active workers, so combined traffic can still exceed the limit.
         misconception: Local pacing in each worker equals a global rate limit
       - text: Remove client-side limiting and rely on 429 responses with backoff to find the right rate
@@ -549,7 +549,7 @@ items:
       - text: "Invalidate on Jira webhook events and re-read with a version check before any write"
         correct: true
         why: Reads stay cheap while writes are protected by fresh state, so the agent cannot act on a stale view.
-      - text: "Lengthen the cache lifetime to 24 hours so that far fewer calls reach the Jira API"
+      - text: "Lengthen the cache lifetime to 24 hours to cut Jira API calls further"
         why: It lowers API usage further but makes the stale reads, and the risk of acting on them, much worse.
         misconception: Rate-limit pressure justifies longer staleness
       - text: "Remove the cache entirely and fetch the issue from Jira again on every single read"
@@ -637,7 +637,7 @@ items:
       see a Slack timeout error even though the summary is eventually produced by the backend. What is the
       correct way to handle the interaction?
     options:
-      - text: "Acknowledge within 3 seconds, work in the background, and post the result via the response URL"
+      - text: "Acknowledge within 3 seconds, work in the background, post the result via the response URL"
         correct: true
         why: Slack requires a quick acknowledgement, and the delayed response URL or message API delivers the result when it is ready.
       - text: "Increase the web server's response timeout for this route to 60 seconds to cover the run"
@@ -646,7 +646,7 @@ items:
       - text: "Stream partial tokens back in the HTTP response as the agent produces them, line by line"
         why: Slack's command acknowledgement is not a streaming channel and it needs a response within seconds.
         misconception: Streaming the HTTP response satisfies the platform's timeout
-      - text: "Switch to a smaller, faster model so that the answer comes back within the time limit"
+      - text: "Switch to a smaller, faster model and tune the agent to finish inside three seconds"
         why: Even the fastest agent run is unlikely to finish in three seconds with tool calls, and the next slow day will fail again.
         misconception: Optimising latency is the right answer to a protocol deadline
     explanation: |

@@ -14,52 +14,53 @@ items:
       In week one you confirm that the inventory system matches physical counts in spot checks and that every item
       has a shelf location. Nurses still complain loudly about hunting for supplies. What is the best next step?
     options:
-      - text: "Shadow nurses across several shifts and time each supply search from need to item in hand"
+      - text: "Shadow nurses across several shifts and time each search from the moment of need to the item in hand"
         correct: true
         why: "Observation shows where the time really goes. With accurate inventory data, the stated solution (a lookup chatbot) may not touch the cause."
-      - text: "Interview the ward managers and compile a prioritized list of chatbot requirements for sign-off"
-        why: "Managers describe the work secondhand, and the list presumes the chatbot is the answer before the problem is understood."
-        misconception: "Stakeholder interviews are sufficient discovery"
-      - text: "Prototype a chatbot over the inventory data and measure whether nurses adopt it over two weeks"
-        why: "If searches are slow for reasons other than lookup (supplies in locked rooms, par levels, restocking cadence), a lookup chatbot cannot help, and the prototype teaches little."
+      - text: "Analyze the inventory system's search and pick logs to see which items and wards generate the most lookups"
+        why: "Logs record only what happens inside the system. With accurate data and locations, the delay likely sits where logs cannot see: walking, locked rooms, restocking."
+        misconception: "System data shows the whole workflow"
+      - text: "Build a thin chatbot over the inventory data and measure whether nurses use it over two weeks"
+        why: "If searches are slow for reasons other than lookup, a lookup chatbot cannot help, and low usage would not tell you why."
         misconception: "Building the requested thing is the fastest way to learn"
-      - text: "Survey every nurse on which supplies are hardest to find and rank the items by frequency"
-        why: "Self-reported pain is already abundant; a ranking of items does not reveal the mechanism behind the delays."
-        misconception: "More self-reported data substitutes for observed behavior"
+      - text: "Interview a dozen nurses and their ward managers about why supplies are hard to find, and group the answers"
+        why: "People describe their work from memory and name the symptoms they notice; they rarely see how long each search takes or what causes it."
+        misconception: "Interviews are sufficient discovery"
     explanation: |
       The stated request is a solution, not a problem. Before building, find out what actually happens in the
-      workflow: watching real work surfaces causes that users and managers cannot articulate, and it can overturn
-      the assumed solution entirely.
+      workflow: watching real work surfaces causes that users, managers and system logs cannot reveal, and it can
+      overturn the assumed solution entirely.
 
   - id: D2-002
     version: 1
     type: single
     subtopic: discovery.framing
     competencies: [x.decomposition]
-    difficulty: 1
+    difficulty: 2
     level: apply
     time_s: 75
     stem: |
-      An online retailer's operations VP says returns take too long to process and wants AI to fix it. You are
-      building an issue tree for 'where does the time go?'. Which first-level split is mutually exclusive and
-      collectively exhaustive?
+      An online retailer's operations VP says returns take too long to process and wants AI to fix it. Returns
+      arrive by mail, at stores and through third-party marketplace partners. You are building an issue tree for
+      'where does the time go?'. Which first-level split is mutually exclusive and collectively exhaustive?
     options:
       - text: "Elapsed time per stage: receipt, inspection, disposition decision, refund, restocking"
         correct: true
         why: "Every hour of a return falls into exactly one stage, so the branches do not overlap and together cover the whole process."
+      - text: "Elapsed time per intake channel: mail-in returns and in-store returns"
+        why: "Marketplace returns fall into neither branch, so the split is not collectively exhaustive."
+        misconception: "A split along a natural dimension is automatically complete"
       - text: "Contributing causes: staffing, tooling, volume spikes, data quality and process design"
         why: "A brainstormed cause list overlaps (tooling and process design) and nothing proves it is complete."
         misconception: "A list of plausible causes is a decomposition"
-      - text: "Returns grouped by warehouse site, by product category, and by customer segment type"
-        why: "These are three different cuts of the same returns, so every return appears in all three; they are not parts of one split."
+      - text: "Delay by product category and by warehouse site"
+        why: "These are two different cuts of the same returns, so every return appears under both; they are not parts of one split."
         misconception: "Listing several useful dimensions makes a tree"
-      - text: "Candidate technical fixes: label OCR, a return-reason classifier, a rules engine and a chatbot"
-        why: "It starts from solutions and says nothing about where time is lost, so it cannot be exhaustive about the problem."
-        misconception: "Decomposing the solution space instead of the problem"
     explanation: |
       MECE means each element belongs to exactly one branch and no element is left out. Splitting a process along its
-      flow is the dependable way to get this, and it yields branches you can measure with timestamps. Causes and
-      solutions belong at the next level, as hypotheses under the stage where time is actually lost.
+      flow is the dependable way to get this, and it yields branches you can measure with timestamps. Splits by
+      channel or site are only exhaustive if every value is listed; causes belong at the next level, as hypotheses
+      under the stage where time is actually lost.
     refs: [https://en.wikipedia.org/wiki/MECE_principle]
 
   - id: D2-003
@@ -75,7 +76,7 @@ items:
       A health insurer's claims adjusters would use your tool daily. Their VP of Claims is buying it, and the CFO
       sponsors it to reduce loss-adjustment expense. Which discovery actions fit this situation?
     options:
-      - text: "Record each group's definition of success separately: adjuster minutes per claim, the VP's backlog, the CFO's expense figure"
+      - text: "Capture each group's definition of success separately: minutes per claim, the VP's backlog, the CFO's expense figure"
         correct: true
         why: "Users, buyer and sponsor want different things; a project that tracks only one can succeed on paper and fail with the others."
       - text: "Watch adjusters work live claims instead of relying on the VP's description of their day"
@@ -84,15 +85,15 @@ items:
       - text: "Check that the CFO's measurable target and the adjusters' daily friction sit at the same workflow step"
         correct: true
         why: "If the savings come from a step adjusters do not struggle with, adoption will not produce the sponsor's outcome."
-      - text: "Treat the VP's requirements list as the user needs, since the VP manages the adjusters"
-        why: "Managers set priorities, but their list reflects what they see in reports, not task-level friction."
-        misconception: "The buyer is a faithful proxy for the end user"
-      - text: "Prioritize the adjusters' wish list over all else, because adoption decides whether value appears"
-        why: "Adoption matters, but a tool that delights users and misses the sponsor's target gets cancelled at the next budget review."
-        misconception: "End-user satisfaction alone defines success"
-      - text: "Merge sponsor and buyer into one stakeholder so the project has a single definition of success"
-        why: "They have different incentives; hiding the difference postpones the conflict to the acceptance meeting."
-        misconception: "Simplifying stakeholders removes conflict"
+      - text: "Ask the VP to nominate a few experienced adjusters to review the requirements list, then freeze it"
+        why: "Nominees tend to be the manager's trusted voices, and reviewing a list is not seeing the work; friction nobody wrote down never surfaces."
+        misconception: "A manager-picked sample counts as user research"
+      - text: "Anchor everything on the CFO's expense target, since the sponsor decides whether funding continues"
+        why: "A tool that hits the number on paper but that adjusters route around saves nothing; adoption and the sponsor's outcome must be examined together."
+        misconception: "The sponsor's metric is the only one that matters"
+      - text: "Run a workshop where adjusters vote on the features they want most, and build the top-voted ones"
+        why: "Stated wishes are not observed friction, and the top-voted features may not touch the step where the sponsor's savings come from."
+        misconception: "A voted wish list is discovery output"
     explanation: |
       Users, buyers and sponsors are often different people with different success measures. Good discovery keeps
       them distinct, learns user needs first-hand, and checks that the sponsor's outcome and the users' pain point
@@ -111,51 +112,55 @@ items:
       A manufacturer's COO asked for an ML model that predicts machine failures, and the contract names it as the
       deliverable. After two weeks on the floor you find that maintenance planners already know which machines are
       fragile. The real losses come from replacement parts taking about three weeks to arrive once a failure is
-      called. What do you do?
+      called. Sensor history suggests failures can be flagged only two or three days ahead at best. What do you do?
     options:
-      - text: "Show the COO the downtime data and propose parts lead time as the first target, predictor later"
+      - text: "Show the COO the downtime data and propose stocking spares for the fragile machines first, amending the deliverable"
         correct: true
-        why: "Evidence from the floor shows where the money is lost; reframing with the sponsor, not around them, keeps trust and aims effort at the real constraint."
-      - text: "Build the predictor as contracted and mention the parts delay in the final report to the COO"
+        why: "Floor evidence shows where the money is lost; reframing with the sponsor, not around them, keeps trust and aims effort at the real constraint."
+      - text: "Build the predictor as contracted and use its alerts to trigger parts orders, so it also addresses the delay"
+        why: "A warning two or three days ahead cannot beat a three-week lead time, so the parts would still arrive after the failure."
+        misconception: "A prediction fixes any lead-time problem"
+      - text: "Build the predictor as contracted and report the parts finding to the COO in the final report"
         why: "It delivers what was asked while knowingly leaving most of the loss untouched; the sponsor learns the finding too late to act."
         misconception: "Contract wording defines the problem"
-      - text: "Build the predictor as contracted and, in parallel, a parts-ordering tool, since either could matter"
-        why: "Doubles scope on the same timeline without evidence for either, and splits a small team across two bets."
-        misconception: "Hedging with parallel builds is cheaper than choosing"
-      - text: "Take the parts finding straight to procurement leadership so the delay is fixed outside this project"
-        why: "Going around the sponsor damages the relationship and ignores that the COO owns the outcome."
-        misconception: "Fix the root cause wherever it lives, whoever owns it"
+      - text: "Take the finding to procurement leadership so the delay is fixed there while you deliver the predictor as contracted"
+        why: "It looks constructive but goes around the sponsor, who owns the outcome and the contract, and still delivers a model that leaves the main loss in place."
+        misconception: "Fix the root cause with whoever owns it, sponsor or not"
     explanation: |
       The stated deliverable is a hypothesis about how to solve the problem. When observation contradicts it, bring
-      the evidence to the sponsor and propose a reframe; do not silently deliver the wrong thing, and do not
-      route around the person who owns the outcome.
+      the evidence to the sponsor and propose a reframe; do not silently deliver the wrong thing, and do not route
+      around the person who owns the outcome. Here the prediction horizon (days) is far shorter than the parts lead
+      time (weeks), so a better predictor alone cannot remove the loss, while stocking spares for machines the
+      planners already know are fragile can.
 
   - id: D2-005
     version: 1
     type: single
     subtopic: discovery.framing
-    difficulty: 1
+    difficulty: 2
     level: apply
-    time_s: 60
+    time_s: 70
     stem: |
-      A bank's operations head asks for an LLM to summarize recorded customer calls. You have thirty minutes with
-      her. Which question is most likely to expose the underlying problem?
+      A bank's operations head asks for an LLM to summarize recorded customer calls. Agents currently type a
+      wrap-up note after each call. You have thirty minutes with her. Which question is most likely to expose the
+      underlying problem?
     options:
-      - text: "Who reads these summaries today, and what do they do next with them?"
+      - text: "Who reads the wrap-up notes today, and what do they do with them next?"
         correct: true
-        why: "It surfaces the decision or action the summary feeds, which defines the value and what 'good' means."
-      - text: "How many calls are recorded each day, and in what audio format?"
-        why: "Useful for feasibility and cost, but it says nothing about why summaries matter or who needs them."
-        misconception: "Technical sizing is the first discovery question"
-      - text: "What should the summary look like, in format and length?"
-        why: "It specifies the solution before the need is clear, and the answer will mirror whatever she imagines."
-        misconception: "Asking users to specify the output is requirements gathering"
+        why: "It surfaces the decision or action the notes feed, which defines the value and what 'good' means."
+      - text: "Which problems from last quarter would automatic summaries have prevented?"
+        why: "It presumes summaries are the remedy and invites examples that confirm it, instead of showing what actually goes wrong."
+        misconception: "Leading questions are efficient discovery"
+      - text: "What accuracy would you need before you trusted an automatic summary?"
+        why: "It jumps to an acceptance bar for a solution before the need is understood, and the answer will mirror whatever she imagines."
+        misconception: "Acceptance criteria come first"
       - text: "Which compliance teams must approve the use of call recordings?"
-        why: "A real constraint worth asking later, but it does not reveal the problem being solved."
+        why: "A real constraint worth asking soon, but it does not reveal the problem being solved."
         misconception: "Risk questions come before value questions"
     explanation: |
       Ask about the consuming workflow, not the artifact. The answer reveals who benefits, which action should
-      change, and what measure shows it worked.
+      change, and what measure shows it worked. Questions that presuppose the solution, or specify it, get
+      answers shaped by the solution.
 
   - id: D2-006
     version: 1
@@ -168,20 +173,21 @@ items:
     time_s: 90
     stem: |
       A subscription-software CEO says: 'Churn is up. Use AI to predict and stop it.' You have two years of billing
-      history, product usage logs and support tickets. What is the most useful first analytical step?
+      history, product usage logs and support tickets. What is the most useful first analytical step to decide what
+      kind of project this is?
     options:
-      - text: "Split churned accounts into voluntary and failed-payment cases, by tenure cohort, from billing data"
+      - text: "Split churned accounts into voluntary cancellations and failed-payment lapses, by tenure cohort, using billing data"
         correct: true
-        why: "It breaks the vague problem into parts quickly and cheaply and may show that much of the churn is a payment-retry problem, not a prediction problem."
+        why: "It breaks the vague problem into non-overlapping parts quickly and cheaply, and may show that much of the churn is a payment-retry problem, not a prediction problem."
       - text: "Train a churn model on every available feature, then review its top predictors for likely causes"
         why: "Feature importance reflects correlation and the data's quirks, and it jumps to a solution before the problem is sized."
         misconception: "A predictive model is a discovery tool"
-      - text: "Ask customer success for their ten most common churn reasons and rank them by how often they hear each"
+      - text: "Segment churned accounts by plan, acquisition channel and usage trend in the product logs to see where churn concentrates"
+        why: "A sound later step, but it assumes the churn is voluntary and product-driven; if many lapses are failed payments it is built on the wrong population."
+        misconception: "Behavioral segmentation is the first cut"
+      - text: "Ask customer success for the ten most common churn reasons and rank them by how often they hear each"
         why: "Anecdotes are biased toward memorable calls; the billing data can size the same question exactly."
         misconception: "Frontline anecdote is the best source of cause"
-      - text: "Send an exit survey to recently churned customers asking why they left, and tally the answers"
-        why: "Slow, low response, and stated reasons often differ from behavior; it delays any quantification."
-        misconception: "Asking customers directly gives the true cause"
     explanation: |
       Decompose first and size the pieces with data you already have. Voluntary versus involuntary churn, and
       tenure cohorts, can redirect the whole project before any model is built.
@@ -199,7 +205,7 @@ items:
       It is Monday of an engagement that began with 'make our dispatchers more efficient'. Which activities belong
       in the first week of discovery?
     options:
-      - text: "Write two or three testable hypotheses about where dispatcher time is lost, naming the data that would confirm each"
+      - text: "Write two or three testable hypotheses about where dispatcher time is lost, each naming the data that would confirm it"
         correct: true
         why: "Hypotheses turn a vague goal into checks you can run, and naming the data shows what to request early."
       - text: "Pull timestamps from the dispatch system to measure how long each step of a job takes today"
@@ -211,15 +217,15 @@ items:
       - text: "Interview each department head in turn and merge their wishes into a single requirements document"
         why: "It yields a wish list without evidence of where time is lost, and it favors whoever speaks most confidently."
         misconception: "Consolidated requirements are discovery output"
-      - text: "Draft the target architecture so the sponsor sees concrete output by Friday"
-        why: "A design produced before the problem is understood is fiction; the sponsor needs findings, not diagrams."
-        misconception: "Visible artifacts show progress"
-      - text: "Choose the model vendor and start provisioning so infrastructure is off the critical path"
-        why: "Provisioning for an unknown solution commits budget early, and the first-week unknown is the problem itself."
-        misconception: "Start building in parallel to save time"
+      - text: "Compare the client's dispatch metrics with published industry averages to find the biggest gap"
+        why: "Averages from other operations hide how this client's work differs, and a gap against them does not point to a cause."
+        misconception: "External benchmarks locate the problem"
+      - text: "Run a two-day workshop with all stakeholders to map the ideal future dispatch process"
+        why: "Designing a future state before the current one is measured builds on assumptions; week one should produce evidence."
+        misconception: "Future-state design is where discovery starts"
     explanation: |
       Week one of discovery should produce evidence: hypotheses, a measured baseline, and direct observation of the
-      work. Requirements documents, architectures and vendor choices come after the problem is located.
+      work. Consolidated requirements, benchmarks and future-state designs come after the problem is located.
 
   # ===================== discovery.selection =====================
   - id: D2-008
@@ -233,26 +239,28 @@ items:
     stem: |
       At an industrial distributor you have shortlisted four candidate use cases and can start only one:
 
-      1. **Contract clause extraction** for legal review. The General Counsel is the champion, contracts sit in one
-         repository, and legal already logs review hours. A lawyer checks every output.
+      1. **Contract clause extraction** for legal review. The General Counsel is the champion and contracts sit in
+         one repository. Legal logs review hours, so a baseline exists, and a lawyer checks every output. Savings
+         are modest: about 400 contracts a year.
       2. **Network-wide demand forecasting.** Very large potential savings, but data is spread over nine ERPs with
          no common product ID, nobody has measured current forecast accuracy, and the sponsor is an innovation team.
-      3. **HR policy Q&A assistant.** Easy to build, no clear owner, and HR cannot say what it would change.
-      4. **Automatic customer-refund approval.** High value, accessible data, enthusiastic CFO, but errors pay out
-         money and fall under audit rules.
+      3. **HR policy Q&A assistant.** The head of HR is enthusiastic and it would be quick to build, but HR cannot
+         say what it would change or how success would be measured.
+      4. **Automatic customer-refund approval.** High value, accessible data and an enthusiastic CFO, but errors
+         pay out money, no human reviews approvals, and the process falls under audit rules.
 
       Which should go first?
     options:
-      - text: "Contract clause extraction: owned, measurable, and every output passes a human check"
+      - text: "Contract clause extraction: a measurable baseline and a human check make a credible first result likely"
         correct: true
-        why: "It has a champion who will act, a baseline in logged hours, available data and a built-in safety net, so a quick, credible result is likely."
-      - text: "Demand forecasting: the size of the prize justifies the data-integration effort"
+        why: "It has a champion who will act, a baseline in logged hours, available data and a built-in safety net; modest savings are the price of a quick, credible result."
+      - text: "Demand forecasting: the size of the prize justifies the data-integration effort, since savings at that scale repay it"
         why: "Without a common product ID, a baseline or a real sponsor, the integration work would consume the engagement before value is shown."
         misconception: "Choose the biggest prize first"
-      - text: "HR policy assistant: lowest effort, so the team can show results quickly"
-        why: "Quick to build but with no owner or measurable outcome, the result is a demo nobody has reason to adopt."
-        misconception: "Easiest to build means best first project"
-      - text: "Automatic refunds: strong sponsor and accessible data outweigh the audit exposure"
+      - text: "HR policy assistant: an engaged owner and a quick build give the earliest visible result"
+        why: "Quick and wanted, but with no measurable outcome the result is a demo with nothing to prove."
+        misconception: "Easiest to build, with a keen owner, means best first project"
+      - text: "Automatic refunds: sponsor strength and data readiness outweigh the audit exposure, which can be managed later"
         why: "Autonomous payouts under audit rules need controls and approvals that lengthen the path; sponsor and data are necessary but not enough."
         misconception: "Sponsorship and data readiness cancel out risk"
     explanation: |
@@ -265,58 +273,62 @@ items:
     type: single
     subtopic: discovery.selection
     tags: [agents.when]
-    difficulty: 1
+    difficulty: 2
     level: apply
-    time_s: 75
+    time_s: 80
     stem: |
-      A client's support team routes inbound email into six queues. Customers must choose one of six product names
-      in a required dropdown on the contact form, and the queue follows directly from that field. Misroutes are
-      rare. A manager wants an LLM classifier to 'make routing smarter'. What do you recommend?
+      A client's support team routes inbound email into six queues. Customers choose a product name in a required
+      dropdown on the contact form, and the queue follows directly from that field. About 80% of emails name a
+      product and are routed correctly; misroutes among them are rare. The other 20% pick 'Other / not sure' and
+      land in a triage queue where two people read each email and move it by hand. A manager wants an LLM to
+      'make routing smarter'. What do you recommend?
     options:
-      - text: "Keep routing as a lookup on the dropdown value and put LLM effort where inputs genuinely vary"
+      - text: "Keep the dropdown lookup for emails that name a product and use an LLM only on the 'Other' emails"
         correct: true
-        why: "The rule is exact, free and auditable, and with rare misroutes there is little headroom for a model to improve on."
-      - text: "Add an LLM classifier on the email body that overrides the dropdown when the two disagree"
-        why: "With misroutes already rare, an override mostly adds new errors, latency and per-email cost."
-        misconception: "AI always improves a decision"
-      - text: "Fine-tune a small classifier on historical tickets for cheap, fast routing"
-        why: "Cheaper than an LLM, yet it still replaces a perfect-by-construction rule with a model that must be trained and monitored."
-        misconception: "A smaller model removes the cost of unnecessary AI"
-      - text: "Run the LLM in shadow for a month and switch routing if it beats the dropdown's accuracy"
-        why: "Evidence-first sounds rigorous, but the ceiling is the small misroute rate, so the month of effort cannot repay itself."
+        why: "The rule is exact, free and auditable where it works; the model goes where inputs are open-ended and there is a measurable manual baseline to beat."
+      - text: "Drop the dropdown and have an LLM read every email body and route it, so customers do not have to choose"
+        why: "It replaces an exact rule that already works on 80% of traffic with a model that adds cost, latency and new errors; the problem is confined to the other 20%."
+        misconception: "A fully AI-driven flow is the better product"
+      - text: "Leave routing unchanged, because a rule-based flow that mostly works is not a place for AI"
+        why: "The 20% residual is free-text interpretation done by two people by hand, which is where a model adds value and can be measured."
+        misconception: "If part of a flow is rules, leave the whole flow alone"
+      - text: "Run an LLM over every email in shadow mode for a month and switch to it if it beats the dropdown's accuracy"
+        why: "Evidence-first sounds rigorous, but the dropdown is already accurate on most traffic, so most of the month measures where there is no headroom."
         misconception: "Testing always pays off regardless of headroom"
     explanation: |
-      Check whether AI is needed at all. When a deterministic rule already solves the problem, a model adds cost
-      and failure modes. Spend the effort where inputs are open-ended.
+      Check whether AI is needed at all, and where. A deterministic rule that already solves part of the problem
+      should stay; spend model effort only on the portion where inputs are genuinely open-ended and a manual
+      baseline exists.
 
   - id: D2-010
     version: 1
     type: single
     subtopic: discovery.selection
     tags: [delivery.scoping]
-    difficulty: 1
+    difficulty: 2
     level: apply
-    time_s: 75
+    time_s: 90
     stem: |
-      An accounts-payable director wants an assistant to 'cut invoice approval time' and asks for a prototype in
-      four weeks. Asked how long approvals take now, she says 'around five days'. Nobody has measured it, though
-      the workflow tool stamps every approval step. How do you proceed?
+      A telecom's B2B operations director wants an assistant to 'cut order-to-activation time' and asks for a
+      prototype in four weeks. Asked how long activation takes now, she says 'around ten days'. Nobody has measured
+      it. The order system stamps each stage, but account managers often key an order in a few days after the
+      customer signs. How do you establish the baseline?
     options:
-      - text: "Pull approval timestamps from the workflow tool for recent months and use that as the baseline"
+      - text: "Pull stage timestamps for recent months, then trace a sample of orders end to end to see what the stamps miss"
         correct: true
-        why: "The data exists, costs little to extract, and gives a defensible before-and-after comparison."
-      - text: "Accept the director's five-day estimate as the baseline and measure again once the assistant has launched"
+        why: "The data exists and is cheap to extract; checking a sample end to end exposes the days before order entry that the system never records."
+      - text: "Accept the director's ten-day estimate and measure again once the assistant has launched"
         why: "A remembered average hides the spread and can embarrass both sides when real data disagrees later."
         misconception: "A stakeholder's estimate is a baseline"
-      - text: "Use a published industry benchmark for invoice approval cycle time as the comparison point for results"
-        why: "Benchmarks reflect other companies' processes and mixes of invoices; the client will rightly question their relevance."
-        misconception: "External benchmarks substitute for the client's own data"
-      - text: "Skip a baseline and survey approvers after the pilot on how much faster things feel"
-        why: "Perceived speed is not measured speed and gives the sponsor nothing quantitative to defend."
-        misconception: "User perception is sufficient evidence of improvement"
+      - text: "Pull stage timestamps for recent months and use order-entry-to-activation durations as the baseline"
+        why: "Quick and data-based, but the clock starts at order entry, so the baseline is understated and gains are measured from the wrong start."
+        misconception: "System timestamps tell the whole story"
+      - text: "Have account managers log every new order by hand for the next four weeks and use that as the baseline"
+        why: "It delivers the baseline only at the end of the prototype window, depends on people logging faithfully, and ignores months of existing history."
+        misconception: "Purpose-built measurement beats existing data"
     explanation: |
-      A measurable baseline must exist before you build, or no result can be shown. When the system already records
-      timestamps, extracting them is cheap and it replaces recollection with a distribution.
+      A measurable baseline must exist before you build, or no result can be shown. Extract what the systems
+      already record, then check what the recorded clock leaves out by tracing a sample end to end.
 
   - id: D2-011
     version: 1
@@ -344,9 +356,9 @@ items:
       - text: "A known share of today's manual outputs contains errors"
         why: "A known error rate is a baseline to beat and is useful for setting an acceptance target."
         misconception: "Existing errors make the process too risky to automate"
-      - text: "A small fraction of cases need escalation to a senior specialist"
-        why: "Routing hard cases to people is a standard design pattern, not a reason to avoid the project."
-        misconception: "Any exception path disqualifies automation"
+      - text: "Most of the input is scanned documents and free text rather than database fields"
+        why: "Unstructured input is where language models help most; it adds parsing work but is not a reason to doubt the project's value."
+        misconception: "Messy inputs mean low feasibility"
     explanation: |
       Red flags are missing ownership, no way to measure, and blocked data. Manual, messy or error-prone processes
       are often the best candidates because they supply the baseline and the headroom.
@@ -361,20 +373,21 @@ items:
     time_s: 120
     stem: |
       You can fund one eight-week effort. Option X is claims-document triage: clean data and a supportive operations
-      manager, but no executive sponsor. Option Y is the CEO's priority, a pricing optimizer: the sponsor is strong,
-      but sales data lives in regional spreadsheets with inconsistent definitions of 'discount'. Which approach is
+      manager, who cannot approve changes to adjusters' workflow and has no executive backing the work. Option Y is
+      the CEO's pricing optimizer: the CEO has promised the board a result in ten weeks, but sales data lives in
+      regional spreadsheets whose definitions of 'discount' differ in ways nobody has quantified. Which approach is
       best?
     options:
-      - text: "Start with the CEO's project behind a two-week data feasibility check, with claims triage as fallback"
+      - text: "Start the CEO's pricing project behind a two-week data check, with claims triage as the fallback"
         correct: true
         why: "It uses the sponsor's backing while testing the biggest risk cheaply, and the fallback means a failed check costs two weeks, not eight."
       - text: "Choose claims triage, because data readiness predicts delivery better than executive enthusiasm does"
-        why: "Without an executive sponsor, funding, cross-team access and adoption stall at the first obstacle, even when the data is clean."
+        why: "Without anyone able to approve workflow changes, a working triage tool stalls at adoption, however clean the data."
         misconception: "Technical feasibility outweighs organizational backing"
-      - text: "Choose the pricing project and plan to clean the regional data as the core work of the eight weeks"
-        why: "Committing the whole timebox to data cleanup with unknown scope risks delivering a clean dataset and no optimizer."
+      - text: "Choose the pricing project and make reconciling the regional data the core work of the eight weeks"
+        why: "Committing the whole timebox to data cleanup of unknown scope risks delivering a clean dataset and no optimizer."
         misconception: "Strong sponsorship overcomes poor data"
-      - text: "Decline both until the client fixes its discount definitions and names a sponsor for claims triage"
+      - text: "Decline both for now and ask the client to name a claims sponsor and agree discount definitions first"
         why: "Gatekeeping delays value; the engagement can test feasibility itself in a short time."
         misconception: "Prerequisites must be complete before starting"
     explanation: |
@@ -386,31 +399,32 @@ items:
     version: 1
     type: single
     subtopic: discovery.environment
-    competencies: [x.ai-assisted]
+    tags: [comms.stakeholders, data.modeling]
+    competencies: [x.decomposition]
     difficulty: 2
-    level: apply
+    level: analyze
     time_s: 100
     stem: |
-      You are onboarding at a utility whose billing database holds about 400 tables with names like `T_CUST_X2` and
-      `ACCT_MSTR_OLD`. There is no data dictionary, and the original DBA left years ago. The first use case needs
-      billing-dispute data. What is the most reliable way to build understanding?
+      Two teams at a retail bank give you customer counts for the same pilot: Finance reports 12,400 'active
+      customers' and the CRM team reports 15,100. Your use case targets active customers, and the sponsor assumes
+      one of the numbers is simply wrong. What is the best way to proceed?
     options:
-      - text: "Trace several real disputes from the clerk's screens to the rows they touch, and document only that path"
+      - text: "Trace how each team computes 'active', then agree with the sponsor which definition fits the use case"
         correct: true
-        why: "Following real records ties unclear names to known business meaning and builds knowledge exactly where the use case needs it."
-      - text: "Auto-generate an entity-relationship diagram of all tables and have the client's team confirm it"
-        why: "A diagram shows structure, not meaning; cryptic names stay cryptic, and busy reviewers confirm what they can recognize."
-        misconception: "Documenting everything first is thorough discovery"
-      - text: "Ask an LLM to infer each column's meaning from names and sample values, then use those definitions"
-        why: "Plausible guesses can be wrong in costly ways, such as sign conventions or status codes, and need verification against known records."
-        misconception: "Model-inferred semantics are reliable without checking"
-      - text: "Ask the client to produce a data dictionary before work begins"
-        why: "The knowledge to write it left with the DBA, so the request stalls the project and the client cannot deliver it."
-        misconception: "The client must prepare documentation"
+        why: "The gap is probably definitional, not an error; tracing each calculation shows what is counted and lets you choose deliberately."
+      - text: "Use Finance's figure, since it feeds audited reports"
+        why: "Audited means consistent with a reporting rule, not right for this use case; a financial definition may exclude customers you want to reach."
+        misconception: "The audited number is the correct one"
+      - text: "Use the CRM figure, since it is closest to the live customer records the system will read"
+        why: "Proximity to the source says nothing about whether the definition matches the use case; CRM 'active' may include dormant records."
+        misconception: "Closest to the source means right"
+      - text: "Sample a hundred customers, check by hand which are really active, and adopt whichever figure comes closer"
+        why: "It needs a definition of 'really active' to judge by, which is the open question; a sample picks a winner without settling what the use case needs."
+        misconception: "Sampling settles a definitional gap"
     explanation: |
-      System archaeology works best by tracing known business events through the system, checking against what users
-      see, and documenting only the slice you need. AI can propose hypotheses, but each definition must be verified
-      against a known record.
+      In an unfamiliar organization the same word often means different things to different teams. Trace each
+      number back to its calculation, find the owner of each definition, and decide with the sponsor which one
+      serves the use case, then write it down.
 
   - id: D2-014
     version: 1
@@ -424,12 +438,12 @@ items:
       Your team needs read access to a customer's production claims database. The security review normally takes six
       weeks, and the sponsor wants a working demo in four. What do you do?
     options:
-      - text: "File the narrowest-scope access request now and work in the meantime from a small client-approved extract"
+      - text: "File the narrowest access request now and work meanwhile from a small client-approved extract"
         correct: true
         why: "A narrow request is easier to approve, and an approved real-data sample lets design and testing meet real data before access lands."
-      - text: "Ask a client engineer to export the tables under their own credentials and share them with the team"
-        why: "It bypasses the controls the review exists to enforce and exposes both the engineer and the project to a policy breach."
-        misconception: "A friendly insider can shortcut formal access"
+      - text: "Request broad read access to the whole claims database now so later questions need no new approvals"
+        why: "Broad scopes draw stricter and longer review and may be refused; the narrow request is the one most likely to clear early."
+        misconception: "Ask once for everything to avoid repeat approvals"
       - text: "Build the whole pipeline on synthetic data and swap in real data once access is granted"
         why: "Real data holds the surprises (nulls, odd formats, code values); finding them in week six instead of week one wrecks the schedule."
         misconception: "Synthetic data is an equivalent substitute for real data"
@@ -461,18 +475,19 @@ items:
       - text: "Its sensitivity classification and any handling restrictions"
         correct: true
         why: "Restrictions on personal or contractual data shape where the data may go, who may see it, and which models can touch it."
-      - text: "A complete list of every table and column, so nothing is missed"
-        why: "Exhaustive cataloguing costs weeks, and most of it is irrelevant to the first use case."
+      - text: "A column-level data dictionary for each source"
+        why: "Needed for the sources the design actually uses, but writing one for every source delays the start and mostly documents what is irrelevant."
         misconception: "Completeness beats relevance in inventories"
-      - text: "Which team's preferred tooling vendor sits behind the source"
-        why: "Vendor preferences matter later for integration choices but do not decide feasibility or timeline now."
+      - text: "The vendor, product version and installation date of each source system"
+        why: "Matters later for integration choices but does not decide feasibility or timeline now."
         misconception: "Technology lineage is the key attribute"
-      - text: "The projected data growth over the next five years"
-        why: "Long-range growth is a capacity-planning input for production, not a discovery gating question."
-        misconception: "Scale planning belongs in discovery"
+      - text: "A full data-quality profile of every source, with null rates per column"
+        why: "Valuable for the one or two sources the first use case depends on; across all of them it is weeks of work before you know which matter."
+        misconception: "Profile everything before choosing"
     explanation: |
       A discovery inventory answers who owns the data, how fast access can be granted, how fresh it is and what
-      rules govern it. Those facts decide scope and schedule; exhaustive catalogues do not.
+      rules govern it. Those facts decide scope and schedule; exhaustive catalogues and profiles of every source do
+      not, and are better done for the sources the first use case needs.
 
   - id: D2-016
     version: 1
@@ -483,24 +498,26 @@ items:
     time_s: 110
     stem: |
       In a logistics company's 20-year-old scheduling system, shipments with status code 7 behave differently in
-      the nightly batch, and nothing documents why. One senior planner knows, and she retires in three weeks. Your
-      use case depends on shipment status. What do you do first?
+      the nightly batch, and nothing documents why. One senior planner knows, and she retires in three weeks; her
+      final week is already booked with handover meetings. The batch logic is thousands of lines of undocumented
+      procedural code. Your use case depends on shipment status. What do you do first?
     options:
-      - text: "Book targeted sessions with her now on the status codes you use and verify each against code and data"
+      - text: "Start sessions with her this week on the status codes you use, and check each answer against code and data"
         correct: true
-        why: "Her knowledge is the scarcest, perishable asset; targeted sessions capture it and verification against code and data catches memory errors."
-      - text: "Ask her to write a handover document covering the whole scheduling system before she retires next month"
+        why: "Her knowledge is the scarcest, perishable asset; targeted sessions capture it and checking against code and data catches memory errors."
+      - text: "Spend the first week reading the batch code and data to form hypotheses, then use her remaining time to confirm them"
+        why: "Good technique at the wrong time: it burns a third of the window before capturing anything from a source that cannot be recovered."
+        misconception: "Arrive fully prepared before using the expert's time"
+      - text: "Ask her to write a handover document covering the whole scheduling system before she leaves"
         why: "A broad document is slow to write and unfocused, and unverified claims get baked into your design."
         misconception: "Documentation is the best way to transfer expertise"
-      - text: "Carry on building and bring questions to her whenever they come up in testing or in review sessions"
-        why: "Testing surfaces questions late, and some will arrive after she has left."
-        misconception: "Learn on demand"
-      - text: "Infer the behavior from batch code and historical data, keeping her as a last resort for the gaps"
-        why: "Code archaeology is sound but slow; skipping the cheapest source on a three-week clock wastes time that cannot be recovered."
-        misconception: "Code and data are more reliable than people"
+      - text: "Have a junior planner shadow her for the three weeks and rely on that person for answers afterward"
+        why: "It adds a middleman who learns what she happens to mention, not what your use case needs, and nothing is checked against code or data."
+        misconception: "Succession by shadowing transfers the knowledge"
     explanation: |
       Tribal knowledge is perishable. Capture it early and in a focused way, then verify it against the system's
-      actual behavior; neither memory nor code archaeology is reliable alone.
+      actual behavior; neither memory nor code archaeology is reliable alone. Preparation is worthwhile only when
+      the expert's time is not the scarcest resource.
 
   - id: D2-017
     version: 1
@@ -512,18 +529,19 @@ items:
     time_s: 100
     stem: |
       Two weeks in, your document-extraction prototype scores very well on 200 documents that client analysts
-      hand-picked as 'typical'. The sponsor wants to demo it to the steering group on Friday and says production
-      documents are 'basically the same'. What do you do before the demo?
+      hand-picked as 'typical'. The sponsor wants to demo it to the steering group on Friday, three days away, and
+      says production documents are 'basically the same'. Analysts can label about 100 documents in that time. What
+      do you do before the demo?
     options:
-      - text: "Run it on a random sample from the production repository and show those results alongside"
+      - text: "Draw about 100 documents at random from production, have analysts label them, and show those results alongside"
         correct: true
         why: "A random production sample reveals the scans, formats and edge cases that curation removed, before the sponsor's expectations harden."
-      - text: "Demo the curated results, with a clear 'preliminary' label on every slide that shows a metric"
-        why: "Executives remember the headline number; the label does not stop expectations from anchoring on it."
+      - text: "Demo the curated results but say in the meeting that production performance is untested, and agree what the demo can claim"
+        why: "Honest, but the headline number is what people remember, and a random sample is affordable before Friday."
         misconception: "Caveats neutralize misleading numbers"
-      - text: "Ask the analysts to hand-pick a larger set of 2,000 documents for more robust results"
-        why: "A larger curated set has the same selection bias and only looks more robust."
-        misconception: "More samples fix bias"
+      - text: "Ask analysts to add 100 hand-picked 'difficult' documents and report both sets"
+        why: "Difficult documents chosen by the same people are still a curated set; they show a range but not the real mix."
+        misconception: "Adding hard cases fixes selection bias"
       - text: "Postpone the demo until ingestion handles every production source and format"
         why: "Waiting for full ingestion is slow; a random sample from the repository answers the question now."
         misconception: "Do not show anything until complete"
@@ -537,9 +555,9 @@ items:
     version: 1
     type: single
     subtopic: delivery.scoping
-    difficulty: 1
-    level: recall
-    time_s: 60
+    difficulty: 2
+    level: apply
+    time_s: 70
     stem: |
       After a two-week proof of concept on sample documents, you propose a pilot. The client's COO asks what will be
       different. Which answer is most accurate?
@@ -547,15 +565,15 @@ items:
       - text: "Limited real users work on live data in their normal workflow, judged against pre-agreed metrics"
         correct: true
         why: "Real users, real data and a real workflow are what make a pilot evidence of value, as opposed to evidence of feasibility."
-      - text: "It is the proof of concept polished further, with more document types and a better interface for demos"
-        why: "Polish and breadth on sample data still only demonstrate feasibility; nothing about it is tested in real work."
+      - text: "A larger proof of concept: more document types and more testers, run by the project team on copied data"
+        why: "Breadth on copied data with project-team testers still only demonstrates feasibility; nothing is tested in real work."
         misconception: "A pilot is a bigger proof of concept"
-      - text: "It is a feature-complete release to every user, with a feature flag as the safety net for problems"
+      - text: "The client's IT staff run it on live documents in the client's cloud account and report any problems"
+        why: "Real data in the real environment, but not real users in their real workflow, so it says little about value."
+        misconception: "Real data in the client's environment is enough"
+      - text: "A production release behind a feature flag to every user, with rollback as the safety net"
         why: "That describes a launch; a pilot deliberately limits exposure so you can learn before committing."
         misconception: "Pilot means early production release"
-      - text: "It is the same demo moved into the client's cloud account with their IT team observing it"
-        why: "Moving the environment changes where it runs, not whether real users and live data validate the value."
-        misconception: "Deploying in the client's environment makes it a pilot"
     explanation: |
       A proof of concept answers 'can it work?'. A pilot answers 'does it deliver value in real work?', so it needs
       real users, real data and the real workflow, with success metrics set beforehand.
@@ -572,17 +590,17 @@ items:
       A client wants AI-drafted replies for its support team and says success is 'agents liking it'. You are about
       to start building. Which metric set should you agree on in writing first?
     options:
-      - text: "Median first-response time and agent edit rate against baseline, plus a satisfaction floor"
+      - text: "Median first-response time and agent edit rate against baseline, plus a floor on customer satisfaction"
         correct: true
         why: "It ties to the business outcome, measures real use of the drafts, and guards against faster but worse answers."
-      - text: "An offline similarity score between drafts and past agent replies, with a target threshold"
+      - text: "Offline similarity between drafts and past agent replies, plus a latency target for generating a draft"
         why: "It measures resemblance to history, not value; a draft can score well and still be slow to fix or wrong for a new case."
         misconception: "Model-quality metrics define business success"
-      - text: "Weekly active agents using the drafting feature, against a target adoption percentage"
+      - text: "Weekly active agents and share of replies sent from drafts, against a target adoption percentage"
         why: "Usage shows that people open the feature, not that outcomes improved; it can rise while quality falls."
         misconception: "Adoption equals value"
-      - text: "A satisfaction survey of agents after four weeks, with a target average score on a five-point scale"
-        why: "It formalizes 'agents liking it', which is subjective, has no baseline, and is easy to move without changing outcomes."
+      - text: "Average agent satisfaction on a five-point scale after four weeks, plus drafts generated per agent per day"
+        why: "It formalizes 'agents liking it', which is subjective, has no baseline and can be moved without changing outcomes."
         misconception: "User sentiment is an acceptance criterion"
     explanation: |
       Agree success metrics and thresholds before building: an outcome against a baseline, a usage measure close to
@@ -598,19 +616,20 @@ items:
     time_s: 90
     stem: |
       You are in week 5 of an 8-week invoice-extraction pilot. The head of operations, who funds the pilot, asks for
-      a second language and a new document type, saying 'it should be easy for you'. The agreed success metric
+      a second language and a new document type, saying 'it should be easy for you'. You have not sized either: the
+      new document type may reuse the existing extraction logic or may need a rebuild. The agreed success metric
       covers the current scope. What is the best response?
     options:
-      - text: "Log a change request, size its impact, and offer to swap it for current scope or defer it"
+      - text: "Size both additions, show her the cost against the date and metric, and let her choose a swap or a deferral"
         correct: true
-        why: "It treats her request as legitimate, makes the cost visible, and protects the agreed metric and date."
-      - text: "Accept it and add engineers to absorb the work, since the funder's goodwill matters most"
-        why: "Late additions to a small team slow it down, and the agreed result is put at risk to please one person."
-        misconception: "Adding people absorbs scope"
-      - text: "Decline, citing the signed scope, and suggest she raise it again after the pilot launches"
-        why: "A flat refusal damages the relationship with the funder, and she may have a real need worth planning for."
-        misconception: "Scope boundaries are enforced by refusal"
-      - text: "Accept it and extend the pilot by a few weeks so the metrics can cover everything"
+        why: "It treats her request as legitimate, makes the cost visible, and leaves the trade-off with the person who funds it while protecting the agreed metric and date."
+      - text: "Defer both to a follow-on phase and keep the pilot as scoped, since the agreed metric covers only current scope"
+        why: "It protects scope but gives her nothing to decide with; unsized, it reads as a refusal, and one of the additions may be cheap."
+        misconception: "Scope boundaries are enforced by deferral alone"
+      - text: "Add the second language, which is probably cheap, and decline the new document type for this pilot"
+        why: "It guesses at the sizing and splits the request without data; if the language is not cheap, you have silently absorbed the risk."
+        misconception: "Split the request on a gut feel"
+      - text: "Accept both and extend the pilot by a few weeks so the metrics can cover everything"
         why: "Moving the finish line delays the decision the pilot exists to inform and weakens the original success criteria."
         misconception: "The timeline is flexible when the sponsor asks"
     explanation: |
@@ -638,18 +657,18 @@ items:
       - text: "Tell the sponsor now which scope is at risk and what the options are"
         correct: true
         why: "Early, specific warning preserves trust and gives the sponsor a chance to decide the trade-offs."
-      - text: "Extend the timebox by a month so the full planned scope fits"
-        why: "Extension delays the decision and invites further scope growth; the timebox is the discipline that forces prioritization."
-        misconception: "Time boxes should flex to fit scope"
-      - text: "Pause output evaluation for now to save time and restore it before the pilot ends"
-        why: "Evaluation tells you whether the pilot is working; deferring it removes feedback exactly when you need it."
-        misconception: "Testing is overhead that can be postponed"
+      - text: "Ask the sponsor for two more engineers for the remaining weeks so the full scope still fits"
+        why: "New people need onboarding and slow the existing team in the short run, and it avoids the prioritization the timebox is meant to force."
+        misconception: "Adding people recovers schedule"
+      - text: "Slip the real-user start to week 6 to finish the planned features, and keep the end date"
+        why: "A week or so of real use cannot show adoption, edge cases or a trend in the metric; the evidence window is what to protect."
+        misconception: "Finish the build, then expose users"
       - text: "Keep every feature but use internal testers in place of the 40 users to get quicker feedback"
         why: "Internal testers are not the real users doing real work, so the pilot stops producing evidence of value."
         misconception: "Substituting convenient users preserves the pilot's value"
     explanation: |
-      When behind, protect the elements that make the pilot informative: real users on a fixed date, evaluation, and
-      transparency with the sponsor. Everything else is negotiable scope.
+      When behind, protect the elements that make the pilot informative: real users on a fixed date, a long enough
+      evidence window, and transparency with the sponsor. Everything else is negotiable scope.
 
   - id: D2-022
     version: 1
@@ -664,7 +683,7 @@ items:
       support credit analysts. Nobody has tried it. Legal forbids sending production loan documents to any external
       model service until a review completes in three months. Which engagement shape fits?
     options:
-      - text: "A time-boxed proof of concept on approved, redacted samples, with the accuracy bar set first"
+      - text: "A time-boxed proof of concept on approved redacted or public samples, with the accuracy bar set first"
         correct: true
         why: "The open question is feasibility, which a short test on permitted data answers without breaching the data restriction."
       - text: "A pilot with ten credit analysts on live agreements, running in shadow mode alongside their work"
@@ -673,12 +692,12 @@ items:
       - text: "An MVP integrated with the loan system, covering the main covenant types found in the portfolio"
         why: "Building integration before knowing the extraction can work puts engineering time at risk on an open question."
         misconception: "Build the product to find out whether it works"
-      - text: "Wait for the legal review to finish, then run a full pilot with analysts in one step"
-        why: "Three idle months, and the review itself would benefit from evidence about what the test showed."
-        misconception: "Do nothing until all constraints clear"
+      - text: "A pilot on live agreements using an open-weight model hosted inside the bank's network, so nothing leaves it"
+        why: "It respects the restriction, but stands up infrastructure and recruits analysts before anyone knows extraction can reach the accuracy needed; a small test answers that first."
+        misconception: "Solving the data constraint makes a pilot the right next step"
     explanation: |
       Choose the smallest engagement that answers the open question. Feasibility is a proof-of-concept question; a
-      pilot needs real users and real data, which constraints here forbid for now.
+      pilot needs real users and real data, and should follow evidence that the approach can work.
 
   - id: D2-023
     version: 1
@@ -721,15 +740,15 @@ items:
       - text: "Agree who owns and funds running it in the client's environment after go-live"
         correct: true
         why: "Every technical gate is clear; the missing element is an owner with budget, without which no one will approve go-live."
+      - text: "Move the service into the client's cloud account and security perimeter"
+        why: "Needed eventually, but with no owner and no budget there is nobody to accept, run or pay for it; the move alone unblocks nothing."
+        misconception: "Technical migration unblocks launch"
       - text: "Extend the pilot to more users to build a stronger evidence base"
         why: "The pilot already beat its targets, so more evidence extends the wait without removing the actual blocker."
         misconception: "More pilot data will unlock the decision"
-      - text: "Re-run evaluation on a larger test set to raise confidence in accuracy"
-        why: "Accuracy is not in question; the stem shows the targets were met."
-        misconception: "Pilot purgatory is an accuracy problem"
-      - text: "Add the features pilot users have asked for so adoption is higher at launch"
-        why: "Feature work delays go-live without addressing ownership, and the real risk is that nobody will run it."
-        misconception: "A more polished product will get approved"
+      - text: "Start a training and champions programme for the wider reviewer population so adoption is ready at launch"
+        why: "Good for adoption, but launch cannot happen while nobody will run the service, and it spends effort ahead of the decision."
+        misconception: "Adoption readiness is the missing step"
     explanation: |
       Pilots often stall after technical success because nobody owns production: budget, on-call, environment and
       accountability. Resolve ownership explicitly, or a successful pilot becomes permanent.
@@ -755,15 +774,15 @@ items:
       - text: "Alerts on output quality and spend, not only uptime and error rates"
         correct: true
         why: "AI systems can fail silently, returning plausible but wrong answers or running up cost without an error."
-      - text: "A perfect score on the offline test set"
-        why: "Agreed thresholds are the gate; a perfect score is unrealistic and a poor reason to delay."
+      - text: "No known errors left on the offline test set"
+        why: "Agreed thresholds are the gate; chasing zero known errors delays launch for little added safety, and rare cases can go to humans."
         misconception: "Readiness means zero known errors"
       - text: "Parity with every behavior of the manual process being replaced"
         why: "Parity is a scoping choice, not a readiness criterion; rare cases can stay with humans."
         misconception: "The new system must replace everything the old one did"
-      - text: "A written rationale for each prompt revision made during the build"
-        why: "Helpful for maintainers but not a launch gate; the system can run safely without it."
-        misconception: "Documentation completeness gates launch"
+      - text: "Every one of the insurer's claims staff trained and certified before anyone is enabled"
+        why: "The first cohort needs training; certifying everyone first defeats a staged rollout and delays learning."
+        misconception: "Full training must precede any exposure"
     explanation: |
       Production readiness covers ownership, operability and recovery: a tested rollback, a responsible owner with a
       runbook, and monitoring that catches quality and cost problems, not only crashes.
@@ -773,29 +792,31 @@ items:
     type: single
     subtopic: delivery.go-live
     tags: [eval.online]
-    difficulty: 2
-    level: apply
-    time_s: 90
+    difficulty: 3
+    level: evaluate
+    time_s: 110
     stem: |
-      An insurer wants a model to route incoming claims to specialist teams. Mistakes delay time-sensitive claims
-      that carry regulatory deadlines. You have validated the model offline on last year's claims. What is the best
-      first exposure to production traffic?
+      An insurer's claims-routing model has run in shadow mode for four weeks on live traffic. It agrees with the
+      human routing on 93% of claims, but only on 78% of claims within a week of a regulatory deadline, where a late
+      routing triggers penalties. The sponsor points out that two human routers agree with each other only 90% of
+      the time and wants to switch all routing to the model. What do you recommend?
     options:
-      - text: "Run it in shadow mode, logging its routing next to the humans' decisions without acting on it"
+      - text: "Move non-urgent claims to model routing, keep all deadline-sensitive claims with humans, and investigate the gap"
         correct: true
-        why: "Live traffic reveals drift and odd inputs at no risk to deadlines, and the logged comparison gives an agreement rate."
-      - text: "Let it route 5% of live claims, with staff checking each routing result shortly after it is sent"
-        why: "A wrong route still delays a time-sensitive claim before anyone checks it, even if the cohort is small."
-        misconception: "A small percentage limits the consequences enough"
-      - text: "Release it to one low-volume specialty queue and have a lead review its results every day"
-        why: "A queue limits volume but not the consequences per claim; errors there still miss deadlines."
-        misconception: "Narrow scope is the same as no impact"
-      - text: "Hold off until the offline test set covers every claim type and every regional office"
-        why: "A bigger offline set cannot reveal live drift, and delaying live exposure postpones learning."
-        misconception: "Offline coverage substitutes for production evidence"
+        why: "The average hides a weak, high-consequence segment; gating by consequence captures most of the benefit without exposing penalty-bearing claims."
+      - text: "Switch everything over, since overall agreement already exceeds the agreement between two human routers"
+        why: "Aggregate agreement is dominated by routine claims; the urgent segment is where errors cost money and is clearly below the human benchmark."
+        misconception: "An aggregate above the human benchmark is sufficient"
+      - text: "Extend shadow mode another month on all claims to get a more precise overall agreement figure"
+        why: "More of the same: the data already shows where the model is weak, and a tighter average does not fix a known weak segment."
+        misconception: "More shadow data resolves it"
+      - text: "Keep all routing with humans until the model reaches 99% agreement overall on every claim type"
+        why: "An arbitrary bar not tied to consequences delays the benefit on the large share of claims where the model is already safe."
+        misconception: "Wait for near-perfect accuracy"
     explanation: |
-      Shadow mode compares the system with current practice on live traffic without consequences. Use it first
-      when errors are costly, then move to a small cohort with action enabled once agreement is understood.
+      Shadow mode compares the system with current practice on live traffic without consequences, but an overall
+      agreement rate can hide a weak segment. Decide exposure by the cost of errors in each segment: let the model act
+      where mistakes are cheap and keep people where they are not, then close the gap before widening.
 
   - id: D2-027
     version: 1
@@ -806,25 +827,27 @@ items:
     level: evaluate
     time_s: 110
     stem: |
-      Your support assistant's rollout runs at 5%, 25%, 50% and 100% of agents. The gate was defined only as agent
-      edit rate, which remains under target. At 25%, p95 latency has doubled and cost per ticket is about 40% above
+      Your support assistant's rollout runs at 5%, 25%, 50% and 100% of agents, and the model is billed per token.
+      The gate was defined only as agent edit rate, which remains under target. At 25%, p95 latency has doubled,
+      though it is still inside the 6-second ceiling support promised agents, and cost per ticket is about 40% above
       the forecast the sponsor approved. What should you do?
     options:
-      - text: "Hold at 25%, add latency and cost thresholds as gates with the sponsor, and fix or accept the gap"
+      - text: "Hold at 25% and agree latency and cost gates with the sponsor before going further"
         correct: true
-        why: "The ramp exists to catch problems before full exposure; incomplete gates should be fixed, not used as a loophole."
+        why: "The ramp exists to catch problems before full exposure; an incomplete gate should be fixed, not used as a loophole."
       - text: "Proceed, since the only agreed gate passed, and track latency and cost once everyone is at 100%"
         why: "Meeting the letter of an incomplete gate ignores evidence that two other outcomes the sponsor cares about are off."
         misconception: "Passing the stated gate is sufficient"
-      - text: "Roll back to 5% until latency and cost return to the forecast, then restart the ramp from there"
-        why: "Nothing suggests harm at 25%, so a full step back costs a lot of ramp time; holding gives the same safety."
+      - text: "Roll back to 5% until latency and cost return to forecast, then restart the ramp from there"
+        why: "Latency is within the promised ceiling and quality is on target, so users are not being harmed at 25%; holding gives the same protection without losing ramp time."
         misconception: "Any gate miss requires a rollback"
-      - text: "Proceed to 50% for more traffic data, since cost per ticket usually falls as usage grows at scale"
-        why: "Model cost per ticket scales roughly linearly with usage, so volume brings no discount; latency may worsen with load."
-        misconception: "Scale lowers unit cost the way it does for fixed-cost software"
+      - text: "Proceed to 50% so the extra traffic shows whether the early-ramp latency and cost settle on their own"
+        why: "With per-token billing, cost per ticket does not fall as volume grows, and heavier load is more likely to worsen p95 than fix it; the gap needs a cause first."
+        misconception: "Early-ramp deviations are noise that settles with volume"
     explanation: |
       Progressive rollout is only as good as its gates. Define quality, latency, cost and error thresholds up front;
-      when a step exposes a missing one, pause, agree it with the sponsor, and then continue.
+      when a step exposes a missing one, pause, agree it with the sponsor, and then continue. Rolling back is for
+      harm; holding is for an unexplained deviation.
 
   - id: D2-028
     version: 1
@@ -836,17 +859,18 @@ items:
     time_s: 110
     stem: |
       An assistant drafts and submits purchase orders directly into a manufacturer's ERP. The go-live plan's
-      rollback section says: 'redeploy the previous container image within 15 minutes'. What is the most important
-      gap in that rollback plan?
+      rollback section says: 'redeploy the previous container image within 15 minutes'. The business has said an
+      hour of degraded or manual purchasing is tolerable, and the plan's trigger section (thresholds and a named
+      decider) is complete. What is the most important gap in the rollback plan?
     options:
       - text: "It does not cover finding and correcting the orders the faulty version already submitted"
         correct: true
         why: "Redeploying code does not undo records that already exist in the ERP; those need identification and reversal or review."
       - text: "It lacks a hot-standby copy of the previous model endpoint that could take traffic at once"
-        why: "A 15-minute redeploy is acceptable for this workload, and a standby does nothing for orders already written."
+        why: "A 15-minute redeploy fits the tolerated hour, and a standby does nothing for orders already written."
         misconception: "Faster failover is the main rollback concern"
       - text: "It has not been timed under peak load, so the 15 minutes may not hold when volume is high"
-        why: "A reasonable test, but timing the redeploy still leaves the damage done during the bad window uncorrected."
+        why: "A reasonable test, but even a fast redeploy leaves the damage done during the bad window uncorrected."
         misconception: "Rollback quality is about speed"
       - text: "It has no canary stage before full release to limit how many orders a faulty version could send"
         why: "A canary reduces exposure but is a release-control gap, not a hole in the rollback plan itself."
@@ -859,7 +883,7 @@ items:
     version: 1
     type: single
     subtopic: delivery.go-live
-    difficulty: 1
+    difficulty: 2
     level: apply
     time_s: 70
     stem: |
@@ -868,15 +892,15 @@ items:
       - text: "Numeric thresholds that trigger a pause or rollback, and who has authority to call it"
         correct: true
         why: "When metrics wobble at 2 a.m., pre-agreed triggers and a named decider stop debate and speed the response."
-      - text: "The calendar dates on which each later step of the ramp will take place for the remaining cohorts"
+      - text: "Calendar dates for each later step of the ramp, so the remaining cohorts can plan for them"
         why: "Dates are a useful plan but should depend on gates being met; fixed dates push teams to proceed regardless."
         misconception: "A schedule is the control mechanism"
-      - text: "The communication plan that announces the assistant to all users and explains how to use it"
-        why: "Important for adoption, but it does not govern what happens when the first cohort sees problems."
-        misconception: "Communication is the main launch control"
-      - text: "The v2 feature roadmap, shared so that users know which improvements are coming next"
-        why: "It sets expectations for later but gives no protection while the first cohort is exposed."
-        misconception: "Roadmap clarity de-risks launch"
+      - text: "Training and help-desk scripts for every cohort, so no group goes live unprepared"
+        why: "The first cohort needs support, but the later cohorts' material can follow; it does not govern what happens when the first cohort sees problems."
+        misconception: "Enablement is the main launch control"
+      - text: "Finance sign-off on the cost forecast at 100% usage, so the full-scale budget is agreed up front"
+        why: "Cost matters, but 5% exposure is small and its data refines the forecast; sign-off does not decide how problems are handled."
+        misconception: "Budget certainty de-risks the first step"
     explanation: |
       A staged rollout is a control system: it needs measurable gates, explicit rollback triggers and a named decision
       maker, agreed before exposure begins rather than improvised during an incident.
@@ -893,7 +917,7 @@ items:
       Your one-week proof of concept, a notebook calling a model with prompts pasted in and an API key hardcoded,
       impressed the sponsor, who now says 'ship it next month'. What do you propose?
     options:
-      - text: "Treat the notebook as a learning artifact: keep the prompts and test cases, rebuild the serving path"
+      - text: "Keep the prompts and test cases as the learning, and rebuild the serving path properly"
         correct: true
         why: "Prompts and test cases carry the learning; the code was built for speed, not for secrets, retries, monitoring or support."
       - text: "Harden the notebook step by step: move secrets out, add retries and logging, and schedule it as a job"
@@ -902,9 +926,9 @@ items:
       - text: "Wrap the notebook logic in an API now and deploy it, then refactor once real users are on it"
         why: "Deferring structure to after launch turns shortcuts into permanent debt, with real users depending on them."
         misconception: "Ship first, fix later"
-      - text: "Discard everything and run a design phase before writing any further code for the project"
-        why: "Throws away validated prompts, data insights and test cases, and delays the sponsor with no new learning."
-        misconception: "Prototype work has no reusable value"
+      - text: "Run a design phase first: requirements, architecture and a full test plan, before any new code is written"
+        why: "Most of the requirements are already encoded in the validated prompts and cases, so a long design phase delays the sponsor with little new learning."
+        misconception: "Prototype work does not reduce design effort"
     explanation: |
       The first version is disposable, but what it taught you is not. Carry forward prompts, evaluation cases and
       findings, and build the production path with proper secrets, error handling, observability and ownership.
