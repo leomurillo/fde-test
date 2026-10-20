@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import feedback_button %}
+{% block title %}Feedback{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Feedback</h1>
+    <p class="muted">Notes you left on items. Export them and paste into an LLM, with the item snapshot, to fix the bank.</p>
+  </div>
+  <div class="row wrap">
+    {{ feedback_button(label='General feedback', cls='btn') }}
+    <a class="btn" href="/export/feedback.jsonl">feedback.jsonl</a>
+    <a class="btn" href="/export/feedback.md">feedback.md</a>
+  </div>
+</div>
+<nav class="tabs" aria-label="Filter">
+  <a href="/feedback?show=open" {% if show != 'all' %}aria-current="page"{% endif %}>Open ({{ n_open }})</a>
+  <a href="/feedback?show=all" {% if show == 'all' %}aria-current="page"{% endif %}>All ({{ n_open + n_resolved }})</a>
+</nav>
+<ul class="feedback-list">
+  {% for f in rows %}
+  <li class="card {% if f.resolved %}resolved{% endif %}">
+    <div class="row between wrap">
+      <div class="item-meta small">
+        <span class="badge">{{ feedback_categories.get(f.category, f.category) }}</span>
+        {% if f.item_id %}<span class="mono">{{ f.item_id }}@{{ f.item_version }}</span>{% else %}<span class="muted">General</span>{% endif %}
+        <span class="muted">{{ f.created_at|dt }}</span>
+        {% if f.session_id %}<a href="/s/{{ f.session_id }}">session</a>{% endif %}
+        {% if f.context.position %}<span class="muted">item #{{ f.context.position }}</span>{% endif %}
+      </div>
+      <form method="post" action="/feedback/{{ f.feedback_id }}/resolve">
+        <input type="hidden" name="resolved" value="{{ '0' if f.resolved else '1' }}">
+        <input type="hidden" name="show" value="{{ show }}">
+        <button class="btn ghost small" type="submit">{{ 'Reopen' if f.resolved else 'Mark resolved' }}</button>
+      </form>
+    </div>
+    <p class="feedback-text">{{ f.text or '(no details)' }}</p>
+  </li>
+  {% else %}
+  <li class="muted">No feedback {{ 'yet' if show == 'all' else 'open' }}.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

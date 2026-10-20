@@ -172,9 +172,9 @@ items:
       - text: "Send a small traffic share to the new model and compare quality signals, with automatic rollback"
         correct: true
         why: Quality regressions in LLM systems return 200 responses, so the gate needs live quality signals on a limited blast radius.
-      - text: "Keep the 5xx gate, but extend the post-cutover watch period from ten minutes to a full hour"
-        why: A longer look at the same error metric still cannot detect worse answers that return successfully.
-        misconception: Longer observation of availability metrics reveals quality regressions
+      - text: "Keep the instant cutover but score every production answer with an automated judge and page on-call if scores drop"
+        why: Detection after all users are on the new model leaves the full blast radius exposed, and a page is not an automatic rollback.
+        misconception: Monitoring after a full cutover is equivalent to a gradual rollout
       - text: "Require a synthetic health-check prompt to return a valid answer before traffic is switched over"
         why: A passing prompt shows the endpoint answers, not that answers are as good on real traffic.
         misconception: A health check is a quality check
@@ -208,8 +208,8 @@ items:
       - text: "Pause the pipeline for that environment until the team has time to reconcile the differences by hand"
         why: Deploys stall and further drift accumulates, while the unreviewed exposure stays open.
         misconception: Freezing automation is a safe default
-      - text: "Import the console-created rule into the Terraform state without making any change to the code"
-        why: State would match reality, but the code still lacks the rule, so the next apply plans to remove it again.
+      - text: "Run a refresh-only apply so the state records the console-created rule, leaving the Terraform code unchanged"
+        why: State would match reality, but the code still lacks the rule, so the next normal apply plans to remove it again.
         misconception: Aligning state alone aligns code
     explanation: |
       Infrastructure as code is only authoritative if reality matches it. Detect drift with scheduled plans, review the
@@ -390,9 +390,9 @@ items:
       - text: "A NAT gateway with a fixed address that the provider adds to its own allowlist for your account"
         why: A fixed source address helps the provider authenticate callers but still crosses the public internet.
         misconception: Static egress IPs are private connectivity
-      - text: "A public subnet whose security group permits outbound connections solely to the provider's ranges"
-        why: The workload gets more exposure, and the traffic still uses the public route.
-        misconception: Narrow security-group rules change the network path
+      - text: "A private endpoint to the provider, with the public endpoint left enabled as a failover for availability"
+        why: The fallback path still crosses the public internet, so a failure of the private route silently breaks the policy.
+        misconception: Keeping a public fallback is harmless once a private path exists
     explanation: |
       A private endpoint (private link) gives the service a private IP in your network, so calls never leave the
       provider's backbone. It must be paired with private DNS and with disabling public access; otherwise clients

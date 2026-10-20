@@ -31,7 +31,7 @@ from .grading import (RUBRIC_TYPES, Outcome, grade_deterministic, grade_rubric, 
                       skipped_outcome)
 from .graders.code import run_cases
 from .graders.sql import run_query
-from .markdown import plain_excerpt, render as render_md
+from .markdown import inline as render_inline, plain_excerpt, render as render_md
 from .sync import SyncReport, bank_dir_default, sync_bank
 from .taxonomy import load_taxonomy
 
@@ -183,6 +183,7 @@ def make_templates() -> Jinja2Templates:
     t = Jinja2Templates(directory=str(APP_DIR / "templates"))
     env = t.env
     env.filters["md"] = lambda s: Markup(render_md(s))
+    env.filters["mdi"] = lambda s: Markup(render_inline(str(s or "")))
     env.filters["excerpt"] = plain_excerpt
     env.filters["dur"] = _fmt_duration
     env.filters["ms"] = _fmt_ms

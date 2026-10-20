@@ -167,7 +167,7 @@ items:
     version: 1
     type: single
     subtopic: int.async
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 90
     stem: |
@@ -444,7 +444,7 @@ items:
     type: single
     subtopic: int.resilience
     tags: [llm.model-selection, deploy.compute]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 90
     stem: |
@@ -568,7 +568,7 @@ items:
     type: single
     subtopic: int.enterprise-devex
     tags: [gov.identity]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 90
     stem: |
@@ -748,7 +748,7 @@ items:
     type: numeric
     subtopic: int.resilience
     competencies: [x.estimation]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 150
     stem: |
@@ -758,10 +758,215 @@ items:
       sleeping, in seconds?
     answer: {value: 11.75, tolerance: 0.1, tolerance_type: abs, unit: "seconds"}
     work: |
-      Upper bounds for retries 1 to 6: 0.5, 1, 2, 4, 8 (8 would be 8 = 0.5 * 2^4), and then min(8, 16) = 8.
+      Upper bounds for retries 1 to 6: 0.5, 1, 2, 4, 8 (0.5 * 2^4), and min(8, 16) = 8 for the sixth.
       Sum of bounds = 0.5 + 1 + 2 + 4 + 8 + 8 = 23.5 seconds.
       A uniform random value on [0, b] has mean b/2, so the expected total is 23.5 / 2 = 11.75 seconds.
     explanation: |
       Common mistakes: reporting the worst case (23.5 s), forgetting the cap on retry 6 (giving 31.5 / 2 = 15.75), or
       halving only the last term. Full jitter halves the average wait compared with plain backoff while spreading
       clients out, but the worst case remains the sum of the capped bounds.
+
+  - id: D9-026
+    version: 1
+    type: open
+    subtopic: int.async
+    tags: [int.apis, comms.stakeholders]
+    competencies: [x.written-comms]
+    difficulty: 3
+    level: evaluate
+    time_s: 540
+    stem: |
+      Last night your Jira-integration service created 214 duplicate tickets for a customer's support team. The
+      customer's engineering manager has written: "This is the second integration bug this quarter. Explain exactly
+      what happened and why I should trust the fix." Your investigation shows that Jira's webhook delivery timed
+      out because your endpoint called the LLM before responding, Jira retried the delivery, and your handler
+      created a ticket for each delivery. Write your reply.
+    rubric:
+      - criterion: Direct, accountable opening
+        points: 2
+        guidance: 2 if it opens with a plain statement of impact and ownership (what happened, that it was the service's fault, current state) without blaming the vendor; 1 if accountable but buried or vague; 0 if defensive or blames Jira.
+      - criterion: Accurate root cause in plain language
+        points: 3
+        guidance: 3 if it explains that slow processing before acknowledging caused redelivery and that the handler was not safe to run twice, in terms a manager can follow; 2 if only one of the two causes; 1 if generic; 0 if wrong or absent.
+      - criterion: Fix addresses both layers and is verifiable
+        points: 3
+        guidance: 3 if it proposes acknowledging quickly and processing from a queue, and de-duplication by event id or an idempotency key, with a named verification (replay test with duplicate deliveries, load test); 2 if it covers one layer well; 1 if generic; 0 if only more monitoring or apology.
+      - criterion: Customer remediation and trust-building
+        points: 2
+        guidance: 2 if it offers concrete cleanup of the 214 tickets, an alert for duplicate rate, and a time-bound follow-up or review; 1 if one of these; 0 if none.
+    model_answer: |
+      You are right to be frustrated, and this one is on us. Last night our service created 214 duplicate tickets
+      in your support project. I have already closed the duplicates (nothing was deleted), and I will send you the list by noon so
+      your team can confirm nothing legitimate was removed.
+
+      What happened: when Jira sends us an event, it expects an answer within a few seconds. Our endpoint was calling
+      the language model before answering, so Jira treated the delivery as failed and sent it again. Our code then
+      created a new ticket for every delivery instead of recognising that it had already handled the event. Two
+      weaknesses combined: we answered too slowly, and we were not safe against being told the same thing twice.
+
+      The fix has two parts. First, the endpoint will acknowledge immediately and put the event on a queue; the model
+      work happens afterwards. Second, every event carries an identifier, and we will record it with the ticket so a
+      repeat delivery does nothing. Both are standard for webhook receivers and each protects against the other failing.
+
+      To let you verify it rather than trust me: before Friday I will run a test that sends each event three times and
+      slows the model down, and we will share the result. We are also adding an alert when more than a handful of
+      tickets are created in a minute. I would like to walk you through this on a 20-minute call this week, and I will
+      follow up with a written review of the quarter's two incidents.
+    max_chars: 2500
+
+  - id: D9-027
+    version: 1
+    type: code
+    subtopic: int.apis
+    tags: [gov.guardrails, int.async]
+    competencies: [x.python]
+    difficulty: 3
+    level: apply
+    time_s: 780
+    stem: |
+      Implement `verify_webhook(secret, timestamp, body, signature_header, now, tolerance_s=300)` for a receiver of
+      signed webhooks.
+
+      - The sender signs the string `f"{timestamp}.{body}"` (UTF-8 encoded) with HMAC-SHA256 using the shared
+        secret and sends the lower-case hex digest in the header as `v1=<hex>`.
+      - `signature_header` may contain several comma-separated entries (for example during secret rotation, such as
+        `v1=aaa, v1=bbb`). Ignore whitespace around entries and ignore entries that do not start with `v1=`.
+        The request is valid if any `v1=` entry matches.
+      - `timestamp` is a string of integer seconds. Return `False` if it is not an integer or if it differs from `now`
+        by more than `tolerance_s` seconds (in either direction).
+      - Compare signatures in constant time. Return a `bool`; never raise for malformed input.
+    code:
+      function: verify_webhook
+      starter: |
+        import hmac
+        import hashlib
+
+
+        def verify_webhook(secret: str, timestamp: str, body: str, signature_header: str,
+                           now: int, tolerance_s: int = 300) -> bool:
+            ...
+      reference: |
+        import hmac
+        import hashlib
+
+
+        def verify_webhook(secret, timestamp, body, signature_header, now, tolerance_s=300):
+            try:
+                ts = int(timestamp)
+            except (TypeError, ValueError):
+                return False
+            if abs(now - ts) > tolerance_s:
+                return False
+            expected = hmac.new(secret.encode("utf-8"), f"{timestamp}.{body}".encode("utf-8"),
+                                hashlib.sha256).hexdigest().encode("utf-8")
+            ok = False
+            for part in (signature_header or "").split(","):
+                part = part.strip()
+                if part.startswith("v1="):
+                    if hmac.compare_digest(part[3:].encode("utf-8"), expected):
+                        ok = True
+            return ok
+      examples:
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000100]
+          expected: true
+      tests:
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"closed\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000100]
+          expected: false
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=b7b647432d3f213e729d02b983463892e1795a33703adf73a043f0816a9245ff", 1700000100]
+          expected: false
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000300]
+          expected: true
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000301]
+          expected: false
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1699999600]
+          expected: false
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=b7b647432d3f213e729d02b983463892e1795a33703adf73a043f0816a9245ff, v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000050]
+          expected: true
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v0=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000050]
+          expected: false
+        - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "", 1700000050]
+          expected: false
+        - args: ["whsec_test", "abc", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000050]
+          expected: false
+        - args: ["whsec_test", "1700000000", "{\"msg\":\"café\"}", "v1=fca219104ddc9ed3beb1648f545bfafdaf8eb504a4f3e5d47eb17c64b3b367ef", 1700000010]
+          expected: true
+        - args: ["whsec_test", "1700000000", "", "v1=5967f3c560522fa40cf2876ebc3c3a08551dd6959aaade3b413460591895bdcc", 1700000010]
+          expected: true
+        - kwargs: {secret: "whsec_test", timestamp: "1700000000", body: "", signature_header: "v1=5967f3c560522fa40cf2876ebc3c3a08551dd6959aaade3b413460591895bdcc", now: 1700000011, tolerance_s: 10}
+          expected: false
+      timeout_s: 5
+    explanation: |
+      A correct receiver checks freshness (timestamp inside a tolerance window) and authenticity (HMAC over the exact
+      signed string), and compares digests with `hmac.compare_digest` to avoid timing leaks. Accepting several
+      `v1=` entries allows secret rotation without downtime. Combine this with a record of seen delivery ids to stop
+      replays inside the window.
+    refs: [https://docs.python.org/3/library/hmac.html]
+
+  - id: D9-028
+    version: 1
+    type: code
+    subtopic: int.async
+    tags: [int.apis]
+    competencies: [x.python]
+    difficulty: 2
+    level: apply
+    time_s: 600
+    stem: |
+      A queue delivers account-balance events at least once: the same event may arrive several times, in the same
+      batch or in a later one. Implement `apply_events(events, processed_ids)`.
+
+      - `events` is a list of dicts with keys `id` (str), `account` (str) and `delta` (int).
+      - `processed_ids` is a list of event ids that were already applied in earlier batches.
+      - Apply each event at most once: skip an event whose id is in `processed_ids` or was already seen earlier in
+        this batch (the first occurrence wins, even if a later duplicate carries a different `delta`).
+      - Return a dict `{"balances": {...}, "processed_ids": [...]}`. `balances` maps each account that had at least
+        one applied event to the sum of its applied deltas (these are changes for this batch, not totals).
+        `processed_ids` is the sorted list of all ids from `processed_ids` and the events newly applied.
+    code:
+      function: apply_events
+      starter: |
+        def apply_events(events: list[dict], processed_ids: list[str]) -> dict:
+            ...
+      reference: |
+        def apply_events(events, processed_ids):
+            seen = set(processed_ids)
+            balances = {}
+            for ev in events:
+                if ev["id"] in seen:
+                    continue
+                seen.add(ev["id"])
+                balances[ev["account"]] = balances.get(ev["account"], 0) + ev["delta"]
+            return {"balances": balances, "processed_ids": sorted(seen)}
+      examples:
+        - args:
+            - [{"id": "e1", "account": "a", "delta": 5}, {"id": "e1", "account": "a", "delta": 5}, {"id": "e2", "account": "b", "delta": -2}]
+            - []
+          expected: {"balances": {"a": 5, "b": -2}, "processed_ids": ["e1", "e2"]}
+      tests:
+        - args: [[], []]
+          expected: {"balances": {}, "processed_ids": []}
+        - args:
+            - [{"id": "e1", "account": "a", "delta": 5}, {"id": "e3", "account": "a", "delta": 7}]
+            - ["e1"]
+          expected: {"balances": {"a": 7}, "processed_ids": ["e1", "e3"]}
+        - args:
+            - [{"id": "e1", "account": "a", "delta": 5}, {"id": "e1", "account": "a", "delta": 99}]
+            - []
+          expected: {"balances": {"a": 5}, "processed_ids": ["e1"]}
+        - args:
+            - [{"id": "e1", "account": "a", "delta": 5}]
+            - ["e1"]
+          expected: {"balances": {}, "processed_ids": ["e1"]}
+        - args:
+            - [{"id": "z", "account": "x", "delta": 1}, {"id": "y", "account": "x", "delta": -1}, {"id": "w", "account": "y", "delta": 0}]
+            - ["m"]
+          expected: {"balances": {"x": 0, "y": 0}, "processed_ids": ["m", "w", "y", "z"]}
+        - args:
+            - [{"id": "e2", "account": "a", "delta": 3}, {"id": "e2", "account": "b", "delta": 3}, {"id": "e4", "account": "b", "delta": 4}]
+            - ["e9", "e9"]
+          expected: {"balances": {"a": 3, "b": 4}, "processed_ids": ["e2", "e4", "e9"]}
+      timeout_s: 5
+    explanation: |
+      An idempotent consumer keys on a stable event id supplied by the producer and records ids together with the
+      effect. In production the id set and the balance update must commit in one transaction (or an upsert with a
+      unique constraint); keeping the set in memory only protects within one process lifetime.

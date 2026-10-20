@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Export{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Export</h1><p class="muted">Everything lives locally in <code>{{ data_dir }}</code>. Exports never contain your API key.</p></div></div>
+<div class="grid-2">
+  <section class="card stack">
+    <h2>Item feedback</h2>
+    <p class="muted">{{ counts.feedback }} notes, each with a snapshot of the item version it refers to.</p>
+    <div class="row wrap">
+      <a class="btn" href="/export/feedback.jsonl" download>feedback.jsonl</a>
+      <a class="btn" href="/export/feedback.md" download>feedback.md</a>
+    </div>
+  </section>
+  <section class="card stack">
+    <h2>All data</h2>
+    <p class="muted">{{ counts.sessions }} sessions, {{ counts.responses }} responses, {{ counts.events }} events, {{ counts.item_versions }} item versions. A zip of JSONL files plus <code>manifest.json</code>, ready to merge with exports from other installations.</p>
+    <form method="get" action="/export/data.zip" class="stack">
+      <label class="check"><input type="checkbox" name="audio" value="1"><span>Include audio recordings ({{ n_audio }} file{{ '' if n_audio == 1 else 's' }})</span></label>
+      <div><button class="btn primary" type="submit">Download data zip</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

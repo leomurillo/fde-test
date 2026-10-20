@@ -167,24 +167,25 @@ items:
     time_s: 110
     stem: |
       An internal MCP server receives the user's OAuth access token from the agent host and forwards it
-      unchanged to three downstream APIs. A security review flags this. The token's signature is valid and each
-      API checks it. What should change?
+      unchanged to three downstream APIs. A security review flags this. Each API verifies the token's signature and
+      expiry and accepts it. What should change?
     options:
-      - text: "Validate that tokens were issued for the MCP server, and obtain narrower downstream tokens via token exchange"
+      - text: "Reject tokens whose audience is not the MCP server, and swap the user's token for a narrower one per downstream API"
         correct: true
-        why: Audience validation stops the server being used as a confused deputy, and exchanged tokens carry only the scopes each API needs.
-      - text: "Keep forwarding the user's token, because each downstream API already validates its signature and expiry"
+        why: Audience validation stops the server being used as a confused deputy, and each exchanged token is issued to one API with only the scopes it needs.
+      - text: "Keep forwarding the user's token, since every downstream API already verifies its signature and expiry on arrival"
         why: A valid signature only proves who issued the token; the token was meant for the MCP server, so downstream acceptance lets any token leak be replayed across services.
         misconception: A valid signature means the token is appropriate for this recipient
-      - text: "Protect each hop between the agent host, MCP server and APIs with mutual TLS client certificates"
-        why: Mutual TLS secures the channel but does not fix a token being accepted by services it was never issued for.
+      - text: "Protect each hop between the agent host, MCP server and APIs with mutual TLS client certificates and short token lifetimes"
+        why: Mutual TLS and short lifetimes shrink the exposure window but do not fix a token being accepted by services it was never issued for.
         misconception: Transport security fixes token misuse
-      - text: "Give the MCP server a single service credential for its downstream calls instead of forwarding user tokens"
+      - text: "Give the MCP server one service credential for its downstream calls, and stop forwarding the users' tokens"
         why: Downstream APIs would no longer see the user, so per-user entitlements and audit attribution are lost.
         misconception: Removing passthrough by collapsing to a shared identity is least-privilege
     explanation: |
-      Servers must only accept tokens whose audience is themselves, and must not pass a received token to other
-      services (token passthrough). To call downstream APIs on the user's behalf they exchange the token (for
+      A resource server should accept a token only if it was issued with that server as its audience, and must not
+      pass a received token on to other services (token passthrough). Downstream APIs should likewise reject tokens
+      not meant for them. To call downstream APIs on the user's behalf they exchange the token (for
       example with OAuth token exchange) for a new one scoped to that audience, preserving the user as subject.
     refs: [https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization, https://datatracker.ietf.org/doc/html/rfc8693]
 
@@ -208,15 +209,15 @@ items:
       - text: Use short-lived access tokens, with refresh tokens kept server-side outside the model's reach
         correct: true
         why: A stolen access token expires quickly and the long-lived part never enters prompts, logs or tool results.
-      - text: Request the CRM's full-access scope once, so adding features later does not trigger new consent prompts
+      - text: Request the CRM's broad read-write scope at install, because repeated consent prompts make client admins abandon rollouts
         why: It trades a one-time convenience for a token that can do anything if it leaks or the agent is manipulated.
         misconception: Avoiding consent friction outweighs scope minimization
-      - text: Rely on the agent's tool allowlist alone, since the agent will never issue calls outside it
+      - text: Rely on the agent's tool allowlist for containment, since the agent will not issue calls outside it
         why: The allowlist is a second control, not a replacement; a token with broad scopes remains usable by anything that obtains it.
         misconception: Client-side restrictions make server-side scopes unnecessary
-      - text: Issue a non-expiring integration token so scheduled jobs never fail when a refresh breaks
-        why: A permanent credential removes the main containment on theft and survives staff changes.
-        misconception: Availability of scheduled jobs justifies a credential that never expires
+      - text: Keep the refresh token in the agent's long-term memory store so that sessions can renew access without re-consent
+        why: Anything in the memory store can be retrieved into prompts, logs or tool outputs, which puts the long-lived credential within reach of the model.
+        misconception: The agent's own memory is a safe place for credentials
     explanation: |
       Least privilege for agent integrations means minimal scopes, requested late, with credentials that expire
       and stay out of the model's context. The tool allowlist and the token scopes are independent layers.
@@ -309,9 +310,9 @@ items:
       - text: "Put a prompt-injection classifier in front of the model and block the emails it flags as suspicious"
         why: Classifiers miss novel phrasing and encodings, so a single bypass still leads to a send; useful as one layer but not a boundary.
         misconception: A detection model is a sufficient security boundary
-      - text: "Wrap each email body in delimiter tags and tell the model that tagged content is data to read, not obey"
-        why: Delimiters help the model but an attacker can imitate or close them, and nothing enforces the distinction.
-        misconception: Formatting conventions create a trust boundary
+      - text: "Replace the hosted model with a self-hosted one so that no customer data is exposed to an outside provider"
+        why: Where the model runs does not change that it obeys instructions in the email; the hijacked agent still holds the send tool.
+        misconception: Self-hosting the model removes injection risk
     explanation: |
       Indirect prompt injection cannot be fully solved at the prompt layer. Treat retrieved and tool content as
       untrusted, and limit what a compromised model run can do: separate privileges, allowlist recipients, and
@@ -447,8 +448,8 @@ items:
     level: analyze
     time_s: 100
     stem: |
-      A research agent browses the open web and can send email on the user's behalf. Which measures reduce the
-      damage of an indirect prompt injection planted on a web page?
+      A research agent browses the open web and can send email on the user's behalf. Assuming some indirect prompt
+      injections planted on web pages will succeed, which measures cap how much damage they can do?
     options:
       - text: Require confirmation before mail goes to any recipient the user has not previously written to
         correct: true
@@ -460,13 +461,13 @@ items:
         correct: true
         why: A hijacked browsing step then has nothing sensitive to read or send.
       - text: Add to the system prompt that tool results are untrusted and instructions in them should be ignored
-        why: Worth including, but the model may still follow a well-crafted injection, so it cannot be the primary mitigation.
+        why: It may lower the odds that an injection works, but a successful one still has the full tools available, so the damage is not capped.
         misconception: A system prompt warning stops injection
       - text: Switch to the newest model version because it has been trained to resist injection
-        why: Training reduces success rates but does not eliminate injection; architecture must still limit impact.
+        why: Training lowers success rates but does not eliminate injection, and a successful one still has the same tools and reach.
         misconception: Model upgrades remove the need for architectural controls
       - text: Log each tool call so that attacks can be reconstructed after the fact
-        why: Logging supports detection and forensics, but the data has already left by the time the log is read.
+        why: Logging supports detection and forensics, but the data has already left by the time the log is read, so it caps nothing.
         misconception: Detective controls prevent exfiltration
     explanation: |
       Assume some injections succeed and constrain the consequences: remove dangerous capability from the step that
@@ -484,19 +485,23 @@ items:
     time_s: 75
     stem: |
       To let executives ask analytics questions in plain English, a team gives the agent a `run_sql` tool connected
-      to the production database as the database owner. The team plans to rely on a prompt saying to only write
-      SELECT statements. How should the access be redesigned?
+      to the production database as the database owner. That database also holds HR and customer-contact tables
+      that executives must not browse. The team plans to rely on a prompt saying to write SELECT statements only
+      on the sales tables. How should the access be redesigned?
     options:
       - text: "A read-only role limited to approved views, with statement timeouts and row limits"
         correct: true
         why: The database itself refuses writes and restricts what can be read, whatever SQL the model generates.
-      - text: "Keep the owner role, but reject statements that do not begin with the keyword SELECT"
+      - text: "Reject any generated statement that does not begin with the keyword SELECT before it reaches the database"
         why: String checks miss data-modifying CTEs, functions with side effects and multi-statement input, and the owner can still read everything.
         misconception: A syntactic filter equals a permissions model
-      - text: "Keep the owner role, and add an LLM reviewer that approves each query before it is executed"
+      - text: "Add an LLM reviewer that approves each query against the sales-only rule before it is executed"
         why: The reviewer shares the same weaknesses and the account still has full power if it errs.
         misconception: A second model call is a security control
-      - text: "Point the tool at the nightly backup copy of the database, while keeping the owner role"
+      - text: "A read-only role over the whole schema, with the prompt restricting questions to the sales tables"
+        why: Writes are blocked, but the restriction on HR and contact tables again rests on model compliance, so a manipulated query can still read them.
+        misconception: Read-only access is enough without scoping what can be read
+      - text: "Point the tool at the nightly backup copy of the database instead of production"
         why: Writes would be harmless to production, but the agent could still read every table, including restricted data.
         misconception: Isolating from production solves excessive privilege
     explanation: |
@@ -735,15 +740,15 @@ items:
       - text: "Where inference runs, and where prompts, logs and caches are retained, including sub-processors"
         correct: true
         why: Processing and retention locations matter, not only storage; each stage that touches personal data must meet the requirement.
-      - text: "Nothing further, since the documents and embeddings are stored at rest in the EU region already"
-        why: Sending prompts to a non-EU endpoint is itself processing outside the EU.
-        misconception: Residency is satisfied by the storage location alone
+      - text: "That stored documents and embeddings are encrypted with customer-managed keys held in the EU region"
+        why: Key location and encryption at rest do nothing about prompts that are decrypted and processed at a non-EU inference endpoint.
+        misconception: Encryption and key custody settle where processing happens
       - text: "That names are stripped from prompts, since anonymous data falls outside the regulation's scope"
         why: Removing names usually leaves pseudonymized data that is still personal, and context often re-identifies people.
         misconception: Dropping direct identifiers makes data anonymous
-      - text: "That the provider's marketing page describes the service as compliant with European privacy law"
-        why: A general claim does not bind the provider to region pinning, retention limits or sub-processor terms for your tenant.
-        misconception: A vendor compliance claim substitutes for contractual terms
+      - text: "That the provider has signed standard contractual clauses covering transfers of personal data outside the EU"
+        why: Such clauses can make a transfer lawful, but this client requires processing to stay in the EU, so a transfer mechanism does not meet it.
+        misconception: A lawful transfer mechanism satisfies a residency requirement
     explanation: |
       Data residency covers every place data is processed or retained: storage, inference, logs, caches, backups
       and sub-processors. Region-pinned endpoints, contractual data-processing terms and retention settings
@@ -762,18 +767,18 @@ items:
       the vector index built from tickets, in prompt logs, and in a response cache. Which design would have made
       compliance workable?
     options:
-      - text: "Keep identifiers as references, tag each copy by subject, and set retention by purpose"
+      - text: "Store a subject ID rather than raw identifiers in derived stores, tag every copy by subject, and set retention by purpose"
         correct: true
-        why: Copies can be located and deleted or pseudonymized on request, and short retention limits how many exist.
+        why: Copies can be located and deleted or irreversibly anonymized on request, and purpose-based retention limits how many exist.
       - text: "Delete from the primary database, because the index, logs and cache are rebuilt from it in time"
         why: Derived stores keep their data until rebuilt, so personal data may remain for weeks in the index, logs and cache.
         misconception: Deleting the source of truth removes all copies
-      - text: "Retain each log and index entry permanently so that evidence needed for an audit is not lost"
-        why: Indefinite retention of personal data without a purpose conflicts with data-minimization and storage-limitation principles.
-        misconception: Retaining everything is the safe compliance default
-      - text: "Anonymize customer records when the contract ends, in a yearly batch run by the data team"
-        why: An erasure request must be handled promptly and independent of contract status; a yearly batch is too late.
-        misconception: Erasure timing can follow the data owner's batch cycle
+      - text: "Rebuild the vector index from the support database every night so that deletions there propagate"
+        why: This clears the index but not the prompt logs or the response cache, so personal data still survives in two stores.
+        misconception: Refreshing one derived store covers all derived stores
+      - text: "Replace customer email addresses with salted hashes in every store, since hashed values are not personal data"
+        why: A hash that can be matched back to the person is pseudonymous, still personal data, and the free text around it still identifies them.
+        misconception: Hashing identifiers anonymizes the data
     explanation: |
       Plan for erasure and retention when designing the pipeline: minimize personal data in logs, tag derived
       artifacts (embeddings, caches, logs) to their source subject, and set retention by purpose. Statutory
@@ -798,12 +803,12 @@ items:
       - text: "Correct, because a SOC 2 report certifies how the vendor may use customer data, including training"
         why: SOC 2 is an auditor's attestation about controls against trust criteria, not a statement of the vendor's data-use policy.
         misconception: SOC 2 is a legal certification of how data is used
-      - text: "Not covered, because SOC 2 reports apply to the vendor's corporate offices and not its services"
-        why: Scope depends on the report and normally includes the production service; the issue is different in nature, not scope.
-        misconception: SOC 2 covers only corporate IT
-      - text: "Covered once the report is under two years old, since older reports no longer count as current"
-        why: Currency matters for assurance, but age says nothing about training or retention terms.
-        misconception: A report's freshness determines data-use coverage
+      - text: "Partly covered, since the report's confidentiality criterion means the vendor cannot use customer content beyond agreed purposes"
+        why: That criterion tests whether the vendor meets the commitments it has made; it does not create a commitment about training, which comes from the contract or terms.
+        misconception: A confidentiality criterion in an audit sets the vendor's data-use limits
+      - text: "Covered, provided the report's scope explicitly includes the API product that you will be using"
+        why: Scope matters for assurance on that service, but even a fully in-scope report is silent on whether prompts are retained or used for training.
+        misconception: Report scope determines data-use coverage
     explanation: |
       SOC 2 is an independent attestation that stated controls were designed (Type I) or operated effectively over
       a period (Type II) against trust service criteria. Whether prompts are retained or used for training is set by
@@ -824,9 +829,9 @@ items:
       - text: "A business associate agreement covering the specific service, plus minimum-necessary access"
         correct: true
         why: A vendor handling PHI for a covered entity needs a signed agreement covering that service, and access should be limited to what the task needs.
-      - text: "Nothing beyond TLS, because encrypting traffic in transit satisfies the privacy rule's requirements"
-        why: Encryption is a safeguard, not a substitute for the contractual and administrative requirements.
-        misconception: Technical encryption removes the vendor's regulatory role
+      - text: "Confirmation that the vendor holds a HIPAA certification, which moves compliance responsibility onto the vendor"
+        why: HHS does not recognize a HIPAA certification, and the hospital stays responsible; the required contractual agreement is a separate step.
+        misconception: A vendor's HIPAA certification transfers the covered entity's obligations
       - text: "Removal of patient names from the notes, after which the remaining text counts as de-identified"
         why: De-identification covers many more identifiers, such as dates and locations, and free-text notes often retain them.
         misconception: Dropping names de-identifies clinical text
@@ -883,21 +888,23 @@ items:
     level: evaluate
     time_s: 100
     stem: |
-      A staffing client in the EU wants an agent that scores and ranks job applicants, with recruiters making the
-      final interview decision. The product owner says the human decision makes it low risk under the EU AI Act.
-      How should you frame it?
+      A staffing client in the EU wants an agent that scores and ranks job applicants. Recruiters review the ranked
+      list and make the final interview decision. How should you frame the system under the EU AI Act?
     options:
-      - text: "Treat it as high-risk, since recruitment is a listed use, and plan for oversight, logging and records"
+      - text: "High-risk, because selecting and ranking candidates is a listed employment use; plan for oversight, logging and records"
         correct: true
-        why: Systems that filter or rank candidates fall in the high-risk category regardless of a human in the loop, which brings specific obligations.
-      - text: "Treat it as limited-risk and add a notice telling applicants that they are interacting with an AI"
-        why: Transparency notices apply to limited-risk systems, but recruitment ranking is a high-risk use with broader duties.
-        misconception: Disclosure is the main obligation for any customer-facing AI
-      - text: "Treat it as minimal-risk because the recruiter, and not the system, makes the final interview decision"
-        why: Human involvement is an obligation for high-risk systems, not an exemption from the category.
+        why: Systems that filter or rank candidates fall in the high-risk category even with a human making the final call, which brings specific obligations.
+      - text: "Limited-risk, so the main duty is a notice telling applicants they are dealing with an AI system"
+        why: Transparency notices are the duty for limited-risk systems, but ranking applicants is a high-risk use with broader duties.
+        misconception: Disclosure is the main obligation for any applicant-facing AI
+      - text: "Outside the high-risk class, because the system only advises and a recruiter takes the final decision"
+        why: Human involvement is an obligation for high-risk systems, not an exemption from the category, and ranking people is profiling.
         misconception: A human final decision lowers the regulatory class
-      - text: "Rely on the model provider's compliance work, because deployers inherit the provider's risk classification"
-        why: Deployers of high-risk systems have their own duties, such as oversight, monitoring and informing workers.
+      - text: "Prohibited, because scoring individuals from their data amounts to social scoring that is banned in the EU"
+        why: The ban covers specific social-scoring practices that cause unjustified or unrelated detrimental treatment; recruitment ranking is regulated as high-risk instead.
+        misconception: Any automated scoring of people is a banned practice
+      - text: "A matter for the model provider, since the deployer's duties are met by using the system as instructed"
+        why: Deployers of high-risk systems have their own duties, such as human oversight, monitoring and informing workers.
         misconception: Regulatory duties sit only with the model vendor
     explanation: |
       The EU AI Act is risk-tiered: unacceptable (prohibited), high-risk (listed uses such as employment, credit,
@@ -952,7 +959,7 @@ items:
       A compliance team distrusts an internal policy Q&A assistant because it is a black box. They ask for the
       assistant to explain its answers. What should you build?
     options:
-      - text: "Answers grounded in retrieved passages, each cited to its source document so users can check"
+      - text: "Answers grounded in retrieved passages, each citing its source so users can check the claim"
         correct: true
         why: Citations give users a verifiable basis for the answer and show what evidence the system used.
       - text: "A step-by-step reasoning narrative that the model writes after each answer to show how it got there"
@@ -961,6 +968,9 @@ items:
       - text: "A confidence percentage displayed next to each answer, as estimated by the model for that answer"
         why: Self-reported confidence is poorly calibrated, so users may over-trust answers marked high.
         misconception: A number conveys reliability
+      - text: "A heat map over the answer's input tokens that shows which words most influenced each generated sentence"
+        why: Token-attribution maps are unreliable for large language models and give a reviewer nothing they can verify against a policy document.
+        misconception: Attribution visualisations explain model decisions to non-technical reviewers
       - text: "The model vendor's published model card describing the base model's training data and limitations"
         why: A model card describes the base model in general, not why this answer was given from these documents.
         misconception: General model documentation explains individual outputs

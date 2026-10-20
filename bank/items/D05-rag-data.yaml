@@ -280,7 +280,7 @@ items:
     type: single
     subtopic: rag.ingestion
     tags: [llm.failure-modes]
-    difficulty: 2
+    difficulty: 1
     level: analyze
     time_s: 90
     stem: |
@@ -601,7 +601,7 @@ items:
     type: single
     subtopic: data.sql
     competencies: [x.sql]
-    difficulty: 2
+    difficulty: 1
     level: analyze
     time_s: 90
     stem: |
@@ -640,7 +640,7 @@ items:
     subtopic: data.sql
     tags: [discovery.environment]
     competencies: [x.sql]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 90
     stem: |
@@ -782,7 +782,7 @@ items:
     type: single
     subtopic: data.modeling
     tags: [obs.slo]
-    difficulty: 2
+    difficulty: 1
     level: analyze
     time_s: 90
     stem: |
@@ -812,7 +812,7 @@ items:
     type: single
     subtopic: data.modeling
     tags: [adoption.handoff]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 85
     stem: |
@@ -902,7 +902,7 @@ items:
     subtopic: rag.retrieval
     tags: [deploy.compute, obs.cost]
     competencies: [x.estimation]
-    difficulty: 2
+    difficulty: 1
     level: apply
     time_s: 120
     stem: |

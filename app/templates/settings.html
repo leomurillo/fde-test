@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Settings</h1></div></div>
+{% if msg %}<div class="notice" role="status">{{ msg }}</div>{% endif %}
+<div class="grid-2">
+  <section class="card stack">
+    <h2>Gemini (AI grading)</h2>
+    <p class="muted">Open-text and spoken answers are graded by Gemini against a rubric. Without a key you grade them yourself against the rubric and model answer.</p>
+    <p>Status:
+      {% if key_source.startswith('env:') %}<span class="badge v-correct">Key from environment ({{ key_source[4:] }})</span>
+      {% elif key_source == 'file' %}<span class="badge v-correct">Key saved locally</span>
+      {% else %}<span class="badge">No key</span>{% endif %}
+    </p>
+    <form method="post" action="/settings/key" class="stack">
+      <label class="field"><span>API key {% if key_source.startswith('env:') %}<span class="muted small">(the environment variable takes precedence)</span>{% endif %}</span>
+        <input type="password" name="api_key" autocomplete="off" placeholder="{{ 'Replace the saved key' if key_source == 'file' else 'Paste a Gemini API key' }}"></label>
+      <p class="muted small">Stored in <code>{{ data_dir }}/secrets.json</code> (file mode 600). Never logged or exported.</p>
+      <div class="row">
+        <button class="btn primary" name="action" value="save" type="submit">Save key</button>
+        {% if key_source == 'file' %}<button class="btn ghost" name="action" value="clear" type="submit">Remove saved key</button>{% endif %}
+      </div>
+    </form>
+    <form method="post" action="/settings/model" class="stack">
+      <label class="field"><span>Model</span>
+        <input type="text" name="model" id="model-input" value="{{ model }}" list="model-list" placeholder="{{ default_model }}">
+        <datalist id="model-list"></datalist>
+      </label>
+      <div class="row wrap">
+        <button class="btn" type="submit">Save model</button>
+        <button class="btn ghost" type="button" id="load-models" {% if not has_key %}disabled{% endif %}>Load models from API</button>
+        <button class="btn ghost" type="button" id="test-conn" {% if not has_key %}disabled{% endif %}>Test connection</button>
+      </div>
+      <p class="small" id="gemini-msg" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+  <section class="card stack" id="bank">
+    <h2>Item bank</h2>
+    <dl class="kv">
+      <dt>Folder</dt><dd><code>{{ report.bank_dir }}</code></dd>
+      <dt>Loaded</dt><dd>{{ report.loaded }} items from {{ report.files }} files</dd>
+      <dt>Skipped</dt><dd>{{ report.skipped }} invalid items</dd>
+      <dt>Fingerprint</dt><dd class="mono small">{{ report.fingerprint[:23] }}…</dd>
+      <dt>Synced</dt><dd>{{ report.synced_at|dt }}</dd>
+    </dl>
+    <form method="post" action="/settings/reload-bank"><button class="btn" type="submit">Reload bank</button></form>
+    {% if report.warnings %}
+    <details open><summary>{{ report.warnings|length }} warning{{ '' if report.warnings|length == 1 else 's' }}</summary>
+      <ul class="small problem-list">{% for w in report.warnings %}<li>{{ w }}</li>{% endfor %}</ul></details>
+    {% endif %}
+    {% if report.errors %}
+    <details><summary>{{ report.errors|length }} validation problem{{ '' if report.errors|length == 1 else 's' }} (items skipped)</summary>
+      <ul class="small problem-list">{% for e in report.errors[:200] %}<li>{{ e }}</li>{% endfor %}</ul></details>
+    {% endif %}
+    <p class="muted small">Data folder: <code>{{ data_dir }}</code></p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/settings.js?v={{ app_version }}"></script>{% endblock %}

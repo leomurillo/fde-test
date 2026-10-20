@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Finish test{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Ready to finish?</h1>
+  <p>You answered <strong>{{ answered }}</strong> of {{ total }} items.</p>
+  {% if skipped %}
+  <p>Skipped items you can still answer:</p>
+  <nav class="pos-strip">
+    {% for p in skipped %}<a class="dot st-skipped" href="/s/{{ session.session_id }}/item/{{ p }}">{{ p }}</a>{% endfor %}
+  </nav>
+  {% endif %}
+  {% if unanswered %}
+  <p class="muted">Not reached yet: {{ unanswered|length }} item{{ '' if unanswered|length == 1 else 's' }}. <a href="/s/{{ session.session_id }}">Continue</a></p>
+  {% endif %}
+  <p class="muted small">Unanswered and skipped items score zero. {% if session.mode == 'end' %}Answers and explanations are shown after you finish.{% endif %}</p>
+  <div class="row">
+    <form method="post" action="/s/{{ session.session_id }}/finish"><button class="btn primary" type="submit" id="finish-btn">Finish and see results</button></form>
+    <form method="post" action="/s/{{ session.session_id }}/abandon" onsubmit="return confirm('Abandon this test? Answers so far are kept.')"><button class="btn ghost" type="submit">Abandon</button></form>
+  </div>
+</section>
+{% endblock %}

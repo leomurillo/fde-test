@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_macros.html" import feedback_button, status_badge, meter %}
+{% block title %}Progress{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Progress</h1>
+    <p class="muted">Coverage and results per domain and subtopic. Never-seen items show metadata only, so they stay fresh.</p>
+  </div>
+</div>
+
+<section class="card">
+  <div class="table-wrap">
+  <table class="data progress-table">
+    <thead><tr><th>Domain / subtopic</th><th class="num">Items</th><th class="num">Seen</th><th class="num">Never seen</th><th class="num">Right</th><th class="num">Wrong</th><th class="num">Accuracy</th><th class="num">Median time</th><th class="hide-sm">Coverage</th></tr></thead>
+    {% for d in prog.domains %}
+    <tbody>
+      <tr class="domain-row">
+        <th scope="row"><a href="/progress?domain={{ d.id }}#items">{{ d.id }} {{ d.name }}</a> <span class="muted small">{{ d.weight }}%</span></th>
+        <td class="num">{{ d['items'] }}</td><td class="num">{{ d.seen }}</td><td class="num">{{ d.never_seen }}</td>
+        <td class="num">{{ d.right }}</td><td class="num">{{ d.wrong }}</td>
+        <td class="num">{{ '%.0f%%'|format(d.accuracy_pct) if d.accuracy_pct is not none else '–' }}</td>
+        <td class="num">{{ d.median_ms|ms }}</td>
+        <td class="hide-sm">{{ meter(d.right, d.wrong, d.seen - d.right - d.wrong, d['items']) }}</td>
+      </tr>
+      {% for s in d.subtopics %}
+      <tr class="sub-row">
+        <td>{{ s.name }} <code class="tag">{{ s.tag }}</code></td>
+        <td class="num">{{ s['items'] }}</td><td class="num">{{ s.seen }}</td><td class="num">{{ s.never_seen }}</td>
+        <td class="num">{{ s.right }}</td><td class="num">{{ s.wrong }}</td>
+        <td class="num">{{ '%.0f%%'|format(s.accuracy_pct) if s.accuracy_pct is not none else '–' }}</td>
+        <td class="num">{{ s.median_ms|ms }}</td>
+        <td class="hide-sm">{{ meter(s.right, s.wrong, s.seen - s.right - s.wrong, s['items']) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% endfor %}
+  </table>
+  </div>
+</section>
+
+<h2 class="section-title" id="items">Item browser</h2>
+<form class="filters row wrap" method="get" action="/progress#items">
+  <label class="field inline"><span>Status</span>
+    <select name="status">
+      <option value="">All</option>
+      {% for v, l in [('never_seen', 'Never seen'), ('wrong', 'Last wrong'), ('right', 'Last right'), ('seen', 'Seen, ungraded')] %}
+      <option value="{{ v }}" {% if f_status == v %}selected{% endif %}>{{ l }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="field inline"><span>Domain</span>
+    <select name="domain">
+      <option value="">All</option>
+      {% for d in tax.domains %}<option value="{{ d.id }}" {% if f_domain == d.id %}selected{% endif %}>{{ d.id }} {{ d.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field inline"><span>Format</span>
+    <select name="type">
+      <option value="">All</option>
+      {% for t in types %}<option value="{{ t }}" {% if f_type == t %}selected{% endif %}>{{ type_labels[t] }}</option>{% endfor %}
+    </select>
+  </label>
+  <button class="btn" type="submit">Filter</button>
+  <span class="muted small">{{ browser|length }} items</span>
+</form>
+
+<ul class="item-browser">
+  {% for it in browser %}
+  <li class="card browser-item">
+    <div class="row between wrap">
+      <div class="item-meta small">
+        <span class="mono"><strong>{{ it.item_id }}</strong>@{{ it.version }}</span>
+        <span class="badge">{{ type_labels[it.type] }}</span>
+        <span class="muted">{{ it.subtopic_name }}</span>
+        <span class="muted">difficulty {{ it.difficulty }} · {{ it.level }}</span>
+        {% if it.retired %}<span class="badge">Retired</span>{% endif %}
+      </div>
+      <div class="row">
+        {{ status_badge(it.status) }}
+        {{ feedback_button(it.item_id, it.version, label='') }}
+      </div>
+    </div>
+    {% if it.excerpt %}<p class="excerpt">{{ it.excerpt }}</p>{% endif %}
+    {% if it.history %}
+    <details>
+      <summary class="small">{{ it.attempts }} attempt{{ '' if it.attempts == 1 else 's' }} · last {{ it.last_at|date }}</summary>
+      <table class="data compact">
+        <thead><tr><th>Date</th><th>Version</th><th>Result</th><th class="num">Time</th><th></th></tr></thead>
+        <tbody>
+        {% for h in it.history|reverse %}
+        <tr>
+          <td>{{ h.submitted_at|dt }}</td><td>v{{ h.version }}</td>
+          <td>{% if h.skipped %}Skipped{% elif h.correct is none %}Ungraded{% elif h.correct %}Right{% else %}Wrong{% endif %}{% if h.score is not none and not h.skipped and h.score not in (0, 1) %} ({{ '%.0f'|format(100 * h.score) }}%){% endif %}</td>
+          <td class="num">{{ h.time_ms|ms }}</td>
+          <td><a class="small" href="/s/{{ h.session_id }}/review#item-{{ h.position }}">Session</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% endif %}
+  </li>
+  {% else %}
+  <li class="muted">No items match these filters.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

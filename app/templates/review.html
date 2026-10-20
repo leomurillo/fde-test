@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import feedback_button, verdict_badge %}
+{% block title %}Results{% endblock %}
+{% block content %}
+{% set t = summary.total %}
+<div class="page-head">
+  <div>
+    <h1>Results</h1>
+    <p class="muted">{{ session.scope.preset or 'Custom scope' }} · {{ t.n }} items · {{ 'Real-time feedback' if session.mode == 'realtime' else 'Feedback at the end' }} · {{ session.created_at|dt }}{% if session.status == 'abandoned' %} · abandoned{% endif %}</p>
+  </div>
+  <div class="row"><a class="btn" href="/new">New test</a></div>
+</div>
+
+<section class="stats">
+  <div class="stat"><span class="stat-num">{{ '%.0f'|format(t.score_pct) }}%</span><span class="stat-label">Score</span></div>
+  <div class="stat ok"><span class="stat-num">{{ t.correct }}</span><span class="stat-label">Correct</span></div>
+  <div class="stat bad"><span class="stat-num">{{ t.graded - t.correct }}</span><span class="stat-label">Incorrect / skipped</span></div>
+  <div class="stat"><span class="stat-num">{{ t.n - t.answered - t.skipped }}</span><span class="stat-label">Not answered</span></div>
+  {% if t.pending %}<div class="stat warn"><span class="stat-num">{{ t.pending }}</span><span class="stat-label">Awaiting grading</span></div>{% endif %}
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>By section</h2>
+    <table class="data compact">
+      <thead><tr><th>Section</th><th class="num">Items</th><th class="num">Correct</th><th class="num">Score</th></tr></thead>
+      <tbody>{% for name, b in summary.sections %}<tr><td>{{ name }}</td><td class="num">{{ b.n }}</td><td class="num">{{ b.correct }}</td><td class="num">{{ '%.0f'|format(b.score_pct) }}%</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+  <section class="card">
+    <h2>By subtopic</h2>
+    <table class="data compact">
+      <thead><tr><th>Subtopic</th><th class="num">Items</th><th class="num">Correct</th><th class="num">Score</th></tr></thead>
+      <tbody>{% for tag, name, b in summary.subtopics %}<tr><td>{{ name }} <code class="tag">{{ tag }}</code></td><td class="num">{{ b.n }}</td><td class="num">{{ b.correct }}</td><td class="num">{{ '%.0f'|format(b.score_pct) }}%</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+</div>
+
+<h2 class="section-title">Items</h2>
+<ol class="review-list">
+  {% for card in cards %}
+  <li class="review-item" id="item-{{ card.si.position }}">
+    <article class="card">
+      <div class="row between wrap">
+        <div class="item-meta small muted">
+          <strong>#{{ card.si.position }}</strong>
+          <span class="badge">{{ card.item.type_label }}</span>
+          <span>{{ card.si.section }}</span>
+          <span>{{ card.item.subtopic_name }}</span>
+          <span class="mono">{{ card.si.item_id }}@{{ card.si.item_version }}</span>
+        </div>
+        {{ feedback_button(card.si.item_id, card.si.item_version, session.session_id, card.si.position) }}
+      </div>
+      <div class="stem prose">{{ card.item.stem|md }}</div>
+      {% if card.resp and card.resp.flagged %}<p class="small muted">You flagged this item.</p>{% endif %}
+      {% if card.resp and card.resp.confidence %}<p class="small muted">Confidence: {{ {1: 'guess', 2: 'unsure', 3: 'sure'}[card.resp.confidence] }}</p>{% endif %}
+      {% if not card.resp %}<p>{{ verdict_badge('unanswered') }}</p>{% else %}{{ card.reveal_html }}{% endif %}
+    </article>
+  </li>
+  {% endfor %}
+</ol>
+{% endblock %}
+{% block scripts %}<script src="/static/runner.js?v={{ app_version }}"></script>{% endblock %}
