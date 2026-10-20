@@ -1,0 +1,216 @@
+# Generated once by the orchestrator. Minimum counts; exceeding them by a few is fine.
+total_target: 334
+note: choice = single+multi primary-subtopic counts (minimums). Other formats are per domain; authors pick their subtopics.
+  Aim for ~20% of choice items as multi.
+domains:
+  D1:
+    name: FDE Role, Operating Model & Economics
+    total: 20
+    choice: 16
+    multi_target: 3
+    other_formats:
+      numeric: 2
+      open: 1
+      audio: 1
+    subtopics:
+      role.definition:
+        choice: 5
+      role.adjacent:
+        choice: 3
+      role.productization:
+        choice: 5
+      role.economics:
+        choice: 3
+  D2:
+    name: Discovery, Scoping & Delivery Lifecycle
+    total: 33
+    choice: 26
+    multi_target: 5
+    other_formats:
+      numeric: 1
+      open: 4
+      audio: 2
+    subtopics:
+      discovery.framing:
+        choice: 7
+      discovery.selection:
+        choice: 5
+      discovery.environment:
+        choice: 4
+      delivery.scoping:
+        choice: 5
+      delivery.go-live:
+        choice: 5
+  D3:
+    name: Stakeholders, Communication & Adoption
+    total: 30
+    choice: 22
+    multi_target: 4
+    other_formats:
+      numeric: 1
+      open: 4
+      audio: 3
+    subtopics:
+      comms.tradeoffs:
+        choice: 6
+      comms.stakeholders:
+        choice: 6
+      adoption.change:
+        choice: 5
+      adoption.handoff:
+        choice: 5
+  D4:
+    name: LLM Application Engineering
+    total: 40
+    choice: 34
+    multi_target: 7
+    other_formats:
+      numeric: 3
+      open: 1
+      code: 2
+    subtopics:
+      llm.fundamentals:
+        choice: 7
+      llm.prompting:
+        choice: 7
+      llm.structured-tools:
+        choice: 8
+      llm.model-selection:
+        choice: 7
+      llm.failure-modes:
+        choice: 5
+  D5:
+    name: Retrieval, RAG & Enterprise Data
+    total: 37
+    choice: 26
+    multi_target: 5
+    other_formats:
+      numeric: 2
+      open: 1
+      sql: 6
+      code: 2
+    subtopics:
+      rag.retrieval:
+        choice: 8
+      rag.ingestion:
+        choice: 5
+      rag.architecture:
+        choice: 4
+      data.sql:
+        choice: 6
+      data.modeling:
+        choice: 3
+  D6:
+    name: Agents, Orchestration & Hybrid Systems
+    total: 44
+    choice: 37
+    multi_target: 7
+    other_formats:
+      numeric: 1
+      open: 3
+      audio: 1
+      code: 2
+    subtopics:
+      agents.when:
+        choice: 9
+      agents.patterns:
+        choice: 8
+      agents.tools-mcp:
+        choice: 7
+      agents.state:
+        choice: 7
+      agents.multi:
+        choice: 6
+  D7:
+    name: Evaluation & Quality
+    total: 33
+    choice: 26
+    multi_target: 5
+    other_formats:
+      numeric: 2
+      open: 2
+      audio: 1
+      sql: 2
+    subtopics:
+      eval.datasets:
+        choice: 7
+      eval.methods:
+        choice: 6
+      eval.rag-agent:
+        choice: 5
+      eval.gates:
+        choice: 4
+      eval.online:
+        choice: 4
+  D8:
+    name: Governance, Security & Responsible AI
+    total: 30
+    choice: 26
+    multi_target: 5
+    other_formats:
+      numeric: 1
+      open: 2
+      audio: 1
+    subtopics:
+      gov.identity:
+        choice: 7
+      gov.guardrails:
+        choice: 6
+      gov.approvals:
+        choice: 5
+      gov.audit-compliance:
+        choice: 5
+      gov.responsible-ai:
+        choice: 3
+  D9:
+    name: Integration & Distributed Systems
+    total: 26
+    choice: 21
+    multi_target: 4
+    other_formats:
+      numeric: 2
+      open: 1
+      code: 2
+    subtopics:
+      int.apis:
+        choice: 5
+      int.async:
+        choice: 7
+      int.resilience:
+        choice: 5
+      int.enterprise-devex:
+        choice: 4
+  D10:
+    name: Cloud Deployment & Platform
+    total: 17
+    choice: 15
+    multi_target: 3
+    other_formats:
+      numeric: 1
+      open: 1
+    subtopics:
+      deploy.compute:
+        choice: 5
+      deploy.delivery:
+        choice: 4
+      deploy.models-network:
+        choice: 6
+  D11:
+    name: Observability, Reliability & Cost
+    total: 24
+    choice: 13
+    multi_target: 3
+    other_formats:
+      numeric: 6
+      open: 2
+      audio: 1
+      sql: 2
+    subtopics:
+      obs.tracing:
+        choice: 4
+      obs.troubleshooting:
+        choice: 3
+      obs.cost:
+        choice: 3
+      obs.slo:
+        choice: 3

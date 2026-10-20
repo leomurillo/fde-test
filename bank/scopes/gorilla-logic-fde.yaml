@@ -1,0 +1,61 @@
+# Generated from the jd mappings in data/taxonomy.yaml. Items match if their primary
+# subtopic or any secondary tag is listed.
+id: gorilla-logic-fde
+name: 'Gorilla Logic: Senior FDE, AI Platform'
+description: Subtopics mapped to the non-generic requirements of the Gorilla Logic Senior Forward Deployed Engineer (AI Platform)
+  job description (data/taxonomy.yaml jd mappings).
+subtopics:
+- role.definition
+- role.productization
+- discovery.framing
+- discovery.selection
+- discovery.environment
+- delivery.scoping
+- delivery.go-live
+- comms.tradeoffs
+- comms.stakeholders
+- adoption.handoff
+- llm.fundamentals
+- llm.prompting
+- llm.structured-tools
+- llm.model-selection
+- llm.failure-modes
+- rag.retrieval
+- rag.ingestion
+- rag.architecture
+- data.sql
+- data.modeling
+- agents.when
+- agents.patterns
+- agents.tools-mcp
+- agents.state
+- agents.multi
+- eval.datasets
+- eval.methods
+- eval.rag-agent
+- eval.gates
+- eval.online
+- gov.identity
+- gov.guardrails
+- gov.approvals
+- gov.audit-compliance
+- int.apis
+- int.async
+- int.resilience
+- int.enterprise-devex
+- deploy.compute
+- deploy.delivery
+- deploy.models-network
+- obs.tracing
+- obs.troubleshooting
+- obs.cost
+- obs.slo
+default_length: 40
+default_formats:
+- single
+- multi
+- numeric
+- open
+- sql
+- code
+- audio
