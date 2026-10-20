@@ -40,24 +40,27 @@ items:
     time_s: 90
     stem: |
       Three product teams at a client use three different LLM frameworks, and each records token usage under its own
-      custom field. The platform lead wants cross-team cost and latency dashboards. What is the best approach?
+      custom field. The platform lead wants cross-team cost and latency dashboards. The client already collects
+      OpenTelemetry traces from its other services, and its security team will not approve another SaaS product that
+      receives prompts. What is the best approach?
     options:
-      - text: Emit OpenTelemetry GenAI attributes for operation, model and token usage, pinned to one convention version
+      - text: Emit OpenTelemetry's GenAI telemetry for operation, model and token usage from every team, pinned to one convention version
         correct: true
-        why: A vendor-neutral standard lets any OTel backend read model and token fields from all teams without custom mapping.
-      - text: "Publish a shared log-field schema on the internal wiki and ask each team to map its own keys onto it"
-        why: A convention that depends on each team's discipline drifts; nothing enforces or tooling-supports it.
+        why: A vendor-neutral standard that the existing OTel pipeline already ingests, so all teams land in one schema without custom mapping or a new data processor.
+      - text: Move all three teams onto whichever framework has the best built-in tracing, so dashboards share one native schema
+        why: Forces three rewrites and ties the platform to one framework to solve what a telemetry convention solves without code changes in the apps.
+        misconception: Standardising on one framework is the way to standardise telemetry
+      - text: Adopt a specialised LLM-observability SaaS and have each team install its SDK for prompts, traces and cost
+        why: Creates a second telemetry pipeline beside the OTel one, and sends prompts to a vendor the security team will not approve.
+        misconception: A purpose-built LLM tool is always the better telemetry choice
+      - text: Publish a shared log-field schema on the internal wiki and ask each team to map its own keys onto it
+        why: A convention that depends on each team's discipline drifts; nothing enforces it and no backend understands it natively.
         misconception: Documented naming conventions are as good as a shared standard
-      - text: "Let each team keep its framework's native dashboard and join the exports in the data warehouse once a month"
-        why: Monthly joins are late and custom, and every new framework adds another mapping job.
-        misconception: Federated dashboards can be reconciled afterwards
-      - text: Reconcile cost from the provider's monthly invoice, allocating it by each team's request counts
-        why: Request counts ignore token volume and model mix, and give no latency view at all.
-        misconception: Invoices are an adequate source of attribution
     explanation: |
       OpenTelemetry's GenAI semantic conventions define shared attribute names for operations, models and token
-      usage, so telemetry from different frameworks lands in one schema. They are still marked as in development,
-      so pin the convention version and plan upgrades.
+      usage, so telemetry from different frameworks lands in one schema in the backend the client already runs. The
+      conventions are still marked as in development and have moved repositories, so pin the version you emit and
+      plan upgrades; do not hard-code expectations about individual attribute names.
     refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
 
   - id: D11-003
@@ -238,9 +241,9 @@ items:
       - text: Whether a floating model alias resolves to the same snapshot, with the same default parameters
         correct: true
         why: Aliases can move independently per environment or region, silently changing behaviour.
-      - text: The Python patch version of the runtime, which usually explains changes in model output
-        why: Minor runtime differences rarely alter LLM behaviour; changes in data, identity and model matter more.
-        misconception: Runtime versions are the usual culprit
+      - text: The cloud region and hardware generation serving the model, which usually explains differences in answer quality
+        why: Hosted models are designed to behave the same across regions; differences in data, identity, limits and model version matter far more.
+        misconception: Infrastructure differences are the usual cause of behaviour changes
       - text: The prompt templates, which cannot differ because they are stored in version control
         why: Environment configuration, feature flags and templating inputs can still change the final prompt.
         misconception: Version control guarantees identical effective prompts
@@ -285,60 +288,65 @@ items:
     type: single
     subtopic: obs.cost
     tags: [llm.fundamentals]
-    difficulty: 2
+    difficulty: 3
     level: analyze
-    time_s: 90
+    time_s: 100
     stem: |
-      After enabling prompt caching for a support agent, the cost has not changed and the cache hit rate is about
-      3%. Each request has a 6,000-token block of instructions and tool definitions followed by a 300-token user
-      turn. The system prompt begins with the current timestamp and the user's name. What should change?
+      Two internal services share the same 6,000-token instruction prefix. Service A sends 40 requests in a
+      two-minute burst, a few seconds apart, then is idle for an hour. Service B receives one request about every 10
+      minutes, around the clock. The provider charges 25% more than the normal input price to write a prefix to the
+      prompt cache and 90% less to read it, and entries expire after 5 minutes without a hit. After caching was
+      enabled for both, one service's bill fell and the other's rose. Which service's bill rose, and why?
     options:
-      - text: Move the timestamp and user name after the static content so the cached prefix is identical every time
+      - text: Service B, because each request finds the entry expired, so it pays the write premium every time and never gets a discounted read
         correct: true
-        why: Caching matches on an exact prefix, and a changing first line makes every request a miss.
-      - text: Lengthen the cache lifetime so entries survive between requests from different users
-        why: Lifetime is not the problem; entries are never reused because each prefix differs from the first token.
-        misconception: Low hit rates mean the cache expires too early
-      - text: Cache complete responses keyed on a hash of the user message instead of caching the prompt prefix
-        why: A different technique with a low hit rate for free-text questions, and it ignores the per-user context.
-        misconception: Response caching is a drop-in alternative to prefix caching
-      - text: Split the static instructions into smaller blocks so each one is cached independently
-        why: Block boundaries do not help while the volatile text at the start still changes the prefix.
-        misconception: More cache blocks produce more hits
+        why: Reuse within the 5-minute lifetime is what pays for the premium; with 10-minute gaps nothing is ever read.
+      - text: Service A, because the hour-long idle gap forces a new cache write at every burst and those premiums outweigh the savings
+        why: One write per burst is followed by about 39 discounted reads, so the burst saves money overall.
+        misconception: Idle time between bursts makes caching unprofitable
+      - text: Service A, because the burst ends after two minutes, so the entry written at its start has expired before the later requests arrive
+        why: The entry lives 5 minutes from its last hit and requests arrive seconds apart, so every request after the first reads from the cache.
+        misconception: Cache entries expire on a fixed timer from the first write
+      - text: Caching cannot raise either bill, since the 90% read discount always outweighs the 25% write premium; the rise must come from traffic growth
+        why: The discount only applies to reads; a prefix that is written but never read costs 25% more than no caching.
+        misconception: The read discount always offsets the write premium
     explanation: |
-      Provider prompt caches reuse a request's exact leading tokens. Put stable content (instructions, tool
-      definitions, reference documents) first and volatile content (timestamps, user data, the question) last.
+      Prompt caching is a bet on reuse. Writes cost a premium, reads are heavily discounted, and entries expire after
+      a short period without hits. Traffic that arrives in bursts, or at least once per lifetime, profits; sparse,
+      evenly spaced traffic with gaps longer than the lifetime pays the premium and never collects the discount.
+      Measure cache read and write tokens per route before and after enabling it.
     refs: [https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching]
 
   - id: D11-011
     version: 1
     type: single
     subtopic: obs.cost
-    tags: [llm.model-selection, eval.gates]
-    difficulty: 3
+    tags: [llm.prompting, eval.gates]
+    difficulty: 2
     level: evaluate
     time_s: 100
     stem: |
-      An FAQ assistant sends every question to a large model. About 70% of questions look simple, so the team wants
-      a cascade: a small model answers first and escalates to the large model when the answer looks unreliable.
-      How should the escalation rule be chosen?
+      A contract-summary feature costs more than forecast. Each request has about 7,000 input tokens, mostly a fixed
+      clause library already served from the prompt cache, and about 1,100 output tokens. Output tokens are priced at
+      five times the input rate. Reviewers say the summaries open by restating the request and end with generic
+      caveats; the useful content is about 350 tokens. Which change best cuts cost without hurting the product?
     options:
-      - text: Choose the threshold from cost-versus-quality curves on a labelled set, per slice, and monitor the escalation rate
+      - text: Instruct for a fixed summary structure with no restatement or boilerplate, verify on the golden set, and keep a max-token limit as a backstop
         correct: true
-        why: Makes the cost-quality trade-off explicit and verifiable, and notices when live traffic shifts.
-      - text: Escalate when the small model states low confidence, using a 0.7 cutoff taken from a published blog post
-        why: Verbalised confidence is poorly calibrated and the cutoff was never validated on this client's questions.
-        misconception: Self-reported confidence is a reliable routing signal
-      - text: Route by prompt length, sending short questions to the small model since they are probably simple
-        why: Length is a weak proxy for difficulty; short questions can need careful reasoning.
-        misconception: Input size predicts difficulty
-      - text: "Keep the large model for everything but cap output length to a fixed maximum for every answer"
-        why: Truncating answers risks cutting needed content and leaves the main cost, large-model input, untouched.
-        misconception: Output caps are a risk-free substitute for routing
+        why: Output tokens dominate the bill (1,100 x 5 against 7,000 cached reads), and the waste is in what is generated, so shaping the output removes it without cutting content.
+      - text: Set the maximum output tokens to about 400 so that every summary is cut off at the length of its useful content
+        why: The padding is at the start and end, so a hard cut removes the end of the real content and can truncate mid-sentence; length must be controlled by instruction.
+        misconception: A max-token cap is how you control output length
+      - text: Shrink the clause library in the cached prefix to cut the number of input tokens sent with every request
+        why: Cached input is the cheap part of the bill; shortening it saves little and may remove clauses the summaries need.
+        misconception: Input tokens are the main cost driver
+      - text: Send all requests to the next smaller model in the family and keep the prompt exactly as it is today
+        why: Does not remove the wasted output tokens, and quality on legal text is unverified; the saving is bought with an unmeasured risk.
+        misconception: A cheaper model is the first lever for any cost problem
     explanation: |
-      Cascades and routers need an evaluated decision rule: measure quality and cost at different thresholds on
-      labelled data, check each slice, and watch escalation rate in production. Unvalidated signals such as stated
-      confidence or prompt length can save money while silently degrading answers.
+      Cost levers differ by token type. Cached input is cheap; output is priced higher and is often padded. Control
+      output length by instructing for the structure you want, then verify quality on the golden set. A max-token
+      limit is a safety net that truncates, not a way to make answers concise.
 
   - id: D11-012
     version: 1
@@ -388,9 +396,9 @@ items:
       - text: Tighten the availability target to 99.99% so that any degradation of the service shows up as a breach
         why: Availability counts successful responses, not correct ones; a higher target stays green during bad answers.
         misconception: Higher uptime targets catch quality regressions
-      - text: Return HTTP 5xx whenever the model hedges, so low-confidence answers count as errors
-        why: Hedging is not wrongness, and this degrades user experience while still missing confident wrong answers.
-        misconception: Error codes can stand in for quality
+      - text: Count empty, fallback and schema-invalid responses as failures in the availability SLI, so a degraded answer burns the error budget
+        why: Stricter success checks catch visibly broken responses, but a well-formed, confident wrong answer still counts as a success.
+        misconception: A stricter definition of success detects wrong answers
       - text: "Rely on the quarterly CSAT survey and the support-ticket backlog to catch quality problems"
         why: A quarterly signal detects a three-day incident months after the fact.
         misconception: Lagging satisfaction scores are an adequate quality monitor
@@ -474,7 +482,7 @@ items:
       tenant's documents. Traces show a retrieval filter was bypassed after yesterday's release. What is the right
       first move?
     options:
-      - text: "Cut off the affected retrieval path with a kill switch, keeping logs and traces for the investigation"
+      - text: "Disable the retrieval path or roll back yesterday's release, whichever is faster, and keep all logs and traces"
         correct: true
         why: Contain the exposure now; evidence is preserved so impact and cause can be established afterwards.
       - text: Reproduce the bug in staging first so that the fix is verified before touching production
@@ -498,21 +506,25 @@ items:
     subtopic: obs.cost
     tags: [llm.fundamentals]
     competencies: [x.estimation]
-    difficulty: 1
+    difficulty: 2
     level: apply
-    time_s: 120
+    time_s: 150
     stem: |
-      A support agent sends 8,000 cacheable prefix tokens, 500 non-cached input tokens and receives 400 output
-      tokens per request, with 10,000 requests a day. Pricing: input $3.00 per million tokens, cached-prefix reads
-      cost 10% of the input price, output $15.00 per million. Assume every request after warm-up hits the cache and
-      ignore cache-write premiums. What is the daily model cost with caching, in USD?
-    answer: {value: 99.0, tolerance: 1.0, tolerance_type: abs, unit: "USD"}
+      A support agent sends, per request, an 8,000-token cacheable prefix, 500 other input tokens and receives 400
+      output tokens, at 10,000 requests a day. Prices: input $3.00 per million tokens; writing the prefix to the
+      cache costs 125% of the input price; reading it costs 10% of the input price; output $15.00 per million. In
+      production 90% of requests read the prefix from the cache and the other 10% write it (the 500 other input
+      tokens are always charged at the normal input price). What is the daily model cost, in USD?
+    answer: {value: 126.6, tolerance: 1.0, tolerance_type: abs, unit: "USD"}
     work: |
-      Cached prefix: 8,000 x $0.30/M = $0.0024. Fresh input: 500 x $3/M = $0.0015. Output: 400 x $15/M = $0.0060.
-      Per request $0.0099; x 10,000 = $99.00 per day.
+      Prefix read: 8,000 x $0.30/M = $0.0024. Prefix write: 8,000 x $3.75/M = $0.0300. Expected prefix cost = 0.9 x
+      0.0024 + 0.1 x 0.0300 = $0.00516. Other input: 500 x $3/M = $0.0015. Output: 400 x $15/M = $0.0060.
+      Per request $0.01266; x 10,000 = $126.60 per day.
     explanation: |
-      Without caching it would be (8,500 x $3/M + $0.006) x 10,000 = $315. Common mistakes: omitting output tokens
-      ($39), charging the cached prefix at full price, or applying the 10% factor to the whole input.
+      Common wrong methods: charging the 10% of requests that miss at the normal input price rather than the write
+      premium ($120.60); treating every request as a hit ($99.00); leaving out output tokens ($66.60);
+      or applying the cache price to the 500 non-cached tokens. Without caching the same traffic costs $315.
+      A cache-write premium is why hit rate, not just the read discount, decides whether caching pays.
 
   - id: D11-018
     version: 1
@@ -520,20 +532,23 @@ items:
     subtopic: obs.cost
     tags: [llm.model-selection]
     competencies: [x.estimation]
-    difficulty: 1
+    difficulty: 2
     level: apply
     time_s: 120
     stem: |
-      In a cascade, every request first goes to a small model costing $0.002 per request. 30% of requests are judged
-      unreliable and also go to the large model at $0.020 per request. What is the expected cost per 1,000 requests,
-      in USD?
-    answer: {value: 8.0, tolerance: 0.05, tolerance_type: abs, unit: "USD"}
+      In a cascade, every request first goes to a small model costing $0.004 per request. Requests judged
+      unreliable are then also sent to the large model at $0.030 per request, and the small model's call is still
+      paid for them. Ignoring quality, what is the highest escalation rate, in percent, at which the cascade costs
+      no more per request than sending every request straight to the large model?
+    answer: {value: 86.7, tolerance: 0.5, tolerance_type: abs, unit: "%"}
     work: |
-      Every request pays the small model: $0.002. Thirty percent additionally pay $0.020: 0.3 x 0.020 = $0.006.
-      Expected cost per request $0.008; per 1,000 requests $8.00.
+      Cascade cost per request = 0.004 + f x 0.030. Large-only cost = 0.030. Break-even: 0.004 + 0.030 f = 0.030, so
+      f = 0.026 / 0.030 = 0.8667, i.e. 86.7%.
     explanation: |
-      Escalated requests pay twice. Treating the large model as a replacement (0.7 x 0.002 + 0.3 x 0.020 = $7.40 per
-      1,000) understates cost. Compare with sending everything to the large model: $20 per 1,000.
+      Escalated requests pay twice, so the cascade only wins while escalation stays below 1 - small/large. Common
+      wrong answers are 100% (forgetting that the small model is paid for every request) and 13.3%
+      (0.004 / 0.030, the small model's price as a share of the large one's). In practice quality, not break-even,
+      sets the usable escalation rate, so monitor it in production.
 
   - id: D11-019
     version: 1
@@ -588,15 +603,15 @@ items:
     stem: |
       A request needs three layers in series: an API gateway (99.95% available), the model layer, and a vector
       database (99.95%). The model layer uses a primary provider at 99.9% with an independent fallback provider at
-      99.5%; assume failover is instant and perfect, so the layer fails only if both are down. What is the composite
-      availability, in percent, rounded to two decimals?
+      99.5%. Assume that all components fail independently and that failover is instant and perfect, so the model layer
+      fails only if both providers are down. What is the composite availability, in percent, rounded to two decimals?
     answer: {value: 99.9, tolerance: 0.01, tolerance_type: abs, unit: "%"}
     work: |
       Model layer = 1 - (0.001 x 0.005) = 0.999995. Composite = 0.9995 x 0.999995 x 0.9995 = 0.998995, i.e. 99.90%.
     explanation: |
       Serial dependencies multiply; redundant ones multiply failure probabilities. Without the fallback the product
       is 0.9995 x 0.999 x 0.9995 = 99.80%. Taking the average of the three availabilities (about 99.8%) or the
-      minimum are common wrong shortcuts. Real failover is imperfect, so treat this as an upper bound.
+      minimum are common wrong shortcuts. Real failover is imperfect and failures are rarely fully independent, which is why this figure is an upper bound.
 
   - id: D11-022
     version: 1
@@ -814,8 +829,9 @@ items:
     time_s: 600
     stem: |
       Table `llm_calls(call_id, model, latency_ms, status)`. For each `model`, compute the nearest-rank p95
-      latency over calls with `status = 'ok'`: sort latencies ascending, let n be the count, and take the value
-      at rank `(95 * n + 99) / 100` (integer division). Return `model`, `n` and `p95_ms`, ordered by `model`.
+      latency using only calls with `status = 'ok'`. Per model, sort those latencies ascending (rank 1 is the
+      smallest), let n be the number of those calls, and take the value at rank `(95 * n + 99) / 100` (integer
+      division, no interpolation). Return `model`, `n` and `p95_ms`, ordered by `model`.
     sql:
       setup: |
         CREATE TABLE llm_calls(call_id INT, model TEXT, latency_ms INT, status TEXT);

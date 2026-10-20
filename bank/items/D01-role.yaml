@@ -15,17 +15,17 @@ items:
       the system of record. The sponsor asks whether the engagement has succeeded. Which answer best reflects what
       an FDE is accountable for?
     options:
-      - text: "Not yet: the FDE owes better claims handling in the adjusters' real workflow, so the work turns to why they are not using it"
+      - text: "Not yet: the FDE owes better claims handling in the adjusters' real workflow, so the next work is finding out why they are not using it"
         correct: true
         why: Accountability sits with the result in the customer's environment; an 8% usage rate means that result has not happened yet.
-      - text: "Yes: the acceptance criteria were met on time, so low usage is a change-management matter for the client's operations leaders"
+      - text: "Yes as contracted: every accepted deliverable meets the statement of work, and adoption is a change programme for the client's operations leaders, with the FDE supporting on request"
         why: Treats the contract as the finish line. The sponsor's question is about the outcome, and the FDE role exists to own the gap between delivered and used.
         misconception: Delivering to the specification is the same as succeeding
-      - text: "Not yet: triage accuracy is the real success measure, so the next step is another round of model improvements and re-testing before any adoption work starts"
+      - text: "Not yet: the FDE is measured on triage accuracy, so the priority is another round of evaluation and tuning to lift it before looking at adoption"
         why: Accuracy is an input. Adjusters may avoid the tool for workflow, trust or integration reasons that a better model does not fix.
         misconception: A model quality metric is the business outcome
-      - text: "Partly: the FDE owns production quality of the system, while business results like handling time depend on factors outside engineering"
-        why: Production quality is necessary but the role is defined by owning the outcome end to end, including factors that engineering can influence such as workflow fit.
+      - text: "Partly: the FDE is accountable for a production-grade system that runs reliably, while business results like handling time depend on factors outside engineering's control"
+        why: Production quality is necessary, but the role is defined by owning the outcome end to end, including factors engineering can influence such as workflow fit.
         misconception: Engineering ownership stops at a healthy production system
     explanation: |
       The distinguishing feature of the FDE role, in Palantir's model and elsewhere, is accountability for the outcome in
@@ -45,22 +45,23 @@ items:
       deployment strategist. The engineer now spends most days in operations meetings negotiating what to automate,
       and integration work is slipping. Which reallocation fits the two roles best?
     options:
-      - text: The strategist owns problem definition and success measures with operations; the engineer builds and deploys, joining prioritisation calls
+      - text: The strategist leads problem definition and success measures with operations; the engineer builds and joins only the calls where feasibility shapes priorities
         correct: true
-        why: Echo is the problem-owning, operations-facing role and Delta is the builder. This restores the engineer's build time without cutting them out of trade-off decisions.
-      - text: The engineer keeps owning problem definition, because the person who can build is best placed to judge what is feasible and what is not
-        why: Feasibility judgement matters, but it is exactly what the prioritisation calls cover. Owning every operations conversation is what is starving the build.
-        misconception: Only the builder can define the problem well
-      - text: The strategist takes over the slipping integration coding, since they know the operational data and the people who own it best
-        why: Swaps role strengths. Domain knowledge of the data does not make someone the right owner of production integration code.
-        misconception: Embedded roles are interchangeable when capacity is short
-      - text: Problem definition moves to the vendor's platform engineers, so one group sets priorities across all customers
-        why: Platform engineers optimise one capability for many customers and sit far from this customer's operations, which is the opposite of what the definition work needs.
+        why: Echo is the problem-owning, operations-facing role and Delta is the builder. This frees build time while keeping the engineer in the trade-off decisions that depend on feasibility.
+      - text: The strategist writes requirements from the operations meetings, and the engineer works only from that document with no direct operations contact
+        why: Protects build time but turns the engineer into a ticket taker. Feasibility and design trade-offs get decided without the person who knows what is cheap or hard.
+        misconception: Separating definition from building completely makes both more efficient
+      - text: The engineer keeps owning problem definition, since the builder is best placed to judge feasibility, and the vendor adds a second engineer for integration
+        why: Adds capacity but leaves the cause untouched. The engineer remains the bottleneck for every operations conversation, and the strategist role goes unused.
+        misconception: Slipping delivery is a capacity problem, not a role-allocation problem
+      - text: Problem definition moves to the vendor's platform product managers, so priorities stay consistent across customers
+        why: Platform teams optimise one capability for many customers and sit far from this customer's operations, which is the opposite of what the definition work needs.
         misconception: Dev and Delta engineers differ only in seniority, not in orientation
     explanation: |
       Palantir distinguishes Devs (one capability, many customers) from Deltas (forward deployed engineers: one customer,
       many capabilities), and pairs Deltas with Echo-style strategists who own the operational problem. Splitting
-      problem ownership from building protects both. Pooling definition at HQ would break proximity to the customer.
+      problem ownership from building protects both, provided the builder stays in the decisions that depend on feasibility.
+      Pooling definition at HQ would break proximity to the customer.
     refs: [https://blog.palantir.com/dev-versus-delta-demystifying-engineering-roles-at-palantir-ad44c2a6e87]
 
   - id: D1-003
@@ -78,15 +79,15 @@ items:
       - text: Value is gated by the last mile of messy data, legacy integrations, permissions and workflow change inside each account
         correct: true
         why: Model capability is not the bottleneck in most enterprises; the deployment gap is, and that gap is the FDE's territory.
-      - text: Raw model capability is still too weak for enterprise tasks unless it is fine-tuned for each customer, which takes engineers working on site
+      - text: Enterprise buyers want a named engineer accountable to them, so the embedded role mostly exists to satisfy procurement and vendor-risk requirements
+        why: Accountability matters to buyers, but it is a consequence of the work, not the reason for it. The reason is that the integration and workflow work is hard and nobody else is placed to do it.
+        misconception: The role exists to reassure buyers
+      - text: Raw model capability is not yet reliable on specialised enterprise tasks unless it is fine-tuned on each customer's data, which takes engineers inside the account
         why: Fine-tuning is occasionally useful, but most enterprise gaps are data access, integration and process, not model weakness.
         misconception: The deployment gap is mainly a model-quality gap
-      - text: Customers generally lack the cloud skills to call an API, so embedded engineers provide on-site help with basic setup
-        why: Calling an API is the easy part. The hard part is connecting it to systems, permissions and workflows.
-        misconception: The gap is about basic technical skill
-      - text: Embedded engineers mainly shorten sales cycles by customising demos, so that large deals close sooner
-        why: Demo work is presales. FDEs are accountable for production results after the sale.
-        misconception: FDE is a presales function
+      - text: Embedded engineers are the vendor's best source of product feedback, so customer deployments are mainly a way to fund research into what to build
+        why: Field-to-product feedback is a real benefit, but the role exists because customers need working outcomes. Treating deployments as paid research gets the priority backwards.
+        misconception: The point of FDE work is learning for the vendor, not results for the customer
     explanation: |
       AI labs and vendors revived the forward deployed model because the distance between a capable model and realised
       enterprise value is mostly a deployment problem: data access, integration, security review and process change.
@@ -110,22 +111,22 @@ items:
       - text: Watch end users in their real workflow after launch and change the system based on what blocks them
         correct: true
         why: Outcome ownership continues past go-live and is informed by observed behaviour, not only by tickets.
-      - text: Stay on post-launch usage and error review until the target is met or deliberately revised with the sponsor
+      - text: Keep reviewing usage and errors after launch until the target is met or deliberately revised with the sponsor
         correct: true
         why: Closes the loop between what shipped and what changed in the business.
-      - text: Treat the signed requirements as the definition of done and park new requests for a later phase
+      - text: Treat acceptance of the agreed specification as the point where responsibility passes to the customer's operations team, with later requests handled as new work
         why: Keeps scope tidy but measures completion by compliance with a document, which can be met while the outcome is missed.
         misconception: Scope discipline equals accountability
-      - text: Lead status reports with benchmark gains from the model because they are the most objective result available
-        why: Objective but a proxy; leaders care whether the work changed. Leading with it hides an outcome gap.
-        misconception: The most measurable number is the most meaningful one
-      - text: Log data-quality problems as customer dependencies and leave their resolution to the customer's IT team
+      - text: Report only on metrics the FDE's team fully controls, such as latency, uptime and accuracy, so that accountability stays fair
+        why: Fair-sounding but it excludes the thing the sponsor bought. Outcome owners report the business metric and explain what moves it, including what they do not control.
+        misconception: You can only be held accountable for what you fully control
+      - text: Log data-quality problems as customer dependencies and leave their resolution to the customer's IT team, to keep engineering on its own deliverables
         why: Recording the dependency is right, but outcome owners help unblock it with evidence and options rather than waiting on it.
         misconception: Anything outside our codebase is outside our responsibility
     explanation: |
       Outcome accountability shows up as agreed baselines, observation of real usage, and ownership that continues after
-      launch. Spec compliance, proxy metrics and handing blockers back are each reasonable locally but let the outcome slip
-      between teams.
+      launch. Spec compliance, reporting only controllable metrics and handing blockers back are each reasonable locally
+      but let the outcome slip between teams.
 
   - id: D1-005
     version: 1
@@ -137,21 +138,22 @@ items:
     time_s: 100
     stem: |
       An insurer's refund-approval assistant works: model quality, data and integration are all sound. Cycle time
-      barely improves, because an internal policy requires three sequential manual sign-offs. The FDE has timestamps
-      showing where each case waits. What should the FDE do?
+      barely improves, because an internal policy requires three sequential manual sign-offs. The FDE's timestamps
+      show that cases wait in the hand-offs between the three steps, not in the reviews themselves. What should the
+      FDE do?
     options:
       - text: Take the wait-time breakdown to the sponsor and propose a redesigned approval flow for them to decide on
         correct: true
         why: The outcome depends on a process the FDE cannot change alone. Evidence plus a concrete option is how an outcome owner moves it.
-      - text: Pre-fill and pre-approve the first two sign-offs in the assistant so the policy is technically still met
-        why: Engineering around a control weakens it without the policy owner's consent, and creates an audit problem.
+      - text: Have the assistant submit all three sign-off requests in parallel, which removes the hand-off waits without touching the written policy
+        why: The policy requires the sign-offs in sequence. Re-ordering them in software changes the control without its owner's consent, and creates an audit problem.
         misconception: A technical workaround can substitute for a process decision
-      - text: Close the work as delivered, because approval policy is a business matter outside what engineering can change
-        why: Correct that the FDE cannot change the policy, wrong to stop. The stated goal, cycle time, has not moved.
+      - text: Ask the three sign-off owners to commit to faster turnaround within the existing policy
+        why: Reasonable, but the timestamps show the wait sits in the hand-offs, so faster reviews will not move cycle time much.
+        misconception: Slow approvers are the cause of slow approvals
+      - text: Record cycle time as blocked by an external policy in the final report, because approval rules are a business matter outside what engineering can change
+        why: Correct that the FDE cannot change the policy, wrong to stop. The stated goal, cycle time, has not moved and the sponsor has not been shown why.
         misconception: Process problems are out of scope for an engineer
-      - text: Wait for the customer's process owners to raise the policy themselves, to avoid overstepping
-        why: Owners are unlikely to raise what they cannot see. The FDE holds the data that makes the case.
-        misconception: Staying quiet respects boundaries
     explanation: |
       Outcome accountability includes influence over non-code blockers. The FDE does not rewrite policy, but is expected
       to surface the cause with evidence and a concrete proposal for the person who owns the decision.
@@ -161,6 +163,7 @@ items:
     version: 1
     type: single
     subtopic: role.adjacent
+    tags: [delivery.scoping]
     difficulty: 1
     level: apply
     time_s: 75
@@ -169,16 +172,16 @@ items:
       months, and whose business impact the sponsor will measure. A presales demo has already impressed them. Which
       role should lead delivery, and why?
     options:
-      - text: A forward deployed engineer, because the work is production code in the client's environment, owned to a measured result
+      - text: A forward deployed engineer, because the work is production code in the retailer's environment, owned to a result the sponsor will measure
         correct: true
         why: Production code, customer environment and outcome ownership are the discriminators, and all three are present.
-      - text: The solutions engineer, who knows the product best and already built the demo that can be extended into the pilot
+      - text: The solutions engineer, who built the demo and can extend it into the pilot while staying the technical contact for the six months
         why: Solutions engineers typically support the sale with demos and proofs of concept, then hand off; they are not usually accountable for a supported production run.
         misconception: The person who built the demo should own delivery
-      - text: A solutions architect, because the main challenge is designing how the system fits the retailer's landscape
-        why: Design matters but architects usually advise and review; they do not usually write and operate the code for six months.
+      - text: A solutions architect, who designs how the forecasting service fits the retailer's systems and oversees delivery by the retailer's developers
+        why: Architects usually advise and review; they do not usually write and operate the code, or answer for the measured result.
         misconception: Fitting into the landscape is a design task, not a delivery task
-      - text: A professional-services consultant, who can be scoped and billed against defined pilot deliverables
+      - text: A professional-services team, scoped and billed against defined pilot deliverables with a support period at the end
         why: Deliverables-based engagements can meet scope without the sponsor's measured result being achieved.
         misconception: Services and FDE roles differ only by title
     explanation: |
@@ -199,17 +202,17 @@ items:
       scanned contracts "can't be trusted", and the cause is poor text extraction in the deployment's ingestion step.
       How should the work divide between the customer success manager and the FDE?
     options:
-      - text: The manager brings usage evidence and manages the relationship; the FDE fixes ingestion in each deployment
+      - text: The manager brings the usage evidence and keeps the three customers informed; the FDE fixes extraction in each deployment
         correct: true
         why: Each role does what it is built for. The FDE changes code and configuration in the deployment; the manager owns the account relationship.
-      - text: The manager schedules more user training, since trust problems usually come from users not knowing how to phrase their questions well
-        why: Training can help but the stated cause is extraction quality; training cannot fix unreadable inputs.
-        misconception: Low trust is mainly a user-education problem
-      - text: The manager files a product ticket for the platform team and tells customers the fix is on the roadmap
-        why: A deployment-level ingestion problem can be fixed now by someone with access; routing it through a roadmap delays value for all three accounts.
+      - text: The manager raises a defect with the platform team, because ingestion quality should be fixed once for every customer, and the FDE waits for the fix
+        why: Fixing once for everyone is the right long-term aim, but a deployment-level ingestion problem can be fixed now by someone with access. Waiting on a roadmap delays value at all three accounts.
         misconception: All defects belong in the product backlog
-      - text: The FDE takes over the accounts' health reviews, so one person sees both the data and the customer's reaction
-        why: Concentrates two jobs in one role and removes the manager's commercial and relationship function.
+      - text: The manager runs sessions on phrasing questions and checking sources to rebuild trust, and extraction is revisited if complaints continue
+        why: Training can help with secondary habits, but the stated cause is extraction quality, and no amount of coaching fixes unreadable inputs.
+        misconception: Low trust is mainly a user-education problem
+      - text: The FDE joins the customer-health calls and leads them, so the customers hear the diagnosis from the engineer who will fix it
+        why: Puts relationship management on the engineer and delays the fix, while the manager's commercial and relationship function goes unused.
         misconception: Combining roles removes handoff friction
     explanation: |
       Customer success owns relationship, renewal and adoption health, usually without changing code. The FDE changes the
@@ -232,15 +235,15 @@ items:
       - text: The FDE is judged on a business outcome in production, where the consultant is typically judged on scope delivered
         correct: true
         why: The difference in success measure drives the difference in behaviour after go-live.
-      - text: The FDE works on site with the client, while the integrator's consultants work remotely from their own offices
-        why: Location varies on both sides. It is not what distinguishes the roles.
-        misconception: Physical presence defines the role
       - text: The FDE writes production code, while consultants mainly produce documents, designs and recommendations
         why: Integrator consultants and engineers write plenty of production code; the claim is out of date.
         misconception: Consultants do not build
-      - text: The FDE reports into the client's CIO organisation, while the consultant reports into the integrator's partner
-        why: FDEs normally report into the vendor. Reporting line is not a discriminator here.
-        misconception: Embedded means employed by the client
+      - text: The FDE's time is bundled into the licence fee, so it costs less than the integrator's day rate on the same programme
+        why: Pricing structures vary on both sides. A bundled fee is not cheaper by nature, and it is not what distinguishes the roles.
+        misconception: Embedded vendor staff are a free add-on to the product
+      - text: The FDE works inside the client's environment under the client's change controls, while the consultant delivers from the integrator's own environment
+        why: Integrator teams also work in client environments under client controls. Where the work happens does not separate the roles.
+        misconception: Physical or environmental presence defines the role
     explanation: |
       Neither location nor "who codes" separates the roles. What does: where the code lives and whether learning
       returns to a product, and whether success is an outcome or a delivered scope.
@@ -256,20 +259,21 @@ items:
     stem: |
       Three months into a good engagement, a customer's VP asks the vendor's FDE to take tickets from the VP's own
       engineering backlog for six months: internal dashboards, a data migration, some scripting. Most items do not use
-      the vendor's product. The VP offers to pay the FDE's full day rate. How should the vendor respond?
+      the vendor's product. The VP offers to pay the FDE's full day rate. The vendor has few FDEs and other accounts
+      are waiting for one. How should the vendor respond?
     options:
-      - text: Decline the open-ended backlog and offer a scoped outcome that includes the items connecting to the product
+      - text: Offer a scoped outcome covering the items that connect to the product, and decline the rest of the open-ended backlog
         correct: true
         why: Keeps the FDE on outcome work tied to the product while still helping where it makes sense.
-      - text: Accept at the full day rate, since paid work deepens the relationship and the revenue more than covers the FDE's cost
-        why: Profitable on paper but turns the FDE into contract staff, with no productization and no outcome link.
+      - text: Accept the whole backlog at the full day rate, since the revenue exceeds the FDE's cost and the work deepens a relationship that is going well
+        why: Profitable on paper but turns the FDE into contract staff, with no productization, no outcome link and no capacity for the waiting accounts.
         misconception: Any billable work at full rate is good work
-      - text: Accept the work but only after the original outcome is delivered, tracking both in one plan
+      - text: Accept a capped share, two days a week for six months at the full rate, and protect the remaining time for the outcome work
+        why: Limits the damage, but the capped days are still staff augmentation on work that does not build on the product, and the scarce FDE is not available to other accounts.
+        misconception: A cap makes staff augmentation acceptable
+      - text: Accept the backlog only after the original outcome is delivered, and track both in one plan
         why: Sequencing helps, but the open-ended arrangement still shifts the role to staff augmentation and the plan has no end.
         misconception: Capacity problems can be solved by sequencing alone
-      - text: Escalate to the vendor's contracts team to draft a separate time-and-materials agreement for the backlog
-        why: Resolves the paperwork but not whether the work is a good use of an FDE.
-        misconception: The issue is commercial structure, not role fit
     explanation: |
       Staff augmentation drifts away from what makes an FDE valuable: a defined outcome, work built on the product, and
       learning that feeds back. A good response protects those while staying helpful: reframe into scoped outcomes.
@@ -286,17 +290,17 @@ items:
       Three customers each need a different field mapping for incoming PDFs. The FDE's shared codebase already contains
       `if customer_id == "acme"` rules for the first two. The third customer has just asked. What is the best change?
     options:
-      - text: Move the mapping rules into a per-customer configuration schema that the core code reads, and migrate the first two customers
+      - text: Move the mapping rules into per-customer configuration that the core code reads, and migrate the first two customers
         correct: true
-        why: Three similar cases make the pattern clear. Configuration keeps one codebase and lets the next customer be onboarded without code.
-      - text: Branch the repository for each customer so that every customer team can change its own rules without risking anyone else's
-        why: Isolation is real but forks diverge and multiply maintenance, which defeats the purpose of a shared platform.
-        misconception: Per-customer forks are the safe way to customise
+        why: Three similar cases make the pattern clear. Configuration keeps one code path and lets the next customer be onboarded without a code change.
+      - text: Give each customer its own module in the same repository, loaded by customer id, so rules are separated and reviewable
+        why: Tidier than inline conditionals, but every new customer is still a code change, review and deploy. The variation belongs in data, not in code.
+        misconception: Organising customer-specific code is the same as removing it
       - text: Add a third branch on the customer identifier and generalise later, once the pattern has settled
         why: The pattern has already repeated; adding another special case increases the cost of the later refactor.
         misconception: Wait for more evidence before generalising
-      - text: Build a self-service rules UI for all customers, so no engineer is involved in future mappings
-        why: Over-built for three cases; a configuration schema captures the variation without the cost of a product surface.
+      - text: Have an LLM infer each customer's field mapping from sample documents at ingestion time, so no per-customer rules are needed
+        why: Over-built for three known mappings, and it replaces explicit, testable rules with a non-deterministic step in a data path that must be auditable.
         misconception: Generalise to the maximum once you generalise
     explanation: |
       Prefer configuration over customisation, and do not fork per customer. After a pattern has repeated about three
@@ -311,19 +315,20 @@ items:
     time_s: 90
     stem: |
       Two customers asked for an audit-trail export that the FDE built twice as one-offs. A third customer now asks
-      for it. The platform team is busy and the FDE could fold a generalised version straight into the core
-      repository this week. What is the best course of action?
+      for it. The export touches how every customer's event data is stored, so product owns the design and reviews
+      core changes. The platform team is busy, and the FDE could write a generalised version for core this week. What
+      is the best course of action?
     options:
       - text: Deliver the third customer with the existing build, and give product the evidence for making it a core feature
         correct: true
         why: Serves the customer now, and leaves the roadmap call with the owner of the roadmap, backed by three data points.
-      - text: Merge a generalised version into the core repository this week, since the FDE who built it twice knows the requirement best
-        why: Bypasses product ownership and review, and puts unreviewed code on every customer's upgrade path.
+      - text: Submit a generalised version to core this week, because the FDE who built it twice knows the requirement best
+        why: Puts a storage-level design decision on a busy platform team before product has decided whether and how the feature should exist, and every customer inherits the result.
         misconception: The person closest to the need should decide what enters the core
       - text: Tell the third customer to wait until the platform team has built it as a core feature
         why: Customer value is delayed for something the FDE can deliver now with existing work.
         misconception: Platform purity beats customer outcomes
-      - text: Wait for more requests before raising it, since three is still a small sample
+      - text: Deliver the third as another one-off and raise it with product only after a fourth or fifth request, since three is still a small sample
         why: Three independent requests is already the usual trigger for a conversation; waiting multiplies one-off maintenance.
         misconception: Generalisation needs a much larger sample
     explanation: |
@@ -340,18 +345,19 @@ items:
     time_s: 100
     stem: |
       An AI vendor's FDE team reports hours to reach production per new customer over four quarters: 610, 590, 600,
-      605. Revenue has grown only as fast as FDE headcount. How should a leader read this?
+      605. Deployments were of comparable scope each quarter, and revenue has grown only as fast as FDE headcount.
+      How should a leader read this?
     options:
-      - text: Field work is rebuilt per customer instead of converging into the product, so invest in reusable assets or accept services economics
+      - text: Nothing is compounding. Field work is rebuilt per customer instead of converging into the product, so invest in reusable assets or accept services economics
         correct: true
         why: Customisation effort per deployment should fall as assets accumulate. A flat line with linear headcount is the signature of a services business.
-      - text: Stable effort shows a predictable, mature delivery process, which is the goal of a good operating model
+      - text: A flat effort level shows a predictable, mature delivery process, which is what a good operating model should produce
         why: Predictability is good, but a flat effort curve means nothing is compounding.
         misconception: Stability implies health
-      - text: Customer environments differ too much for effort to fall meaningfully, so a flat trend is expected in enterprise sales and not a concern
-        why: Environments differ, but the connectors, test sets and failure patterns repeat; some effort should still fall.
-        misconception: Enterprise complexity makes reuse impossible
-      - text: Raise per-deployment prices to protect margin, since the effort cannot be reduced
+      - text: Add more FDEs and let them specialise by industry, since specialists should bring hours per deployment down without further product investment
+        why: Specialisation helps a little, but it adds headcount to the same model. Without reusable assets and product features, effort per deployment stays flat.
+        misconception: More specialised people substitute for reusable assets
+      - text: Raise per-deployment prices to protect margin, because the effort per customer cannot be reduced
         why: Pricing may help margin short-term but assumes the conclusion. It leaves the structural issue untouched.
         misconception: Margin is a pricing problem only
     explanation: |
@@ -385,13 +391,13 @@ items:
       - text: The scripts used to reshape one customer's export during a one-time migration
         why: One-off by nature; few later deployments will need them.
         misconception: Anything that worked once is a reusable asset
-      - text: A fork of the codebase with the most integrations, to serve as the baseline for new deployments
-        why: A divergent fork becomes a maintenance burden and a competing core.
-        misconception: Reuse means keeping a rich template fork
+      - text: Each customer's custom scheduling rules, gathered into one shared module so the team can find and reuse them
+        why: A catalogue of customisations is not reuse. The rules differ by customer, so each deployment still needs its own code; the reusable part is the mechanism that lets them be configured.
+        misconception: Collecting customisations in one place makes them reusable
     explanation: |
       Productizable field assets are those that recur and are separable from one customer: connectors with configuration,
-      evaluation sets and harnesses, and failure-mode knowledge. One-off scripts, copied customer data and forks are
-      reuse in appearance only.
+      evaluation sets and harnesses, and failure-mode knowledge. One-off scripts, copied customer data and a catalogue of
+      per-customer rules are reuse in appearance only.
 
   - id: D1-014
     version: 1
@@ -408,15 +414,15 @@ items:
       - text: Show how many deployments hit the gap, what the workaround costs in engineer-days, and a proposed fix
         correct: true
         why: Frequency and cost turn an anecdote into a prioritisation input, and a proposed shape lowers the effort to say yes.
+      - text: Build the fix as a working extension in one deployment and demo it to the product team
+        why: A working demo shows feasibility, but the objection is that the need is anecdotal. One demo does not show how often or how expensively the gap occurs.
+        misconception: A working prototype settles the argument
+      - text: Collect quotes from the users at the affected customers describing how the gap hurts them
+        why: Vivid, but individual stories are exactly what the label "anecdotal" dismisses. Product needs frequency and cost to rank it against other work.
+        misconception: Qualitative stories persuade better than counts
       - text: Ask the customer's executive sponsor to lobby the vendor's product leadership directly about the missing capability
         why: Can work once but spends goodwill and teaches the product team to resent field escalations.
         misconception: Escalation through the customer is the fastest route
-      - text: Write a detailed specification with mock-ups so that the product team only has to build it
-        why: A solution without evidence addresses effort but not whether the problem is worth solving.
-        misconception: A more complete solution makes a stronger case
-      - text: Ship the workaround as a customer-specific module and stop raising it
-        why: Removes the signal that tells the product team the gap exists, and leaves permanent per-customer code.
-        misconception: Solving it locally is enough
     explanation: |
       Field-to-product feedback works when it is evidence-based and prioritisation-ready: how often, how costly, and
       what a good fix looks like. The product team decides; the FDE makes the decision easy.
@@ -432,19 +438,20 @@ items:
     stem: |
       A strategic customer, worth several times the average contract, needs a behaviour that the platform's
       configuration cannot express. A proper core change would take about three months, but their renewal decision
-      is in five weeks. The platform has a supported extension point. What should the FDE do?
+      is in five weeks. Core releases go to every customer and each core change needs a full review cycle. The
+      platform has a supported extension point. What should the FDE do?
     options:
-      - text: Build it as an isolated extension on the supported point, with product agreeing a date to replace or retire it
+      - text: Build it on the supported extension point, isolated from core, with product agreeing a date to fold it into core or retire it
         correct: true
         why: Meets the deadline without touching the core, and the agreed end date stops the extension from becoming permanent.
       - text: Fork the platform for this customer so that nothing blocks the renewal, and merge the changes back to the core when time allows
         why: Fast, but forks rarely merge back, and this one would carry core fixes forever.
         misconception: A fork is an acceptable temporary measure
-      - text: Decline any customer-specific code and offer the roadmap date for the core change
+      - text: Decline customer-specific code and offer the roadmap date for the core change, because exceptions for large customers erode the platform
         why: Principled but ignores a supported extension point and a material commercial risk.
         misconception: Product purity overrides commercial context
-      - text: Patch the core behind a feature flag for this customer, and ship it to all customers once stable
-        why: Unreviewed core changes under deadline affect every customer's upgrade path.
+      - text: Patch core behind a feature flag enabled for this customer only, and widen it to others once it has proven stable
+        why: The customer-specific path ships to every customer, cannot clear the review cycle in five weeks, and flags added under deadline tend to outlive it.
         misconception: A flag makes a core hack safe
     explanation: |
       Customisation is a spectrum: configuration, then supported extension, then core change. When time forces an
@@ -467,14 +474,14 @@ items:
       - text: A short paid pilot with capped scope, then a fixed or outcome-based price once data quality is known
         correct: true
         why: Prices the unknown only after it has been measured, and shares the discovery risk instead of burying it in the quote.
-      - text: A single fixed price for the full rollout, with a large contingency buffer built in
+      - text: One fixed price for the full rollout, with a contingency buffer sized for the unknowns
         why: Puts all overrun risk on the vendor for facts nobody has seen, and a buffer big enough to be safe prices the bid out.
         misconception: Contingency can price any amount of uncertainty
-      - text: Outcome-based pricing from day one, tied to the share of documents processed correctly at agreed accuracy thresholds
-        why: Makes the vendor carry risk from data quality and process changes that it cannot control yet.
-        misconception: Outcome-based pricing aligns incentives regardless of what is known
-      - text: Uncapped time and materials for the whole programme, so the vendor is paid for the work actually done
-        why: Moves all uncertainty to the bank, which will usually refuse an open-ended commitment.
+      - text: A per-document price for the whole rollout agreed now, with accuracy service levels the vendor must meet
+        why: Looks like an outcome link, but the per-document price and accuracy promise both depend on document quality and variety that nobody has seen yet.
+        misconception: Unit pricing removes the need to know the inputs
+      - text: Time and materials for the whole programme at a rate card, with a non-binding estimate
+        why: Moves all uncertainty to the bank, which asked for cost certainty and will usually refuse an open-ended commitment.
         misconception: Time and materials is the only honest model under uncertainty
     explanation: |
       Pricing models allocate risk: fixed price puts delivery overrun on the vendor, time and materials puts it on the
@@ -485,6 +492,7 @@ items:
     version: 1
     type: single
     subtopic: role.economics
+    tags: [obs.cost]
     difficulty: 1
     level: apply
     time_s: 75
@@ -492,18 +500,18 @@ items:
       A vendor pitches an AI document-processing service to a customer whose accounts-payable team handles invoices
       manually. Which basis gives the most defensible return-on-investment claim?
     options:
-      - text: Today's fully loaded cost per invoice, rework and exceptions included, against the new run cost with the exceptions still handled by people
+      - text: Today's fully loaded cost per invoice, including rework and exceptions, against the new run cost with exceptions still handled by people
         correct: true
         why: Compares like with like against the real baseline, and includes the human work that remains.
+      - text: Minutes saved per invoice in the pilot, times annual volume, times the loaded hourly rate, presented as the annual saving
+        why: Saved minutes are not saved money unless capacity is removed or redeployed, and the figure ignores the run cost and the exceptions that still need people.
+        misconception: Time saved equals money saved
       - text: Clerk salaries multiplied by the share of invoices the AI handles, to show how much headcount could be removed from the team over the first year
         why: Ignores exceptions, rework and management overhead, and frames the case as layoffs, which invites resistance.
         misconception: ROI equals headcount reduction
       - text: The system's benefits against its total spend, treating the current process as free since the staff are already employed
         why: The current process has a real cost. Treating it as zero removes the baseline from the claim.
         misconception: Sunk labour is not a cost to compare against
-      - text: Published industry accuracy benchmarks, so the claim does not depend on the customer's own cost data
-        why: Accuracy is not money, and benchmarks are not this customer's invoices.
-        misconception: A benchmark score substitutes for a business case
     explanation: |
       ROI is judged against the customer's real baseline: what the current process costs, including exceptions, rework
       and errors, versus the new total cost of operation including the work humans still do.
@@ -532,40 +540,46 @@ items:
       - text: Money already spent on the exploratory pilot, charged evenly across the three options
         why: Sunk costs are the same whichever option is picked and should not affect the comparison.
         misconception: Past spending belongs in the forward decision
-      - text: Per-token inference spend alone, since it is the cost that scales with volume
-        why: A single scaling line item omits staffing, integration and exit costs that dominate at moderate volume.
-        misconception: The variable cost is the total cost
+      - text: Year-one licence or build price only, because later years depend on usage that cannot be forecast
+        why: Uncertain is not zero. A comparison over the capability's life has to estimate later-year run and staffing costs, which is where the options differ most.
+        misconception: Costs that are hard to forecast can be left out
+      - text: The revenue uplift expected from faster document turnaround, with the same uplift counted for each option
+        why: Benefits belong in the ROI case. A cost comparison counts costs, and a benefit identical across options cannot change the ranking.
+        misconception: TCO and ROI are the same calculation
     explanation: |
-      TCO covers the whole life of the capability: run costs, people, integration, change and exit. Sunk costs and a single
-      variable line item both distort a build, buy or partner decision.
+      TCO covers the whole life of the capability: run costs, people, integration, change and exit. Sunk costs, a
+      first-year-only view and benefits counted as if they were costs all distort a build, buy or partner decision.
 
   - id: D1-019
     version: 1
     type: single
     subtopic: role.economics
-    tags: [role.productization]
-    difficulty: 2
+    tags: [delivery.scoping, role.productization]
+    difficulty: 3
     level: evaluate
-    time_s: 90
+    time_s: 100
     stem: |
-      A board member tells an AI vendor's CEO: "Your gross margin is 55% while pure-software peers run near 80%. Are you
-      really a software company?" The company staffs many forward deployed engineers. Which answer is strongest?
+      A vendor prices its claims-intake assistant at a fixed fee for each claim the assistant processes end to end
+      with no human touch. The customer's operations team controls how claims are routed to the assistant and can
+      reclassify what counts as touched. Both sides worry about disputes over the monthly invoice. Which contract term
+      does most to make the outcome-based price workable?
     options:
-      - text: The gap is a deliberate investment in hard deployments; we track effort per deployment, which should fall so margin rises
+      - text: A written definition of a countable claim, measured from logs both sides can inspect, with routing rules fixed in the contract
         correct: true
-        why: Frames the trade-off as a choice and states the metric that proves it is converging.
-      - text: The gap is temporary; as we scale, the headcount needed per customer will drop on its own without any further investment
-        why: Reuse does not appear by itself; effort falls only if reusable assets and product features are built.
-        misconception: Scale alone reduces services effort
-      - text: Moving field work to a systems-integrator partner would restore software-style margins immediately
-        why: Improves reported margin but cuts the feedback loop from the field into the product.
-        misconception: Outsourcing field work is free of strategic cost
-      - text: Software peers flatter their margins by excluding support and implementation from cost of revenue
-        why: Sometimes true but deflects the question and does not show a path for this company.
-        misconception: A rival's accounting is an answer to our margin
+        why: Outcome pricing only works when the outcome is defined and measured in a way neither side can move alone. This removes the main source of disputes.
+      - text: A minimum monthly fee that covers the vendor's running costs, with the per-claim fee charged on top of it
+        why: Protects the vendor's cost base, which is sensible, but does nothing about who decides what counts. The disputes arise on the variable part.
+        misconception: Fixing the downside solves the measurement problem
+      - text: A monthly payment cap on the per-claim fees, so that the customer's budget exposure stays predictable
+        why: Protects the customer's budget and may be reasonable, but leaves the definition of a countable claim open to argument below the cap.
+        misconception: Budget certainty resolves disputes about the metric
+      - text: A quarterly true-up against the customer's finance records of the savings from fewer claims handled by hand
+        why: Savings attribution is itself contestable, since other changes move cost too. It replaces one disputed number with another that neither side controls.
+        misconception: Financial outcomes are a more objective basis than operational counts
     explanation: |
-      Forward-deployed models trade software margins for access to hard problems, data and product learning. The credible
-      position is that the trade is deliberate and the effort per deployment is measured and falling.
+      Outcome-based pricing moves performance risk to the vendor, so the vendor needs the outcome to be defined,
+      measurable and not controllable by the customer alone. A floor or a cap shifts risk but does not settle what
+      counts; a baseline-and-definition clause does.
 
   # ---------------------------------------------------------------- numeric
   - id: D1-020

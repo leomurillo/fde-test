@@ -65,6 +65,9 @@ def load_bank(bank_dir: Path, report: SyncReport) -> list[LoadedItem]:
     files = sorted(Path(bank_dir).glob("D*.yaml"))
     report.bank_dir = str(bank_dir)
     report.files = len(files)
+    if not files:  # bank.load_items([]) would fall back to $FDE_BANK_DIR
+        report.warnings.append(f"no D*.yaml files in {bank_dir}")
+        return []
     raw_report = bankmod.Report()
     try:
         raw_items = bankmod.load_items(files, raw_report)
