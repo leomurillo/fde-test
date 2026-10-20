@@ -345,3 +345,159 @@ items:
       Backpressure should hold the system under the scarcest downstream limit. Control concurrency with that limit
       in mind, protect latency-sensitive traffic with reserved capacity and priorities, and use the queue as a buffer
       while monitoring how long work waits.
+
+  - id: D9-012
+    version: 1
+    type: single
+    subtopic: int.async
+    tags: [agents.state]
+    difficulty: 2
+    level: analyze
+    time_s: 90
+    stem: |
+      A queue worker pulls code-review jobs and calls an LLM agent. Jobs take between 3 and 12 minutes, and the
+      queue's visibility timeout (lease) is 5 minutes. Operators see some jobs executed by two workers at once,
+      producing duplicate comments on pull requests. The broker is working as documented. What is the root cause
+      and fix?
+    options:
+      - text: The lease expires mid-job and the message becomes visible again; extend it during work and make the job idempotent
+        correct: true
+        why: Redelivery after lease expiry is expected behaviour, so renewing the lease while working and guarding side effects fixes both causes.
+      - text: The broker is delivering twice by mistake; switch to a FIFO queue to enforce single delivery
+        why: Ordering and deduplication windows in FIFO queues do not stop a lease from expiring during a slow job.
+        misconception: FIFO queues guarantee that a message is processed only once
+      - text: Too few workers are running; add more workers so jobs finish before the lease ends
+        why: Parallelism does not shorten a single job's run time, and each extra worker adds more chances for overlap.
+        misconception: Adding capacity shortens an individual job
+      - text: The model is too slow; add a hard 5-minute timeout to every job so it always finishes inside the lease
+        why: Jobs that legitimately need 12 minutes would be killed and retried repeatedly, wasting spend without finishing.
+        misconception: Fitting the job to the lease is simpler than managing the lease
+    explanation: |
+      A visibility timeout is a lease. If processing outlives it, the broker assumes the worker died and redelivers.
+      Set the lease above the worst-case duration or heartbeat to extend it, and keep handlers idempotent because
+      overlapping or repeated execution can still occur.
+
+  - id: D9-013
+    version: 1
+    type: single
+    subtopic: int.async
+    tags: [data.modeling]
+    difficulty: 3
+    level: evaluate
+    time_s: 110
+    stem: |
+      A case-management service saves a case to its database and then publishes `case.created` to a broker in the
+      same request handler. Occasionally the database commit succeeds, the process dies before publishing, and the
+      downstream agent never hears about the case. The team cannot rely on the broker supporting transactions
+      shared with the database. What is the most robust design?
+    options:
+      - text: Write the event to an outbox table in the same transaction, and have a relay publish it at least once
+        correct: true
+        why: The case and its event commit or fail together, and a crash after commit leaves the event waiting for the relay.
+      - text: Publish first and write to the database afterwards so that no event is ever missed
+        why: It reverses the failure, because a crash after publishing yields an event about a case that was never saved.
+        misconception: Reordering the two writes removes the inconsistency
+      - text: Catch publish errors and retry the publish in the request handler a few times
+        why: A process crash between commit and publish skips the retry entirely, and in-memory retries are lost with it.
+        misconception: In-process retries cover process failure
+      - text: Use two-phase commit between the database and the broker
+        why: It needs both systems to support the protocol and adds blocking failure modes, so most brokers and managed databases do not offer it.
+        misconception: Atomic commit across systems is routinely available
+    explanation: |
+      The dual-write problem arises whenever one request writes to two systems. The transactional outbox makes
+      the database the single source of truth: events are written atomically with the data and published
+      asynchronously, giving at-least-once delivery that consumers must handle idempotently.
+
+  - id: D9-014
+    version: 1
+    type: single
+    subtopic: int.resilience
+    tags: [int.apis]
+    difficulty: 2
+    level: apply
+    time_s: 85
+    stem: |
+      Two hundred workers call an LLM API. When they hit 429 responses, each retries after a fixed 2 seconds, and the
+      resulting synchronised waves trigger more 429s. The responses include a `Retry-After` header. What retry
+      policy should the client adopt?
+    options:
+      - text: Wait at least the `Retry-After` value, then add exponential backoff with random jitter up to a cap
+        correct: true
+        why: It respects the server's hint and spreads retries so workers stop arriving in lockstep.
+      - text: Double the delay on each attempt up to 60 seconds, with no randomness, so that waits grow predictably
+        why: All workers that failed together still retry together at each step, so the waves remain, just further apart.
+        misconception: Exponential growth alone prevents synchronised retries
+      - text: Retry immediately up to five times so that most requests succeed before the limit window resets
+        why: Immediate retries add load while the limit is exhausted, extending the period of rejections for everyone.
+        misconception: Fast retries recover capacity sooner
+      - text: Lengthen the fixed delay to 10 seconds so that the system has time to recover
+        why: A fixed delay still synchronises the workers and also adds latency for the many requests that would succeed sooner.
+        misconception: A longer constant delay is equivalent to backoff
+    explanation: |
+      Retries should honour the server's `Retry-After`, grow exponentially up to a cap, and include jitter so
+      clients desynchronise. Jitter matters most when many clients fail at the same moment. Pair it with a shared
+      limiter to avoid hitting the limit at all.
+    refs: [https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/]
+
+  - id: D9-015
+    version: 1
+    type: single
+    subtopic: int.resilience
+    tags: [llm.model-selection, deploy.compute]
+    difficulty: 2
+    level: apply
+    time_s: 90
+    stem: |
+      A support copilot calls one LLM provider with a 60-second timeout. During a provider incident, every request
+      hangs until timeout, the service's request threads are exhausted, and even the health-check and FAQ pages stop
+      responding. The business wants customers to still get some help during provider outages. What pattern fits?
+    options:
+      - text: A circuit breaker that fails fast after repeated errors, with a fallback and periodic trial requests
+        correct: true
+        why: Threads are freed immediately, and the fallback (backup model, cached answer, or handoff to a human) keeps serving users.
+      - text: Raise the timeout to 120 seconds so that slow responses have time to complete
+        why: Requests that would fail anyway hold their threads twice as long, deepening the exhaustion.
+        misconception: Longer waits make an unhealthy dependency usable
+      - text: Retry each failed call five times before returning an error to the customer
+        why: Retries multiply the load and the time each request ties up a thread during the outage.
+        misconception: More retries improve availability during an outage
+      - text: Add more instances of the service so more threads are available
+        why: Each new thread is consumed by the same hanging calls, so capacity is exhausted a little later at more cost.
+        misconception: Scaling out compensates for a failing dependency
+    explanation: |
+      A circuit breaker stops calling a dependency that is failing, which protects the caller's resources and gives
+      fast, predictable behaviour. Pair it with a fallback and a half-open state that tests recovery. Bulkheads
+      (separate pools) keep unrelated endpoints responsive.
+
+  - id: D9-016
+    version: 1
+    type: multi
+    subtopic: int.resilience
+    tags: [obs.troubleshooting]
+    difficulty: 3
+    level: analyze
+    time_s: 110
+    stem: |
+      A request passes through an API gateway, an orchestration service and an LLM SDK, and each layer retries
+      timeouts up to 3 times. When the model backend slows down, traffic to it jumps by more than 20 times and
+      recovery takes hours. Which changes reduce this retry amplification?
+    options:
+      - text: Retry at a single layer, closest to the failing call, and let the others fail fast
+        correct: true
+        why: Multiplied retry counts across layers become one bounded count.
+      - text: Propagate a deadline so that no layer retries once the caller's remaining time is spent
+        correct: true
+        why: Work that the caller has already abandoned is not retried, which removes a large share of the surplus load.
+      - text: Limit retries to a small fraction of recent calls with a shared budget
+        correct: true
+        why: Retry traffic stays proportional to normal traffic and cannot grow into a storm during a degradation.
+      - text: Raise each layer's backoff delay so that its retries are spread more thinly
+        why: Delays spread retries over time but the total number of attempts remains multiplicative.
+        misconception: Slower retries are fewer retries
+      - text: Remove the timeouts so that slow calls complete rather than being retried
+        why: Calls then hang indefinitely and exhaust connection pools, so the failure moves rather than disappearing.
+        misconception: Removing timeouts removes the cause of retries
+    explanation: |
+      Layered retries multiply: three layers with three retries each can issue up to 4 x 4 x 4 = 64 attempts per
+      user call. Keep retries at one layer, propagate deadlines, and cap retry volume with a budget.
+    refs: [https://sre.google/sre-book/handling-overload/]

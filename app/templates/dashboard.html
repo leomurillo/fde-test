@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import meter %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="muted">Practice for the Forward Deployed Engineer assessment. Every answer is tracked by item version.</p>
+  </div>
+  <div class="row">
+    {% if resume %}<a class="btn" href="/s/{{ resume.session_id }}">Resume test</a>{% endif %}
+    <a class="btn primary" href="/new">Start a new test</a>
+  </div>
+</div>
+
+{% if bank.loaded == 0 %}
+<div class="notice warn">The item bank is empty or could not be loaded{% if bank.errors %} ({{ bank.errors|length }} problems){% endif %}. See <a href="/settings#bank">Settings</a>.</div>
+{% endif %}
+
+{% set t = prog.totals %}
+<section class="stats" aria-label="Totals">
+  <div class="stat"><span class="stat-num">{{ t['items'] }}</span><span class="stat-label">Items in bank</span></div>
+  <div class="stat"><span class="stat-num">{{ t.seen }}</span><span class="stat-label">Seen</span></div>
+  <div class="stat"><span class="stat-num">{{ t.never_seen }}</span><span class="stat-label">Never seen</span></div>
+  <div class="stat ok"><span class="stat-num">{{ t.right }}</span><span class="stat-label">Last answer right</span></div>
+  <div class="stat bad"><span class="stat-num">{{ t.wrong }}</span><span class="stat-label">Last answer wrong</span></div>
+  <div class="stat"><span class="stat-num">{{ '%.0f%%'|format(t.accuracy_pct) if t.accuracy_pct is not none else '–' }}</span><span class="stat-label">Accuracy (all answers)</span></div>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <div class="card-head"><h2>By domain</h2><a class="small" href="/progress">Details</a></div>
+    <ul class="legend small" aria-hidden="true">
+      <li><span class="sw m-right"></span>Right</li><li><span class="sw m-wrong"></span>Wrong</li>
+      <li><span class="sw m-seen"></span>Seen</li><li><span class="sw m-none"></span>Never seen</li>
+    </ul>
+    <ul class="domain-bars">
+      {% for d in prog.domains %}
+      <li>
+        <div class="row between small"><span><strong>{{ d.id }}</strong> {{ d.name }}</span><span class="muted">{{ d.seen }}/{{ d['items'] }}</span></div>
+        {{ meter(d.right, d.wrong, d.seen - d.right - d.wrong, d['items']) }}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Recent tests</h2></div>
+    {% if recent %}
+    <ul class="session-list">
+      {% for s in recent %}
+      {% set sm = s.summary %}
+      <li>
+        <a href="/s/{{ s.session_id }}{% if s.status != 'in_progress' %}/review{% endif %}">
+          <span class="session-title">{{ s.scope.preset or 'Custom scope' }} · {{ sm.n }} items</span>
+          <span class="muted small">{{ s.created_at|dt }} · {{ 'Real-time feedback' if s.mode == 'realtime' else 'Feedback at end' }}</span>
+        </a>
+        <span class="session-meta">
+          {% if s.status == 'in_progress' %}<span class="badge s-seen">In progress · {{ sm.answered + sm.skipped }}/{{ sm.n }}</span>
+          {% elif s.status == 'abandoned' %}<span class="badge">Abandoned</span>
+          {% else %}<span class="score">{{ '%.0f'|format(sm.score_pct) }}%</span>{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No tests yet. <a href="/new">Start your first one.</a></p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
