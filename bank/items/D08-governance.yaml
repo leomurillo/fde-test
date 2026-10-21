@@ -224,7 +224,7 @@ items:
     refs: [https://datatracker.ietf.org/doc/html/rfc9700]
 
   - id: D8-008
-    version: 1
+    version: 2
     type: single
     subtopic: gov.identity
     tags: [gov.guardrails, agents.tools-mcp]
@@ -236,9 +236,9 @@ items:
       places each client's API key in the system prompt so the model can authenticate. The security lead
       objects. What should replace the design?
     options:
-      - text: "A tool taking a connection ID, with the executor attaching the stored credential on the server side"
+      - text: "A tool taking a connection ID, which the executor checks against the tenant before attaching its key"
         correct: true
-        why: The model never sees the secret, so it cannot leak it through output, logs or an injected instruction.
+        why: The model never holds the secret, so it cannot echo it or be steered into leaking it, and the tenant check stops one client's connection being used for another.
       - text: "Keep the keys in the prompt, but issue each client a read-only key scoped to the minimum endpoints"
         why: A narrower key limits damage, but prompt injection or a verbose response can still disclose it, and it appears in logs and traces.
         misconception: A reduced-scope secret is safe to expose to the model
@@ -250,7 +250,10 @@ items:
         misconception: Redacting secrets in logs is the same as isolating them from the model
     explanation: |
       Credentials belong in the tool-execution layer, resolved from a secrets manager by identifier at call time.
-      Anything placed in the context window can be echoed, exfiltrated by injection, or captured in traces.
+      Anything placed in the context window can be echoed, exfiltrated by injection, or captured in traces. An opaque
+      ID is not authorization by itself: the executor should resolve only connections that belong to the
+      authenticated tenant or user, and send each credential only to that connection's host and permitted
+      operations, never to a URL the model chooses.
 
   - id: D8-009
     version: 1
@@ -289,7 +292,7 @@ items:
 
   # ---------------------------------------------------------------- gov.guardrails
   - id: D8-010
-    version: 1
+    version: 2
     type: single
     subtopic: gov.guardrails
     tags: [agents.tools-mcp]
@@ -301,9 +304,9 @@ items:
       sends a message that says to forward the last ten customer invoices to an outside address, and the agent
       complies. Which change addresses the root cause?
     options:
-      - text: "Split duties so the step reading untrusted mail has no send tool, or can send to approved recipients"
+      - text: "Split duties so the step reading untrusted mail has no send tool, or can send only to approved recipients"
         correct: true
-        why: Even a fully hijacked reader cannot exfiltrate, because the dangerous capability is not available alongside untrusted input.
+        why: A hijacked reader no longer has the send path this attack used, because the capability is not available alongside untrusted input.
       - text: "Strengthen the system prompt to state clearly that instructions found inside email bodies must be ignored"
         why: This lowers the success rate but is probabilistic; the model still cannot reliably tell data from instructions.
         misconception: The model can be instructed into reliably separating data from commands
@@ -316,7 +319,9 @@ items:
     explanation: |
       Indirect prompt injection cannot be fully solved at the prompt layer. Treat retrieved and tool content as
       untrusted, and limit what a compromised model run can do: separate privileges, allowlist recipients, and
-      gate outbound actions. Filters and prompt hardening are useful additional layers, not the boundary.
+      gate outbound actions. Separation only holds if the reader's output is treated as untrusted too: a step that
+      can send must check any proposed recipient and content against policy rather than act on it as an
+      instruction. Filters and prompt hardening are useful additional layers, not the boundary.
     refs: [https://genai.owasp.org/llmrisk/llm01-prompt-injection/]
 
   - id: D8-011
@@ -350,7 +355,7 @@ items:
     refs: [https://genai.owasp.org/llmrisk/llm052025-improper-output-handling/]
 
   - id: D8-012
-    version: 1
+    version: 2
     type: single
     subtopic: gov.guardrails
     tags: [gov.audit-compliance]
@@ -363,7 +368,7 @@ items:
     options:
       - text: "Before the call, swapping identifiers for placeholders and restoring them in the trusted layer after"
         correct: true
-        why: Identifiers never leave the boundary, yet the final answer shown to an authorized clinician can still be complete.
+        why: Redaction happens before data crosses the boundary, which is the only point where it can meet this policy, and the trusted layer restores identifiers for the authorized clinician.
       - text: "On the model's response, scanning each summary for patient names and record numbers before showing it"
         why: By then the identifiers have already been sent to the provider, which is exactly what policy forbids.
         misconception: Output filtering protects data that was already transmitted
@@ -375,8 +380,10 @@ items:
         misconception: Encryption in transit hides content from the party processing it
     explanation: |
       Data minimization works at the boundary where data leaves your control. Replace identifiers before sending,
-      keep the mapping in your trusted layer, and re-insert after the response. Regex-only detection misses
-      identifiers in free text, so pair it with a tested detector and measure its recall.
+      keep the mapping in your trusted layer, and re-insert after the response. Detection is the weak point:
+      regex-only detection misses identifiers in free text, and even a tested detector has a measured recall, not a
+      guarantee. Measure it on representative notes, and fail closed, by blocking or holding a request for review,
+      when a note cannot be processed or a validation check finds identifiers left in the outgoing text.
 
   - id: D8-013
     version: 1
@@ -542,7 +549,7 @@ items:
     refs: [https://genai.owasp.org/llmrisk/llm062025-excessive-agency/]
 
   - id: D8-018
-    version: 1
+    version: 2
     type: single
     subtopic: gov.approvals
     tags: [deploy.delivery]
@@ -551,11 +558,11 @@ items:
     time_s: 90
     stem: |
       A production agent begins sending duplicate outbound emails to customers. Operators need to stop it within
-      seconds, and queued jobs must not resume when pods restart. Which mechanism fits best?
+      seconds, and queued jobs must not resume sending when pods restart. Which mechanism fits best?
     options:
       - text: "A central switch that the tool-execution layer checks before each side effect"
         correct: true
-        why: It takes effect immediately for in-flight and queued work, without a deploy, and independently of the agent process.
+        why: Every side effect that reaches the check after the flip is blocked, including those from running jobs and from queued jobs picked up after a restart, without a deploy and independently of the agent process.
       - text: "Delete the running pods and let the orchestrator replace them with fresh instances"
         why: The scheduler restarts them and queued jobs continue; the underlying cause is untouched.
         misconception: Killing the process is the same as disabling the capability
@@ -567,8 +574,9 @@ items:
         misconception: The agent can be commanded to disable itself reliably
     explanation: |
       A kill switch must live outside the agent's reasoning loop, be cheap to flip, and be checked at the
-      point of side effects. Pair it with credential revocation for stronger containment and with action rate limits
-      so a runaway loop is bounded even before anyone reacts.
+      point of side effects. It stops future side effects, not past ones: a request that already passed the check, or
+      an email the mail provider already accepted, cannot be recalled. Pair it with credential revocation for
+      stronger containment and with action rate limits so a runaway loop is bounded even before anyone reacts.
 
   - id: D8-019
     version: 1
@@ -630,7 +638,7 @@ items:
     refs: [https://genai.owasp.org/llmrisk/llm062025-excessive-agency/]
 
   - id: D8-021
-    version: 1
+    version: 2
     type: single
     subtopic: gov.approvals
     tags: [gov.identity]
@@ -644,7 +652,7 @@ items:
     options:
       - text: "Require a different, authorized person to approve, plus verification through a known contact channel"
         correct: true
-        why: Separating requester from approver and confirming out-of-band defeats both insider abuse and a spoofed request.
+        why: Separating requester from approver stops one insider acting alone, and confirming out-of-band catches a spoofed request.
       - text: "Keep the clerk as approver, but add a mandatory comment box explaining the reason for the change"
         why: A free-text justification is trivially written by a fraudster and does not add independence.
         misconception: Documentation substitutes for separation of duties
@@ -659,7 +667,7 @@ items:
       request is verified through an independent channel. The agent can prepare the change but cannot approve it.
 
   - id: D8-022
-    version: 1
+    version: 2
     type: multi
     subtopic: gov.approvals
     tags: [agents.tools-mcp]
@@ -667,7 +675,9 @@ items:
     level: evaluate
     time_s: 100
     stem: |
-      You are writing the rule that decides whether an agent action needs human approval. Which inputs belong in it?
+      You are writing the rule that sets the minimum approval tier for an agent's actions. The agent's tools come
+      from newly connected MCP servers that the platform team has not yet reviewed, and the only history available
+      is the share of past requests that approvers accepted. Which inputs should the rule use?
     options:
       - text: Whether the action can be undone cheaply and quickly
         correct: true
@@ -682,19 +692,23 @@ items:
         why: Confidence from the same model that may be wrong or manipulated is not an independent signal.
         misconception: Self-reported confidence is calibrated risk
       - text: The read-only hint declared by the tool's server in its metadata
-        why: Tool annotations come from the server and are untrusted unless the server is itself trusted; the platform must classify tools itself.
+        why: Annotations are untrusted unless they come from a trusted server, and these servers are unreviewed; a false read-only claim would remove approval from a write.
         misconception: Tool self-descriptions can be trusted for risk classification
       - text: Whether approvers have approved most similar requests in the past
-        why: A high past approval rate may reflect fatigue, not safety, and removes oversight where it is most needed.
+        why: A raw acceptance rate measures approver behavior and may reflect fatigue; it says nothing about how costly a wrong action would be.
         misconception: Historic approval rates indicate low risk
     explanation: |
-      Tier on properties the platform controls and can verify: reversibility, blast radius, external visibility and
-      data sensitivity. Self-reported signals from the model or a tool server should not lower the tier.
+      Set the minimum tier from properties the platform controls and can verify: reversibility, blast radius,
+      external visibility and data sensitivity. Self-reported signals, from the model or from an unreviewed tool
+      server, should not lower it. Evidence can still refine the policy later: a reviewed tool registry can record
+      a classification checked against what the tool actually does, and outcome data such as rejections, overrides
+      and incidents can calibrate thresholds. A raw approval rate is not that evidence, because it measures approver
+      behavior rather than risk.
     refs: [https://modelcontextprotocol.io/specification/2025-06-18/server/tools]
 
   # ---------------------------------------------------------------- gov.audit-compliance
   - id: D8-023
-    version: 1
+    version: 2
     type: single
     subtopic: gov.audit-compliance
     tags: [obs.tracing]
@@ -708,21 +722,23 @@ items:
     options:
       - text: "A complete, append-only record per tool call: user, agent run, parameters, result and approval reference"
         correct: true
-        why: It answers who, what, when and on whose behalf for every action, and cannot be silently edited.
+        why: It records who acted, on whose behalf and under which approval for every action; results and the run ID link to what the agent saw, and append-only storage resists silent edits.
       - text: "Raise trace sampling to 100% and extend the retention period of the tracing backend by several years"
-        why: Tracing is built for debugging and may omit identity and approval context, and retention follows engineering needs, not evidence requirements.
+        why: Every request would be kept, but these spans were not designed to carry the user and approval link or to be protected as evidence; longer retention adds neither.
         misconception: Observability traces are audit records
       - text: "Store the full chat transcript of each user session for several years in the conversation database"
-        why: Transcripts show the conversation but not what was actually executed, and they retain personal data for no purpose.
+        why: Transcripts show the conversation but not the parameters actually executed or who approved them, and keeping all of them for years retains far more personal data than the audit needs.
         misconception: Conversation text is evidence of actions
       - text: "Turn on verbose debug logging for the refund service and ship those logs to the central log store"
-        why: Debug logs are mutable operational output, lack the user and approval link, and are often rotated away quickly.
+        why: More detail does not add the user and approval link, and operational logs are usually editable and rotated on engineering schedules rather than an evidence policy.
         misconception: More verbose application logs are sufficient evidence
     explanation: |
-      Audit trails are a distinct artifact from traces: complete (not sampled), structured, attributable
-      (subject and actor), tamper-evident and retained according to policy. They record decisions and side effects,
-      including approvals, not merely text exchanged with the model.
-    refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
+      An audit trail is defined by its properties, not by the product that stores it: complete (not sampled),
+      structured, attributable (subject and actor), tamper-evident, access-controlled and retained according to
+      policy. It records decisions and side effects, including approvals, not merely text exchanged with the model.
+      Tracing or logging pipelines can feed it if they are designed for those properties; sampled debug output is
+      not. To show what the agent saw, keep protected references to the inputs it used rather than every transcript.
+    refs: [https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final, https://opentelemetry.io/docs/specs/semconv/gen-ai/]
 
   - id: D8-024
     version: 1
@@ -786,7 +802,7 @@ items:
     refs: [https://gdpr-info.eu/art-17-gdpr/]
 
   - id: D8-026
-    version: 1
+    version: 2
     type: single
     subtopic: gov.audit-compliance
     tags: [comms.stakeholders]
@@ -807,12 +823,15 @@ items:
         why: That criterion tests whether the vendor meets the commitments it has made; it does not create a commitment about training, which comes from the contract or terms.
         misconception: A confidentiality criterion in an audit sets the vendor's data-use limits
       - text: "Covered, provided the report's scope explicitly includes the API product that you will be using"
-        why: Scope matters for assurance on that service, but even a fully in-scope report is silent on whether prompts are retained or used for training.
+        why: Scope matters for assurance on that service, but an in-scope report tests controls over commitments the vendor has made; the no-training commitment itself must come from the terms for that product.
         misconception: Report scope determines data-use coverage
     explanation: |
       SOC 2 is an independent attestation that stated controls were designed (Type I) or operated effectively over
-      a period (Type II) against trust service criteria. Whether prompts are retained or used for training is set by
-      the contract, data-processing terms and the specific API or product tier, so read those and get them in writing.
+      a period (Type II) against trust service criteria. The report's system description may mention data-use
+      commitments and the controls over them, so it is worth reading, but it does not create them. Whether prompts
+      are retained or used for training is set by the contract, data-processing terms and the specific API or
+      product tier, so read those and get them in writing.
+    refs: [https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2]
 
   - id: D8-027
     version: 1
@@ -913,7 +932,7 @@ items:
     refs: [https://artificialintelligenceact.eu/annex/3/]
 
   - id: D8-030
-    version: 1
+    version: 2
     type: multi
     subtopic: gov.responsible-ai
     tags: [eval.datasets, eval.gates]
@@ -929,10 +948,10 @@ items:
         why: Aggregate accuracy hides disparities, and postal code can stand in for protected characteristics.
       - text: Set a disparity threshold as a release gate and re-run the check on each model or prompt change
         correct: true
-        why: A fairness regression is then caught like any other quality regression.
+        why: A fairness regression is then caught like any other quality regression; the metric and threshold need to be agreed for the lending context, and a breach triggers investigation.
       - text: Give applicants a route to human review and a way to contest an outcome
         correct: true
-        why: Oversight and recourse limit the harm of residual errors.
+        why: Oversight and recourse limit the harm of individual errors, though they do not fix the cause of a disparity.
       - text: Remove explicit protected attributes from the inputs, which removes the bias
         why: Correlated features such as postal code, employer or name still encode the attribute, so the disparity can persist.
         misconception: Fairness through unawareness
@@ -943,9 +962,12 @@ items:
         why: High average accuracy can coexist with large gaps for smaller groups.
         misconception: Good aggregate metrics imply equitable performance
     explanation: |
-      Bias is found by slicing evaluation by group and proxy features, then controlled by thresholds in the release
-      process and by human recourse. Removing the protected attribute alone rarely works because other features
-      carry the same signal.
+      Bias is found by slicing evaluation by group and proxy features. A gap in positive recommendations is a
+      signal to investigate, not proof by itself: compare error rates and outcomes for similar applicants to find
+      the cause, then mitigate it in the data, features or decision policy. Release thresholds catch regressions and
+      human recourse limits harm, but monitoring alone does not remove the cause. Removing the protected attribute
+      alone rarely works because other features carry the same signal.
+    refs: [https://airc.nist.gov/airmf-resources/playbook/measure/]
 
   - id: D8-031
     version: 1
@@ -1003,7 +1025,7 @@ items:
       (766.5 GB), or using 1,024-based units. Audit volume scales with tool calls, so estimate retention cost early.
 
   - id: D8-033
-    version: 1
+    version: 2
     type: open
     subtopic: gov.guardrails
     tags: [gov.identity, gov.approvals, comms.stakeholders]
@@ -1014,49 +1036,55 @@ items:
     stem: |
       A regional bank's CISO has paused your pilot of an agent that reads customer emails and can update the
       core-banking CRM and send replies. Their note says: "A single malicious email could make this thing do
-      anything. Convince me this is safe enough for a limited production launch." Write your response.
+      anything. Convince me this is safe enough for a limited production launch." Write your response: what you
+      would launch, how you would limit what a malicious email can achieve, and what evidence would let the launch
+      proceed or stop it.
     rubric:
       - criterion: Leads with a clear position and acknowledges the valid concern
         points: 2
-        guidance: "2 if the reply opens with a position (conditional go with named controls) and concedes that injection cannot be fully prevented; 1 if the concession or position is buried or defensive; 0 if dismissive or vague."
+        guidance: "2 if the reply opens with a justified launch position tied to named conditions and concedes that injection cannot be fully prevented; a restricted launch (for example draft-only, with CRM writes or sending deferred until named evidence exists) counts as a full position; 1 if the position or concession is clear but buried, defensive or not tied to conditions; 0 if it dismisses the concern or gives no actionable position. Confidence without conditions earns no extra credit."
       - criterion: Limits what a hijacked run can do (architecture, not prompts)
         points: 3
-        guidance: "3 if it describes privilege separation or least privilege such as no send or write tools during untrusted-content steps, recipient allowlists, scoped credentials or sandboxing; 1 if it relies mainly on prompt hardening or classifiers; 0 if absent."
+        guidance: "3 if it explains how privileges and data flows are limited for steps that handle untrusted email (for example no send or CRM-write tools there, recipient allowlists, scoped credentials) and how anything that step proposes is treated as untrusted and checked against trusted policy before an effect; 2 if containment is meaningful but the boundary is incomplete, such as separating steps but executing the reader's proposal unchecked; 1 if it names general hardening with little mechanism (for example 'sandboxing' without saying what it prevents here) or relies mainly on prompt hardening or classifiers; 0 if absent or the asserted boundary would not hold."
       - criterion: Identity and permissions
         points: 2
-        guidance: "2 if it states the agent acts with the delegated user's or a narrowly scoped identity, with parameter validation before side effects; 1 if only one is mentioned; 0 if absent."
-      - criterion: Risk-tiered human approval and kill switch
+        guidance: "2 if the agent acts with the handling employee's delegated identity or a narrowly scoped identity, and trusted code validates parameters against authoritative data before side effects; 1 if only one of these is covered; 0 if neither, or if authorization relies on the model following instructions."
+      - criterion: Risk-tiered human approval and stopping
         points: 2
-        guidance: "2 if it ties approval to reversibility, blast radius and external visibility and includes a kill switch or rate limits; 1 if generic approval for everything; 0 if absent."
+        guidance: "2 if approval is proportionate to risk (reversibility, blast radius, external visibility or equivalent reasoning) and an external kill switch or action limits bound a runaway; 1 if useful but incomplete, such as approval on everything or no way to stop the agent; 0 if absent."
       - criterion: Evidence and launch plan
         points: 2
-        guidance: "2 if it proposes red-team testing, audit logs and a limited rollout with measurable exit criteria; 1 if only one; 0 if none."
+        guidance: "2 if it proposes adversarial injection testing, attributable audit logs and a bounded rollout with measurable go or stop criteria; 1 if the plan is credible but incomplete, such as two of these without a clear decision rule, or only one; 0 if there is no meaningful verification. Equivalent controls earn equal credit, and one omission should not be deducted under more than one criterion."
     model_answer: |
-      You are right that one malicious email can try to steer the agent, and no prompt or filter will reliably
-      stop that. So I am not asking you to trust the model. I am proposing that a compromised run cannot cause
-      serious harm, and a limited launch to prove it.
+      You are right: one malicious email can try to steer the agent, and no prompt or filter will reliably stop
+      that. So I am not asking you to trust the model. I propose a limited launch in which a hijacked run can only
+      produce a proposal that our code and our people check, with evidence that decides whether we expand.
 
-      First, capability separation. The step that reads email has no send tool and no CRM write tool. It can only
-      produce a structured proposal, such as an intent and a draft. A second step, which never sees raw email text,
-      executes via tools that validate every parameter against the CRM record and the caller's authority before any
-      side effect. Replies go only to the original sender or an allowlisted domain.
+      Containment. The step that reads email has no send tool and no CRM write tool. It outputs a structured
+      proposal: intent, fields to change, draft text. We treat that proposal as tainted. Trusted code checks it
+      against the CRM record and policy, so it can touch only that customer's case and permitted fields, before
+      anything executes.
 
-      Second, identity. The agent calls the CRM with the delegated token of the employee handling the case, scoped
-      to the fields needed, so it cannot do more than that person. No credentials are visible to the model.
+      Identity. CRM calls use the handling employee's delegated token, scoped to the fields needed, so the agent
+      cannot exceed that person's access. The model never sees credentials.
 
-      Third, approvals tiered by risk. Drafts to customers and changes to account details need a human who sees the
-      real parameters. Low-risk note updates are auto-applied with sampled review. A central kill switch and per-hour
-      action limits bound any runaway.
+      Approvals and stopping. Every customer reply and account-detail change needs a human who sees the actual
+      recipient, content and parameters, rendered by code. Low-risk note updates apply automatically with sampled
+      review. A kill switch checked before every side effect, plus per-hour action limits, bounds a runaway.
 
-      Fourth, evidence. Every tool call is logged with user, run, parameters and result. Before launch we run a
-      red-team set of injection emails and report the success rate and what an attacker could reach.
+      Evidence. Every tool call is logged with user, run, parameters, result and approver. Before launch we run a
+      red-team set of injection emails and report what got through and what it could reach.
 
-      Proposal: launch to one team of 20 for four weeks, with exit criteria of zero unauthorised writes, a
-      measured injection success rate against a target, and approver override rate under an agreed level.
+      Launch: one team of 20 for four weeks. We pause if any unauthorized write or send gets past the checks, and
+      expand only if injection success and approver override rates stay under thresholds we agree now.
+
+      What remains: a hijacked run can still propose a misleading reply or a wrong note, which approvers or
+      sampled review must catch. If you prefer a smaller first step, we start draft-only, with CRM writes off until
+      the red-team results are in. Either way, I would ask you to accept that residual risk explicitly.
     max_chars: 2500
 
   - id: D8-034
-    version: 1
+    version: 2
     type: open
     subtopic: gov.approvals
     tags: [gov.audit-compliance, agents.when]
@@ -1072,13 +1100,13 @@ items:
     rubric:
       - criterion: Tiers actions by reversibility, blast radius and external effect
         points: 3
-        guidance: "3 if every listed action is assigned to a tier using explicit criteria; 2 if tiers exist but criteria are implicit; 1 if a single threshold only; 0 if all-or-nothing."
+        guidance: "3 if every listed action is assigned to a tier using explicit criteria, with any number of tiers that the answer justifies; 2 if tiers exist but the criteria are implicit or some listed actions are left unassigned; 1 if a single threshold only; 0 if all-or-nothing."
       - criterion: Handles the highest-risk action correctly
         points: 2
         guidance: "2 if bank-detail changes require independent approval and out-of-band verification, with the agent unable to approve; 1 if approval only; 0 if missing."
       - criterion: Approval quality
         points: 2
-        guidance: "2 if approvers see the actual parameters, approval is bound to them and auditable; 1 if one of these; 0 if a generic click-through."
+        guidance: "2 if approvers see the actual parameters, approval is bound to them and it is auditable; 1 if one or two of these; 0 if a generic click-through."
       - criterion: Avoids approval fatigue and keeps controls for low tiers
         points: 2
         guidance: "2 if low-risk actions are automated with limits, logging and sampled review; 1 if automated without compensating controls; 0 if approval everywhere."
@@ -1091,15 +1119,17 @@ items:
       Tier 1, automatic: reading invoices, matching to purchase orders and flagging discrepancies. These are read
       or advisory actions, with no external effect. They are logged and sampled weekly by AP staff.
 
-      Tier 2, automatic within limits, otherwise approval: scheduling payments against a matched PO. This is
-      reversible until the payment run executes, so the agent may schedule payments under an amount threshold, to
-      existing verified vendors, inside a daily cap. Anything above the threshold, to a new vendor, or with a
-      discrepancy goes to an AP approver.
+      Tier 2, automatic within limits, otherwise approval: scheduling payments against a matched PO, and routine
+      vendor emails from approved templates, such as acknowledging an invoice. The agent may schedule automatically
+      only if scheduling does not release funds and a scheduled payment can be cancelled before the run; I would
+      confirm both in your payment system. Then it may schedule under an amount threshold, to existing verified
+      vendors, inside a daily cap. Anything above the threshold, to a new vendor or with a discrepancy goes to an AP
+      approver, as does all scheduling if it releases funds directly.
 
-      Tier 3, always independent approval: changing vendor bank details, and emailing vendors with payment
-      or banking content. Bank changes are irreversible in effect once money moves, are the classic fraud path,
-      and a vendor email cannot be recalled. The approver must differ from the requester, and the change is verified
-      by a call to a number already on file.
+      Tier 3, always independent approval: changing vendor bank details, and vendor emails that discuss payment or
+      banking details or fall outside a template. Bank changes are the classic fraud path and irreversible in effect
+      once money moves, and an email cannot be recalled. The approver must differ from the requester, and the
+      change is verified by a call to a number already on file.
 
       For all approvals, the screen is rendered by code from the exact tool parameters, the approval is bound to
       that payload and expires, and it is written to the audit log.
@@ -1108,7 +1138,7 @@ items:
     max_chars: 2500
 
   - id: D8-035
-    version: 1
+    version: 2
     type: audio
     subtopic: gov.identity
     tags: [comms.stakeholders, gov.guardrails]
@@ -1127,13 +1157,13 @@ items:
         guidance: "2 if it says no (or not as proposed) in the first sentences; 1 if the position emerges late; 0 if unclear."
       - criterion: Explains why prompts are not access control
         points: 3
-        guidance: "3 if it explains that the model can be talked or tricked into revealing data and the admin account will comply, in non-technical language; 1 if only 'risky'; 0 if absent."
+        guidance: "3 if it explains in non-technical language that the assistant can be talked or tricked into asking for data and the admin account will return it, because nothing outside the model enforces the prompt's rules; 2 if the explanation is correct but leaves out one of these parts or relies on jargon; 1 if it only calls the idea 'risky' or 'insecure'; 0 if absent."
       - criterion: Proposes a practical alternative
         points: 3
-        guidance: "3 if it proposes acting with each user's own permissions so existing systems enforce access, and a quick path to start; 1 if generic least-privilege talk; 0 if none."
+        guidance: "3 if it proposes that the assistant act with each user's own permissions, so the systems that hold the data (or a trusted authorization layer that enforces the same entitlements) decide access, and says why that removes the reliance on the model; 2 if the alternative is right but its effect is not explained; 1 if generic least-privilege talk; 0 if none. Delegated sign-in is one way to do this, not the only acceptable one."
       - criterion: Business framing and next step
         points: 2
-        guidance: "2 if it links to risk (data leak, audit) and a concrete next step or timeline; 1 if only one; 0 if neither."
+        guidance: "2 if it links to business risk (data leak, audit, trust) and gives a concrete next step that keeps momentum; 1 if only one; 0 if neither. Judge the next step only here, not under the alternative."
     model_answer: |
       Short answer: not like that. An admin account plus instructions in the prompt means we're relying on the
       assistant to say no, and an assistant can be talked into things. A clever question, or a malicious sentence
@@ -1144,7 +1174,8 @@ items:
       reach what that person can already reach. The systems that hold the data keep deciding who sees what, the
       way they do today. That also gives us a clear record of who asked for what.
 
-      It is not much slower. The sign-in connection to your identity system is a standard piece of work, usually a
-      couple of weeks. To keep momentum, we can start with one department and one data source, show it working
-      with real permissions, and expand from there. I'd suggest we agree that pilot scope this week.
+      This doesn't have to stall us. Connecting the assistant to your company sign-in is standard work, and we can
+      size it once we've looked at the first data source. To keep momentum, we start with one department and one
+      data source, check how its permissions work, show it working with real permissions, and expand from there.
+      I'd suggest we agree that pilot scope this week.
 
