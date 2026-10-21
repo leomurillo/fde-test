@@ -628,7 +628,7 @@ items:
       code, and agents see stable, meaningful fields.
 
   - id: D9-021
-    version: 1
+    version: 2
     type: single
     subtopic: int.enterprise-devex
     tags: [int.async, agents.state]
@@ -636,27 +636,27 @@ items:
     level: apply
     time_s: 75
     stem: |
-      A Slack slash command `/summarize-incident` triggers an agent that needs about 40 seconds to finish. Users
-      see a Slack timeout error even though the summary is eventually produced by the backend. What is the
-      correct way to handle the interaction?
+      A Slack slash command `/summarize-incident` triggers an agent that needs about 40 seconds to finish. Slack
+      requires the app to acknowledge each command within 3 seconds. Users see a Slack timeout error even though
+      the summary is eventually produced by the backend. What is the correct way to handle the interaction?
     options:
       - text: "Acknowledge within 3 seconds, work in the background, post the result via the response URL"
         correct: true
-        why: Slack requires a quick acknowledgement, and the delayed response URL or message API delivers the result when it is ready.
+        why: The quick acknowledgement meets Slack's deadline, and the delayed response URL or message API delivers the result when it is ready.
       - text: "Increase the web server's response timeout for this route to 60 seconds to cover the run"
-        why: Slack gives up on its side after about 3 seconds, so server-side timeouts have no effect on the error.
+        why: Slack stops waiting after 3 seconds whatever the server allows, so a longer server-side timeout has no effect on the error.
         misconception: The server's timeout controls how long the platform waits
       - text: "Stream partial tokens back in the HTTP response as the agent produces them, line by line"
-        why: Slack's command acknowledgement is not a streaming channel and it needs a response within seconds.
+        why: Slack's command acknowledgement is not a streaming channel; it expects one complete response within the deadline.
         misconception: Streaming the HTTP response satisfies the platform's timeout
       - text: "Switch to a smaller, faster model and tune the agent to finish inside three seconds"
-        why: Even the fastest agent run is unlikely to finish in three seconds with tool calls, and the next slow day will fail again.
+        why: Some runs might finish in time, but a 40-second workload cannot depend on the whole agent run fitting inside the acknowledgement deadline.
         misconception: Optimising latency is the right answer to a protocol deadline
     explanation: |
       Chat platforms expect an acknowledgement within a few seconds. Treat the incoming event as a trigger: respond
       immediately, enqueue the work, and post the result later through the callback URL or the API. The same
       pattern applies to webhooks from other SaaS products.
-    refs: [https://api.slack.com/interactivity/slash-commands]
+    refs: [https://docs.slack.dev/interactivity/implementing-slash-commands/]
 
   - id: D9-022
     version: 1
