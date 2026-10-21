@@ -34,7 +34,7 @@ items:
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-002
-    version: 1
+    version: 2
     type: single
     subtopic: agents.when
     tags: [discovery.environment]
@@ -44,7 +44,8 @@ items:
     stem: |
       A logistics client's clerks update a customer's address in three legacy systems, one of which is a green-screen mainframe
       terminal app with no API. The task is the same 12 steps every time, about 500 times a day, and the screens change roughly
-      once a year. The client wants it live in four weeks. Which approach fits best?
+      once a year. The client wants it live in four weeks, and its platform team estimates that an API in front of the
+      mainframe would take about six months. Which approach fits best?
     options:
       - text: "A computer-use agent that looks at each screen and works out the steps itself"
         why: It tolerates UI change, but the screens barely change here, and per-step model calls add cost, latency and variability to a fixed procedure.
@@ -53,15 +54,15 @@ items:
         correct: true
         why: Stable screens and fixed steps are RPA's sweet spot, it needs no API, and it ships inside the four-week window.
       - text: "A new API layer in front of the mainframe, built by the client's platform team"
-        why: It is the cleaner long-term design, but a mainframe integration project will not fit a four-week deadline.
+        why: It is the cleaner long-term design, but the client's own six-month estimate does not fit a four-week deadline.
         misconception: The architecturally cleanest option is right regardless of the delivery constraint
       - text: "Writing the address changes straight into each system's database and skipping the screens"
-        why: Bypasses the application's validation, business rules and audit trail, and a mainframe has no supported write path to the data.
+        why: Bypasses the validation, business rules and audit trail that the applications enforce through their screens.
         misconception: Going around the UI is the cheapest integration
     explanation: |
       RPA, an agent, and a proper API are all legitimate answers to "no API on a legacy screen"; the stated constraints decide.
       Fixed steps, stable screens, high volume and a short deadline point to scripted automation. An API layer wins when the
-      timeline allows, and a computer-use agent wins when the interface or procedure varies.
+      timeline allows, and can replace the bot later; a computer-use agent wins when the interface or procedure varies.
 
   - id: D6-003
     version: 1
@@ -128,7 +129,7 @@ items:
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-005
-    version: 1
+    version: 2
     type: single
     subtopic: agents.when
     tags: [obs.slo, llm.model-selection]
@@ -143,14 +144,14 @@ items:
       Which architecture is most appropriate?
     options:
       - text: "A reasoning agent that plans each turn, chooses among the three APIs, and verifies results before replying"
-        why: Each plan-act-observe cycle is at least one extra model round trip, which breaks a one-second budget for a three-way choice.
+        why: Each plan-act-observe cycle adds a sequential model round trip, spending much of a one-second budget and making latency variable, for what is a three-way choice.
         misconception: Agents are the natural fit for anything involving tool calls
       - text: "A multi-agent setup with one specialist per action, supervised by a router agent that picks among them"
         why: Adds model hops and coordination for three fixed intents, increasing latency and failure points.
         misconception: One specialist per function improves accuracy and speed
       - text: "A fast intent classifier routing to deterministic API handlers, with an LLM only for unclear requests"
         correct: true
-        why: Known intents with known APIs need routing, not planning; deterministic handlers meet the latency target, collect arguments through validated steps and produce the approved wording.
+        why: Known intents with known APIs need routing, not planning; deterministic handlers keep latency low and predictable, collect arguments through validated steps and produce the approved wording.
       - text: "A single small-model call with the three APIs as tools, which writes both the API arguments and the reply in one pass"
         why: Fits the latency budget, but here the model would choose the arguments and write the confirmation on money-moving actions, which compliance does not allow.
         misconception: One fast function-calling call is the simplest safe design
@@ -161,7 +162,7 @@ items:
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-006
-    version: 1
+    version: 2
     type: single
     subtopic: agents.when
     tags: [llm.structured-tools]
@@ -170,9 +171,9 @@ items:
     time_s: 90
     stem: |
       A manufacturer's RPA bot keys supplier order-confirmation emails into the ERP. The ERP screens and field
-      rules are stable, but suppliers phrase emails differently, and the bot's regex parsing breaks about once a
-      week. The ops lead proposes ripping out the bot for a computer-use agent that "just reads the email and does it".
-      What would you recommend?
+      rules are stable, but its 120 suppliers phrase emails differently, and the bot's regex parsing breaks about once a
+      week. Purchasing has no contractual means to make suppliers use a set format. The ops lead proposes ripping out
+      the bot for a computer-use agent that "just reads the email and does it". What would you recommend?
     options:
       - text: Replace the whole bot with a computer-use agent that reads the emails and operates the ERP screens itself
         why: The ERP half works fine; handing it to an agent adds cost and variability to the stable part to fix the brittle part.
@@ -184,7 +185,7 @@ items:
         why: Addresses each failure but never the cause; the maintenance load grows with every new phrasing.
         misconception: More rules eventually cover natural language variation
       - text: Ask suppliers to send their confirmations in one fixed template and drop the language model idea altogether
-        why: Sound in principle, but it depends on dozens of external parties adopting a format, which the client cannot enforce.
+        why: Worth encouraging over time, but the client cannot require it of 120 suppliers, so dropping the parser fix leaves the breakage in place.
         misconception: Fixing the input at the source is always feasible
     explanation: |
       Hybrid systems put the model on the variable step and keep deterministic automation where inputs and actions are fixed. Validating the
@@ -413,35 +414,40 @@ items:
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-014
-    version: 1
+    version: 2
     type: single
     subtopic: agents.patterns
     tags: [obs.cost]
     difficulty: 3
     level: evaluate
-    time_s: 90
+    time_s: 100
     stem: |
       A consultancy generates quarterly client reports with an orchestrator-workers design. Reviewing a month of
-      traces, the orchestrator's plan was the same six sections in all 140 runs: summary, KPIs, risks, pipeline,
-      staffing, next steps. Planning adds about 20% to token cost and sometimes drops a section. What should
-      change?
+      traces, the orchestrator's plan was the same six sections in all 140 runs: KPIs, pipeline, risks, staffing,
+      then a summary and next steps. Each of the first four sections is written from the client's data pack alone;
+      the summary and next steps draw on what those four found. Planning adds about 20% to token cost and sometimes
+      drops a section. What should change?
     options:
       - text: Give the orchestrator a larger, more capable model so that it stops dropping sections from reports
         why: Treats the symptom; the planner is still paid for and still a failure point when the plan never actually varies.
         misconception: Unreliable planning means the planner needs more capability
-      - text: Remove the planner; generate the six sections as fixed parallel calls and assemble them in code
+      - text: Remove the planner; draft the four data sections in parallel, then the summary and next steps from them
         correct: true
-        why: The subtasks are known in advance, so parallel sectioning removes both the planning cost and the dropped-section failure.
+        why: The plan never varies, so code can hold it; scheduling by dependency runs the independent sections together and gives the synthesis sections the findings they need.
+      - text: Remove the planner; generate the six sections as fixed parallel calls and assemble them in code
+        why: Fixes the planner cost, but the summary and next steps would be written without the findings they are meant to draw on, and can contradict them.
+        misconception: A fixed plan means the subtasks are independent
+      - text: Remove the planner; generate the six sections as a chain, each call seeing the sections before it
+        why: Gives the synthesis sections what they need, but serializes four independent sections and re-sends earlier sections on every call, adding latency and tokens.
+        misconception: Chaining is the safer default over parallel fan-out
       - text: Keep the planner but add a reviewer agent that checks every report has all six sections
         why: A code check for six headings would suffice, and it would still leave the planner's cost and variance in place.
         misconception: Add an agent to police another agent
-      - text: Switch to a prompt chain so that each section builds on the section generated before it
-        why: Sections don't depend on each other, so sequencing adds latency; it also leaves the underlying problem unsolved.
-        misconception: Chaining is the safer default over parallel fan-out
     explanation: |
       Orchestrator-workers earns its keep when the subtasks cannot be predicted from the task. When production traces show the same
-      decomposition every time, replace the planner with the fixed decomposition (parallel sectioning) and keep the model calls
-      for the content.
+      decomposition every time, replace the planner with a fixed workflow and keep the model calls for the content. A fixed plan
+      settles which subtasks run, not their order: schedule them by their data dependencies. Independent sections can run in
+      parallel (sectioning), and a section that synthesizes others runs after them (chaining).
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-015
@@ -477,24 +483,27 @@ items:
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-016
-    version: 1
+    version: 2
     type: multi
     subtopic: agents.patterns
     tags: [llm.structured-tools, gov.guardrails]
-    difficulty: 2
+    difficulty: 3
     level: apply
     time_s: 100
     stem: |
       A document-audit agent loops over tool calls until the model replies without requesting a tool. Given 40 receipts to check,
-      it sometimes ends with a confident "all 40 receipts verified" after processing only 12. Which harness changes make the
-      stopping condition reliable?
+      it sometimes ends with a confident "all 40 receipts verified" after processing only 12. Each check is a tool call whose
+      result the harness can record. Which harness changes make the stopping condition reliable?
     options:
       - text: "Before accepting a final answer, compare receipt IDs with results recorded in code, and send the agent back if any are missing"
         correct: true
-        why: The completion test runs outside the model against recorded state, so a premature claim of being done is caught and corrected.
-      - text: "Require the final answer as structured output with one status per receipt ID, validated against the input list"
+        why: The completion test runs outside the model against recorded tool results, so a premature claim of being done is caught and corrected.
+      - text: "Have code hand the agent one receipt at a time, marking it done only once its check result is recorded"
         correct: true
-        why: A schema-checked per-item result makes an unsupported 'all done' claim fail validation instead of reaching the user.
+        why: Code owns the list of remaining work, so the run ends when every receipt has a recorded result, whatever the model says.
+      - text: "Require the final answer as structured output with one status per receipt ID, validated against the input list"
+        why: The schema proves the report covers all 40 IDs, but the model can fill in 40 'verified' statuses without having run the checks; shape is not evidence.
+        misconception: A schema-valid report proves the work was done
       - text: "Cap iterations and tokens per run, ending in an escalation to a person when the cap is reached"
         why: A sound guard against runaway loops, but this failure is the loop stopping too early, so the cap would never fire.
         misconception: Budget limits are the stopping condition
@@ -504,12 +513,10 @@ items:
       - text: "After the final answer, ask the model in the same conversation whether it is sure it processed all receipts"
         why: The check relies on the same recollection that produced the wrong claim, so it tends to confirm itself.
         misconception: Self-verification catches omissions
-      - text: "Raise the maximum output tokens and the per-call timeout so that the model has room to finish the whole job"
-        why: Nothing was truncated or timed out; the model chose to stop.
-        misconception: Early stops are caused by resource limits
     explanation: |
-      Termination should be decided by code that can see state, not by the model's own report. Compare the claimed outcome with
-      recorded progress, validate the final output's structure against the input, and send the agent back when the check fails.
+      Termination should be decided by code that can see recorded state, not by the model's own report. Either check the claim
+      against recorded tool results before accepting it, or let code drive the iteration over the input list. A schema can check
+      a report's shape and ID coverage, not whether the work happened, so derive each receipt's status from its recorded result.
       Iteration and cost caps remain necessary for the opposite failure, where a loop never ends.
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
@@ -546,7 +553,7 @@ items:
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-018
-    version: 1
+    version: 2
     type: single
     subtopic: agents.patterns
     tags: [llm.model-selection, obs.cost]
@@ -560,24 +567,25 @@ items:
     options:
       - text: A small classifier trained on labeled tickets that escalates to the large model on low confidence
         correct: true
-        why: Routing accuracy is measurable against labels, and the confidence threshold makes the costly mistake (sending hard tickets to the small model) explicit.
+        why: Routing accuracy is measurable against labels, and a threshold tuned on held-out tickets makes the costly mistake (sending hard tickets to the small model) explicit and adjustable.
       - text: Route by ticket length, sending short tickets to the small model and long tickets to the large model
         why: Length is cheap to compute but only loosely correlated with difficulty, so many short hard tickets would be misrouted.
         misconception: A simple proxy feature is good enough to route
-      - text: Let the small model answer first, and escalate when it says it is confident in its own answer
-        why: Verbalized confidence from the cheap model is poorly calibrated, and wrong answers are the ones it tends to be confident about.
+      - text: Let the small model answer first, and escalate when it reports low confidence in its own answer
+        why: Self-reported confidence is not validated against outcomes and tends to be overconfident, so many hard tickets the small model gets wrong would stay with it.
         misconception: A model reliably knows when it is wrong
       - text: Always send tickets to the large model and cache the results, relying on repeated questions to cut cost
         why: Cache hit rates on account-specific tickets are low, so most spend remains on the 70% that don't need the large model.
         misconception: Caching removes the need for routing
     explanation: |
-      Routing works when categories can be told apart accurately and the cost of misrouting is understood. Measure router accuracy
-      on labeled data, bias the threshold toward escalation for hard cases, and keep a sample under review in production to
-      catch drift.
+      Routing works when categories can be told apart accurately and the cost of misrouting is understood. A routing signal is
+      only as good as its calibration: a classifier's score can be checked against labeled outcomes, while a model's own
+      statement of confidence usually is not. Measure router accuracy on held-out labeled data, set the threshold to lean toward
+      escalation for hard cases, and keep a sample under review in production to catch drift.
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-019
-    version: 1
+    version: 2
     type: multi
     subtopic: agents.patterns
     tags: [obs.cost]
@@ -586,11 +594,12 @@ items:
     time_s: 110
     stem: |
       A content-safety team is considering the voting variant of parallelization for flagging borderline policy violations in
-      user posts. Which statements correctly describe when and how voting makes sense?
+      user posts. A flag sends the post to human review. The team counts a missed violation as far costlier than an extra
+      review, and reviewers have spare capacity. Which statements about voting are correct for this use?
     options:
-      - text: It fits decisions where a miss is costly, since independent reviews can be combined so any flag escalates
+      - text: A low threshold, where a single flag sends the post to review, matches these stated priorities
         correct: true
-        why: Voting buys confidence on high-stakes judgments, and union-style aggregation reduces false negatives.
+        why: Misses are the costly error and review capacity absorbs extra flags, so aggregation should favor recall; the resulting flag rate still needs checking against capacity.
       - text: The voters need some diversity, such as different prompts or perspectives, or they will largely repeat each other
         correct: true
         why: Independent perspectives are the source of the added reliability; identical samples add cost but little information.
@@ -598,15 +607,17 @@ items:
         why: Near-deterministic decoding returns nearly the same answer each time, so the vote gives a false sense of confidence.
         misconception: More calls always means more independent evidence
       - text: Votes should be combined by simple majority, so that one dissenting reviewer cannot escalate a post
-        why: When a miss is costly, aggregation should lean toward escalation; a majority rule discards the minority flag that voting exists to surface.
-        misconception: Majority rule is the default way to aggregate votes
+        why: Majority suits a balanced trade-off between errors; here misses cost far more and review has capacity, so a majority rule drops minority flags the team wants reviewed.
+        misconception: Majority rule is the right threshold whatever the error costs
       - text: Voting is the pattern to use when subtasks can't be predicted until the input has been read
         why: That describes orchestrator-workers; voting repeats the same task rather than discovering new ones.
         misconception: Voting and orchestrator-workers are interchangeable fan-out patterns
     explanation: |
       Parallelization has two forms: sectioning splits a task into independent parts for speed or focus, and voting repeats the same
       task to raise confidence. Voting costs more in proportion to the number of voters and only helps if the votes carry
-      independent signal.
+      independent signal. The aggregation threshold is a choice about error costs: any-flag favors recall at the price of more
+      reviews, majority balances the two errors, and unanimity favors precision. Pick it from the stated objective and review
+      capacity, then check it on labeled examples.
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   # ------------------------------------------------------------ agents.tools-mcp
@@ -770,7 +781,7 @@ items:
     refs: [https://modelcontextprotocol.io/specification/latest/server/tools]
 
   - id: D6-025
-    version: 1
+    version: 2
     type: single
     subtopic: agents.tools-mcp
     tags: [int.resilience, int.apis]
@@ -778,7 +789,8 @@ items:
     level: apply
     time_s: 90
     stem: |
-      An agent's `create_ticket` tool is called for monitoring alerts, one ticket per alert, and each alert has a unique ID. It
+      An agent's `create_ticket` tool is called for monitoring alerts. The rule is one ticket per alert, and each alert has a
+      unique ID. The ticketing API accepts an idempotency key and returns the existing ticket when a key repeats. The tool
       sometimes produces duplicate tickets. Logs show two causes: the HTTP call to the ticketing system times out after the ticket
       was actually created and the harness retries, and the model occasionally calls the tool again for the same alert after
       losing track of earlier steps. What is the most robust fix?
@@ -792,17 +804,18 @@ items:
       - text: "Have the harness attach a fresh idempotency key to each tool call and reuse that key when it retries"
         why: Fixes timeout retries, but a model-initiated repeat is a new tool call with a new key, so a second ticket still gets created.
         misconception: One key per call covers every source of duplicates
-      - text: "Derive the idempotency key from the run and alert ID, and return the existing ticket for any repeat"
+      - text: "Have the tool derive the idempotency key from the alert ID, so every repeat maps to the same key"
         correct: true
-        why: Retries and model repeats for the same alert carry the same key, so both return the original ticket.
+        why: Retries and model repeats for the same alert carry the same key, so the ticketing system returns the original ticket for both.
       - text: "Check for an existing ticket with a similar summary first, and skip creation if one is found"
         why: Fuzzy matching will suppress legitimate distinct tickets that happen to read alike, and can miss near-duplicates.
         misconception: Semantic similarity is a safe dedupe key
     explanation: |
-      Side-effecting tools should be safe to call more than once. The key must identify the business action (this alert, in this run),
-      not the individual call, otherwise a repeat issued by the model looks like a new request. A per-call key only protects against
-      transport-level retries.
-    refs: [https://www.anthropic.com/engineering/building-effective-agents]
+      Side-effecting tools should be safe to call more than once. The key must identify the business action (the ticket for this
+      alert), not the individual call, otherwise a repeat issued by the model looks like a new request. A per-call key only
+      protects against transport-level retries, and a key scoped to one run would let a later run for the same alert create a
+      second ticket. The key only helps because the downstream system enforces it, atomically recording the key with the ticket.
+    refs: [https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/]
 
   - id: D6-026
     version: 1
@@ -966,7 +979,7 @@ items:
       from the last durable checkpoint.
 
   - id: D6-031
-    version: 1
+    version: 2
     type: multi
     subtopic: agents.state
     tags: [int.resilience, llm.fundamentals]
@@ -981,13 +994,13 @@ items:
     options:
       - text: "Run model and API calls as recorded steps, so a replay reuses the stored result instead of calling again"
         correct: true
-        why: Replay then reproduces the original run exactly, and the ticket is not created twice.
+        why: Replay then follows the recorded run, and a ticket call whose result was recorded is not repeated.
       - text: "Keep the orchestration code deterministic, with no direct clock reads, random numbers or model calls inside it"
         correct: true
         why: Replay re-executes this code, so anything non-deterministic can send it down a different path from the recorded one.
-      - text: "Version the workflow definition so in-flight runs finish on the logic they started with"
+      - text: "Version or patch workflow changes so in-flight runs replay on logic compatible with their history"
         correct: true
-        why: Replaying old history against changed code is what caused the divergence.
+        why: Replaying old history against incompatible code is what caused the divergence; old runs need the old path kept, by version or by patch branch.
       - text: "Set the model temperature to zero so that a replayed call returns the same text as the original"
         why: Low temperature does not guarantee identical output, and model versions change; the recorded result is what makes replay safe.
         misconception: Temperature zero makes model calls deterministic
@@ -999,8 +1012,11 @@ items:
         misconception: Replay safety is a retry setting
     explanation: |
       Durable execution recovers by re-running orchestration code against a recorded history. That requires deterministic workflow
-      code, non-deterministic work (model calls, API calls, time) captured as recorded step results, and versioning so that old
-      histories are only replayed against compatible code.
+      code, non-deterministic work (model calls, API calls, time) captured as recorded step results, and versioning or patching so
+      that old histories are only replayed against compatible code. Recording stops completed steps from running again; it does
+      not cover a step that crashed after its external effect but before its result was recorded. That step is retried, so the
+      ticketing call still needs an idempotency key the ticketing system enforces.
+    refs: [https://docs.temporal.io/workflow-definition, https://docs.temporal.io/activity-definition]
 
   - id: D6-032
     version: 1
@@ -1064,7 +1080,7 @@ items:
     refs: [https://genai.owasp.org/llm-top-10/]
 
   - id: D6-034
-    version: 1
+    version: 2
     type: single
     subtopic: agents.state
     competencies: [x.decomposition]
@@ -1088,13 +1104,14 @@ items:
         why: Knowing the sequence doesn't tell it which steps have already been executed.
         misconception: Describing the plan is the same as tracking its status
     explanation: |
-      Durable execution means progress is stored explicitly: which steps completed, with what outputs and identifiers. Side-effecting
-      steps check this record before acting, so a resume or re-plan can't repeat work. Reconstructing state from conversation text
-      is fragile.
+      Durable execution means progress is stored explicitly: which steps completed, with what outputs and identifiers. Steps check
+      this record before acting, so a resume or re-plan skips work known to be done. A step that crashes after its effect but
+      before its status is recorded can still run twice, so side-effecting steps also need an idempotency key or a reconciliation
+      check. Reconstructing state from conversation text is fragile.
 
   # ---------------------------------------------------------------- agents.multi
   - id: D6-035
-    version: 1
+    version: 2
     type: single
     subtopic: agents.multi
     difficulty: 1
@@ -1115,8 +1132,8 @@ items:
         why: Each new agent re-learns the repository state, losing continuity that the next edit needs.
         misconception: Fresh, small contexts are always better than accumulated state
       - text: One coding agent making the edits, plus a separate reviewer agent that approves each diff before the next edit starts
-        why: A reviewer adds a hop to every edit, yet the tests already give objective feedback on each change and a reviewer reading diffs has no stronger signal.
-        misconception: A second agent's review beats executable checks
+        why: Review can catch design or requirement problems that tests miss, but a gate on every edit adds a hop and cost to each step before there is evidence it is needed; tests already check each change, and review can be added where failures show gaps.
+        misconception: Mandatory per-step review is worth its cost by default
     explanation: |
       Multi-agent designs pay off when work is breadth-first and parallelizable with little shared state. Tightly coupled sequential
       work, such as dependent code edits, is usually better served by a single agent with good tools and a feedback signal like tests.
@@ -1153,7 +1170,7 @@ items:
       and keeps latency low. Choose by who must be in control after the transfer.
 
   - id: D6-037
-    version: 1
+    version: 2
     type: single
     subtopic: agents.multi
     tags: [eval.rag-agent]
@@ -1174,14 +1191,16 @@ items:
         misconception: Independent agents will recover on their own
       - text: Merge stages that need no separate context, check every handoff, and track end-to-end success
         correct: true
-        why: Five 95% stages multiply to about 77%, so fewer handoffs and validated interfaces raise the real number.
+        why: Errors compound across handoffs (five independent 95% stages would give about 77%), so fewer handoffs, validated interfaces and an end-to-end metric target the real number.
       - text: Swap every agent for the strongest available model so that each isolated score rises above 95%, then re-measure
         why: Could help, but it is an expensive way to chase a per-stage number rather than the compounding structure.
         misconception: Per-component accuracy is the quantity to optimize
     explanation: |
-      Reliability multiplies across sequential stages: 0.95^5 is about 0.77, which matches the observed failures. Reduce the number
-      of stages where separation isn't buying anything, make interfaces explicit and checked, and evaluate end to end rather than
-      only per component.
+      Scores measured in isolation do not give pipeline reliability: in the pipeline each stage receives earlier stages' output,
+      including their errors. As an illustration, if stage failures were independent, five 95% stages would succeed together
+      0.95^5 ≈ 0.77 of the time, close to the three-in-four success seen in staging. Only end-to-end runs with per-handoff checks show where runs
+      actually fail. Reduce the number of stages where separation isn't buying anything, make interfaces explicit and checked,
+      and evaluate end to end rather than only per component.
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-038
@@ -1214,7 +1233,7 @@ items:
       guarantee it.
 
   - id: D6-039
-    version: 1
+    version: 2
     type: multi
     subtopic: agents.multi
     tags: [obs.cost, obs.tracing]
@@ -1222,28 +1241,31 @@ items:
     level: analyze
     time_s: 100
     stem: |
-      A product team asks for the real costs of moving from one agent to an orchestrator with several subagents before they
-      commit. Which statements are accurate?
+      A product team asks for the real costs of moving from its current single agent to an orchestrator with several subagents
+      before they commit. Which statements are accurate?
     options:
-      - text: Total token use rises, since each subagent carries its own context and instructions, and results are re-read by the orchestrator
+      - text: Total token use usually rises, as each subagent needs its own instructions and context and the orchestrator re-reads results
         correct: true
-        why: Duplicated context and summarization passes are the main source of multi-agent cost.
+        why: Per-subagent context, briefs and synthesis passes are overhead the single agent doesn't pay; narrow contexts can offset part of it, so measure against the baseline.
       - text: Information can be lost or distorted at handoffs when one agent summarizes its work for another
         correct: true
         why: Each boundary compresses context, and details the next agent needed may be dropped.
-      - text: Failures are harder to diagnose, since a bad final answer may trace back to any hop in the chain
+      - text: Failures can be harder to localize, since a bad final answer may trace back to any hop in the chain
         correct: true
-        why: Debugging requires end-to-end traces across agents rather than reading a single transcript.
-      - text: Each subagent inherits the orchestrator's full context automatically, so delegation briefs can be kept short
-        why: Subagents know only what they are told; a thin brief is what produces duplicated and missing work.
-        misconception: Subagents share the orchestrator's context
+        why: Finding the failing hop needs end-to-end traces across agents rather than a read of a single transcript.
+      - text: Delegation briefs can be kept short, because each subagent can work out its own share of the overall task
+        why: Whether a subagent starts fresh or with inherited context depends on the framework; either way, without an explicit objective and boundary, parallel subagents duplicate or miss work.
+        misconception: Subagents can infer their own scope
       - text: Wall-clock time falls in proportion to the number of subagents that are added to the job
         why: Dependencies between tasks, the orchestrator's own planning and synthesis, and rate limits cap the speedup.
         misconception: Parallelism scales linearly
     explanation: |
-      Multi-agent systems buy parallelism and context isolation at the price of more tokens, lossy handoffs and harder debugging.
-      They help for broad, parallelizable work and hurt for tightly coupled tasks. Choose the single-agent baseline first and compare.
-    refs: [https://www.anthropic.com/engineering/building-effective-agents]
+      Multi-agent systems buy parallelism and context isolation at a price. Token use usually rises, because each subagent needs
+      its own instructions and context and the orchestrator reads and synthesizes their results; splitting one very long,
+      growing context into narrow ones can offset part of that, so measure against the single-agent baseline rather than assume.
+      Handoffs can lose detail, and diagnosis needs traces across agents. Multi-agent designs tend to help for broad,
+      parallelizable work and hurt for tightly coupled tasks.
+    refs: [https://www.anthropic.com/engineering/building-effective-agents, https://www.anthropic.com/engineering/multi-agent-research-system]
 
   - id: D6-040
     version: 1
@@ -1307,7 +1329,7 @@ items:
 
   # ------------------------------------------------------- other formats (D6)
   - id: D6-042
-    version: 2
+    version: 3
     type: numeric
     subtopic: agents.patterns
     tags: [obs.cost]
@@ -1326,7 +1348,7 @@ items:
 
       Pricing is $3 per million input tokens and $15 per million output tokens. What do 1,000 runs cost, in US dollars? Round to
       the nearest cent.
-    answer: {value: 57.72, tolerance: 0.5, tolerance_type: abs, unit: "USD"}
+    answer: {value: 57.72, tolerance: 0.05, tolerance_type: abs, unit: "USD"}
     work: |
       Generator input: 1,200 + 1,820 + 1,820 = 4,840 tokens; generator output: 3 × 500 = 1,500 tokens.\
       Evaluator input: 3 × 1,700 = 5,100 tokens; evaluator output: 3 × 120 = 360 tokens.\
@@ -1334,10 +1356,11 @@ items:
       Per run $0.05772, so 1,000 runs cost $57.72.
     explanation: |
       Common wrong methods: counting only the generator calls ($37.02), or ignoring that revision calls re-send the previous draft and
-      feedback ($54.00). Loops multiply cost by the number of rounds, and output tokens cost several times more than input tokens.
+      feedback ($54.00). Answers within $0.05 are accepted, which allows rounding the per-run cost to $0.0577 before scaling. Loops
+      multiply cost by the number of rounds, and output tokens cost several times more than input tokens.
 
   - id: D6-043
-    version: 1
+    version: 2
     type: open
     subtopic: agents.when
     tags: [discovery.framing]
@@ -1349,17 +1372,19 @@ items:
       A VP of Sales Operations at a B2B equipment maker wants "an autonomous agent for lead-to-quote". Today, inbound enquiry
       emails are read by a sales coordinator, who picks products from a catalogue (compatibility rules are documented), prices
       them from a rate table, gets manager sign-off for any discount above 15%, and sends the quote through the CPQ system's API.
-      Roughly 30% of enquiries are vague or unusual. Write the reply you would send recommending an architecture, in under 300 words.
+      Roughly 30% of enquiries are vague or unusual. Write the reply you would send, in under 300 words: recommend an
+      architecture, weigh it against a fully autonomous agent, say how discounts and quotes stay controlled, and propose a
+      first step.
     rubric:
       - criterion: Recommendation first
         points: 2
         guidance: Full marks if the reply opens with a clear recommendation (for example, a workflow with LLM steps and a narrow agentic path). One mark if the position is present but buried. Zero if there is no recommendation.
       - criterion: Matches autonomy to where the work varies
         points: 3
-        guidance: Full marks if it keeps deterministic code for catalogue rules, pricing and CPQ calls and places the model in understanding messy emails and asking clarifying questions. One mark for a generic hybrid statement. Zero for an all-agent or no-LLM answer.
+        guidance: Full marks if catalogue rules, pricing, the discount threshold and CPQ submission are enforced deterministically and any model use sits where inputs vary (reading messy emails, structuring requirements, drafting clarifying questions), with a justified plan for the unusual 30% (a bounded agentic path, or routing them to the coordinator). A design where the model selects CPQ actions earns full marks only if code validates the arguments against the rules and the approval before submission. Two marks if the split is sound but one side is thin or the 30% is not addressed. One mark for a generic "hybrid" statement that does not say which steps go where. Zero if pricing, discounts or quote submission are left to unconstrained model judgment, or if manual work is kept or replaced with no reasoning.
       - criterion: Controls on consequential actions
         points: 2
-        guidance: Full marks if it keeps the 15% discount approval as an enforced human step, adds validation before quotes go out, and mentions auditability. One mark if only one of these appears. Zero if none.
+        guidance: Full marks if the over-15% discount approval is enforced by the system rather than by instruction, quotes are validated against catalogue rules and the rate table before they go out, and steps are logged for audit. One mark if one or two of these three appear. Zero if none.
       - criterion: Trade-offs and cost of autonomy
         points: 2
         guidance: Full marks if it states what a free-roaming agent would add (flexibility on the unusual 30%) against its cost in unpredictability, price and testing effort. One mark if one side only. Zero if absent.
@@ -1387,7 +1412,7 @@ items:
     max_chars: 2200
 
   - id: D6-044
-    version: 1
+    version: 2
     type: open
     subtopic: agents.state
     tags: [int.resilience, gov.approvals]
@@ -1398,24 +1423,25 @@ items:
     stem: |
       A client wants an agent to process supplier-onboarding requests. A run takes two to five days: it gathers documents,
       screens the supplier, waits for a compliance officer's approval, and then creates the supplier in the ERP and notifies
-      procurement. Deployments happen several times a week, and the first prototype lost work when a pod restarted mid-run. Describe how
-      you would design state, resumption and failure handling for this flow, including how you would prevent duplicate ERP records.
+      procurement. Deployments happen several times a week, and the first prototype lost work when a pod restarted mid-run.
+      Describe how you would design state, resumption and failure handling for this flow, including how you would prevent
+      duplicate ERP records, keep in-flight runs safe across deployments and notice runs that get stuck.
     rubric:
-      - criterion: Durable state and checkpoints
+      - criterion: Durable state and resumption
         points: 3
-        guidance: Full marks for persisting run state in an external store (step status, outputs, resource IDs) with resumption from the last checkpoint rather than in-process memory. Two marks if durable state is present but its contents or resume logic are vague. Zero if state stays in the process.
+        guidance: Full marks for persisting run state in an external store or workflow engine (step statuses, outputs, IDs of created resources) with clear logic for resuming from the last completed step. Two marks if durable state is present but its contents or resume logic are incomplete. One mark if persistence or checkpoints are mentioned without a usable account of recovery. Zero if absent or state stays in process memory.
       - criterion: Safe waiting for approval
         points: 2
-        guidance: Full marks if the run pauses without holding a process or context open, resumes on an event or callback, and has timeouts or reminders and escalation. One mark if only pausing is described. Zero if absent.
-      - criterion: Idempotent side effects
+        guidance: Full marks if the wait is persisted, the run resumes on the officer's decision without holding a worker or context open, and missing or negative responses are handled (reminders, timeout and escalation, a rejection path). One mark if a durable pause is proposed but the resume or failure path is incomplete. Zero if absent or the run waits in process.
+      - criterion: Duplicate-safe ERP creation
         points: 3
-        guidance: Full marks if the ERP create uses an idempotency key or check-before-create, and explains the crash window between the external effect and the checkpoint. Two marks if idempotency is named without that reasoning. Zero if absent.
+        guidance: Full marks if it explains the gap between the ERP accepting the record and the checkpoint being saved, and closes it with a stable identity for the onboarding action that the ERP enforces atomically (an idempotency key it deduplicates on, or a unique constraint on a supplier key); or, if it notes the ERP may offer neither, routes uncertain creates to reconciliation instead of retrying them blindly. Two marks for a valid retry-safe mechanism without explaining the gap. One mark if it identifies the duplicate risk but relies only on a separate lookup before creating (which can race or miss a record just created) or names idempotency without a mechanism. Zero if the issue is omitted or uncertain creates are simply repeated.
       - criterion: Retries and failure paths
         points: 2
-        guidance: Full marks if transient failures are retried with backoff and caps while permanent failures go to a person via a dead-letter or review queue. One mark if only one of the two. Zero if absent.
+        guidance: Full marks if transient failures are retried with backoff and caps while permanent or uncertain failures go to a person via a dead-letter or review queue. One mark if only one of the two is credible. Zero if neither, or if every failure is retried indiscriminately.
       - criterion: Deployments and visibility
         points: 1
-        guidance: Full marks for handling in-flight runs across deploys (versioned steps or drain) and monitoring for stuck runs. Zero if absent.
+        guidance: Full marks for keeping in-flight runs on compatible logic across deploys (versioned or patched steps, or explicit migration) and alerting on runs stuck in a state. Half a mark for one of the two. Zero if neither. Do not deduct here for an omission already penalized under another criterion.
     model_answer: |
       I would treat this as a durable workflow with model steps, not a long-lived agent process.
 
@@ -1424,11 +1450,14 @@ items:
       resumes from the last completed step, so a pod restart loses at most the step in progress.
 
       Waiting: after screening, the run writes "awaiting compliance approval" and exits. The officer's decision arrives as an event
-      that resumes it. A timer sends reminders after a day and escalates after three, so a silent approver becomes visible.
+      that resumes it. A timer sends reminders after a day and escalates after three, so a silent approver becomes visible. A
+      rejection closes the run with the reason and tells procurement.
 
       Side effects: ERP creation is the dangerous step. A crash can happen after the ERP accepts the record but before I save the
-      checkpoint, so replay is expected. I send an idempotency key derived from run ID and step, or search by a stable supplier key
-      before creating, so a replay returns the existing record.
+      checkpoint, so replay is expected. I send an idempotency key derived from the onboarding request ID, which the ERP
+      deduplicates on, so a replay returns the existing record. A lookup by supplier key before creating is not enough on its own:
+      it can race, or miss a record the ERP has just accepted. If the ERP offers no idempotent create or unique supplier key, an
+      uncertain create goes to a reconciliation queue rather than being retried.
 
       Failures: timeouts and 5xx responses retry with exponential backoff and jitter, capped. Validation or permission errors do not
       retry; they go to a review queue with the run state attached.
@@ -1438,7 +1467,7 @@ items:
     max_chars: 2500
 
   - id: D6-045
-    version: 1
+    version: 2
     type: open
     subtopic: agents.multi
     tags: [eval.rag-agent, obs.tracing]
@@ -1450,20 +1479,20 @@ items:
       You inherit a six-agent prototype for market-research briefs (planner, searcher, reader, analyst, writer, critic). It
       demos beautifully but fails in about one run in four with wrong, missing or contradictory content, and nobody can say where
       the failures begin. The sponsor expects production in six weeks and likes the multi-agent story. Write your plan for the
-      first two weeks, and say how you will decide whether the multi-agent design stays.
+      first two weeks, say how you will decide whether the multi-agent design stays, and say what you will tell the sponsor.
     rubric:
       - criterion: Establishes measurement before changing the design
         points: 3
-        guidance: Full marks for building a labeled set of representative tasks, defining end-to-end success criteria, and instrumenting traces per agent and handoff. Two marks if measurement is mentioned without specifics. Zero if the plan jumps straight to redesign.
+        guidance: Full marks for building a labeled set of representative tasks, defining end-to-end success criteria, and instrumenting traces per agent and handoff. Two marks for a concrete plan that covers two of these three. One mark if it says it will measure or add logging without a concrete plan. Zero if the plan jumps straight to redesign. A justified containment or instrumentation change made in parallel is not a redesign and is not penalized.
       - criterion: Diagnoses where failures originate
         points: 2
         guidance: Full marks for classifying failures by stage and handoff, for example information lost in summaries or unvalidated outputs, and using that to target fixes. One mark for generic debugging. Zero if absent.
       - criterion: Compares against a simpler baseline
         points: 3
-        guidance: Full marks for proposing a single-agent or workflow baseline evaluated on the same set, with a decision rule based on quality, cost and latency. Two marks if a baseline is named without a decision rule. Zero if absent.
+        guidance: Full marks for proposing a single-agent or workflow baseline evaluated on the same set and criteria, with a decision rule based on quality, cost and latency. Two marks if the baseline is evaluated comparably but there is no decision rule, or a decision rule is stated without a comparable evaluation. One mark if a simpler alternative is named without saying how it will be compared. Zero if absent.
       - criterion: Candid sponsor communication
         points: 2
-        guidance: Full marks if it addresses the sponsor's attachment to the multi-agent story with a bottom-line message, trade-offs, and a date-bound decision point, framing it as evidence-led rather than a rejection. One mark if partial. Zero if ignored.
+        guidance: Full marks if it addresses the sponsor's attachment to the multi-agent story with a bottom-line message, trade-offs, and a date-bound decision point, framing it as evidence-led rather than a rejection. One mark if it addresses the sponsor but lacks the bottom line or a dated decision point. Zero if ignored.
     model_answer: |
       Bottom line: in two weeks I will find out where the 25% of failures come from and whether six agents are earning their keep.
       I will not redesign anything before I can measure it.
