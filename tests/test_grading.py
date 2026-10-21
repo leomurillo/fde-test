@@ -106,3 +106,14 @@ def test_skipped_and_reveal():
     assert rv["verdict"] == "incorrect"
     assert rv["options"][0]["chosen"] and not rv["options"][0]["correct"]
     assert rv["options"][1]["correct"] and rv["options"][1]["why"]
+
+
+def test_code_case_can_require_unchanged_arguments():
+    from app.graders.code import grade_code
+    mutating = "def tail(xs):\n    del xs[:-1]\n    return xs\n"
+    pure = "def tail(xs):\n    return xs[-1:]\n"
+    cases = [{"args": [[1, 2, 3]], "expected": [3], "unchanged": True}]
+    assert grade_code(pure, "tail", cases).correct
+    bad = grade_code(mutating, "tail", cases)
+    assert not bad.correct and bad.detail["cases"][0]["error"] == "modified its input arguments"
+    assert grade_code(mutating, "tail", [{"args": [[1, 2, 3]], "expected": [3]}]).correct  # flag is opt-in

@@ -111,6 +111,9 @@ code:
     - kwargs: {attempts: 2, base: 1.0, cap: 1.5}
       expected: [1.0, 1.5]
       approx: 1.0e-9       # optional float tolerance
+    - args: [[1, 2, 3]]
+      expected: [3]
+      unchanged: true      # optional: fail the case if the function mutates its arguments
   timeout_s: 5
 ```
 Standard library only. Deterministic (no randomness, time, network). Arguments and expected values must be JSON-serializable.

@@ -40,8 +40,13 @@ except Exception:
 
 for case in cases:
     try:
-        got = fn(*case.get("args", []), **case.get("kwargs", {}))
+        args, kwargs = case.get("args", []), case.get("kwargs", {})
+        before = json.dumps([args, kwargs], sort_keys=True)
+        got = fn(*args, **kwargs)
         got = json.loads(json.dumps(got))  # tuples -> lists, like the expected values
+        if case.get("unchanged") and json.dumps([args, kwargs], sort_keys=True) != before:
+            results.append({"passed": False, "error": "modified its input arguments"})
+            continue
         results.append({"passed": same(got, case["expected"], case.get("approx")), "got": got})
     except Exception as exc:
         results.append({"passed": False, "error": f"{type(exc).__name__}: {exc}"})
