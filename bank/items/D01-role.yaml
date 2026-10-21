@@ -2,7 +2,7 @@ domain: D1
 items:
   # ---------------------------------------------------------------- role.definition
   - id: D1-001
-    version: 1
+    version: 2
     type: single
     subtopic: role.definition
     tags: [adoption.change]
@@ -17,7 +17,7 @@ items:
     options:
       - text: "Not yet: the FDE owes better claims handling in the adjusters' real workflow, so the next work is finding out why they are not using it"
         correct: true
-        why: Accountability sits with the result in the customer's environment; an 8% usage rate means that result has not happened yet.
+        why: Acceptance shows the work was delivered, not that claims handling improved. 8% usage is a strong warning that the result is not there yet, so the FDE checks the agreed measure and finds out what keeps adjusters away.
       - text: "Yes as contracted: every accepted deliverable meets the statement of work, and adoption is a change programme for the client's operations leaders, with the FDE supporting on request"
         why: Treats the contract as the finish line. The sponsor's question is about the outcome, and the FDE role exists to own the gap between delivered and used.
         misconception: Delivering to the specification is the same as succeeding
@@ -25,12 +25,14 @@ items:
         why: Accuracy is an input. Adjusters may avoid the tool for workflow, trust or integration reasons that a better model does not fix.
         misconception: A model quality metric is the business outcome
       - text: "Partly: the FDE is accountable for a production-grade system that runs reliably, while business results like handling time depend on factors outside engineering's control"
-        why: Production quality is necessary, but the role is defined by owning the outcome end to end, including factors engineering can influence such as workflow fit.
+        why: Production quality is necessary, but the role also works on what engineering can influence beyond the system, such as workflow fit, and reports the business result even where it shares control with the customer.
         misconception: Engineering ownership stops at a healthy production system
     explanation: |
       The distinguishing feature of the FDE role, in Palantir's model and elsewhere, is accountability for the outcome in
-      the customer's real environment rather than for a feature list. Meeting acceptance criteria is a milestone;
-      the claims process actually changing is the result. That is why post-launch usage review belongs to the FDE's job.
+      the customer's real environment rather than for a feature list. Meeting acceptance criteria is a milestone, not
+      evidence that the claims process changed. Low usage does not prove the opposite on its own either: who the users
+      are and how many claims flow through the assistant matter. It is a warning that calls for measuring against the
+      agreed goal and investigating, which is why post-launch usage review belongs to the FDE's job.
 
   - id: D1-002
     version: 1
@@ -65,7 +67,7 @@ items:
     refs: [https://blog.palantir.com/dev-versus-delta-demystifying-engineering-roles-at-palantir-ad44c2a6e87]
 
   - id: D1-003
-    version: 1
+    version: 2
     type: single
     subtopic: role.definition
     difficulty: 1
@@ -78,20 +80,20 @@ items:
     options:
       - text: Value is gated by the last mile of messy data, legacy integrations, permissions and workflow change inside each account
         correct: true
-        why: Model capability is not the bottleneck in most enterprises; the deployment gap is, and that gap is the FDE's territory.
+        why: The founder grants that the model is strong. What stands between it and value is the deployment work inside each account, and that gap is the FDE's territory.
       - text: Enterprise buyers want a named engineer accountable to them, so the embedded role mostly exists to satisfy procurement and vendor-risk requirements
         why: Accountability matters to buyers, but it is a consequence of the work, not the reason for it. The reason is that the integration and workflow work is hard and nobody else is placed to do it.
         misconception: The role exists to reassure buyers
       - text: Raw model capability is not yet reliable on specialised enterprise tasks unless it is fine-tuned on each customer's data, which takes engineers inside the account
-        why: Fine-tuning is occasionally useful, but most enterprise gaps are data access, integration and process, not model weakness.
+        why: Fine-tuning is occasionally useful, but the founder's point is that the model is strong; the remaining gaps are data access, integration and process, which fine-tuning does not close.
         misconception: The deployment gap is mainly a model-quality gap
       - text: Embedded engineers are the vendor's best source of product feedback, so customer deployments are mainly a way to fund research into what to build
         why: Field-to-product feedback is a real benefit, but the role exists because customers need working outcomes. Treating deployments as paid research gets the priority backwards.
         misconception: The point of FDE work is learning for the vendor, not results for the customer
     explanation: |
-      AI labs and vendors revived the forward deployed model because the distance between a capable model and realised
-      enterprise value is mostly a deployment problem: data access, integration, security review and process change.
-      Someone has to close that gap inside the customer's environment.
+      AI labs and vendors revived the forward deployed model because a capable model does not by itself produce
+      enterprise value. Data access, integration, security review and process change stand in between, and someone has
+      to close that gap inside the customer's environment.
 
   - id: D1-004
     version: 1
@@ -129,7 +131,7 @@ items:
       but let the outcome slip between teams.
 
   - id: D1-005
-    version: 1
+    version: 2
     type: single
     subtopic: role.definition
     tags: [adoption.change, comms.stakeholders]
@@ -138,29 +140,32 @@ items:
     time_s: 100
     stem: |
       An insurer's refund-approval assistant works: model quality, data and integration are all sound. Cycle time
-      barely improves, because an internal policy requires three sequential manual sign-offs. The FDE's timestamps
-      show that cases wait in the hand-offs between the three steps, not in the reviews themselves. What should the
+      barely improves, because an internal policy requires three sequential manual sign-offs and passes each completed
+      sign-off to the next approver in a once-daily compliance batch. The FDE's timestamps show each approver acts
+      within an hour of receiving a case; most of the elapsed time is cases waiting for the next batch. What should the
       FDE do?
     options:
-      - text: Take the wait-time breakdown to the sponsor and propose a redesigned approval flow for them to decide on
+      - text: Take the wait-time breakdown to the sponsor and the policy's owner, with a redesigned hand-off for them to decide on
         correct: true
-        why: The outcome depends on a process the FDE cannot change alone. Evidence plus a concrete option is how an outcome owner moves it.
+        why: The delay sits in a control the FDE cannot change alone. Evidence plus a concrete option, put to the people who own the decision, is how an outcome owner moves it.
       - text: Have the assistant submit all three sign-off requests in parallel, which removes the hand-off waits without touching the written policy
         why: The policy requires the sign-offs in sequence. Re-ordering them in software changes the control without its owner's consent, and creates an audit problem.
         misconception: A technical workaround can substitute for a process decision
-      - text: Ask the three sign-off owners to commit to faster turnaround within the existing policy
-        why: Reasonable, but the timestamps show the wait sits in the hand-offs, so faster reviews will not move cycle time much.
+      - text: Ask the three approvers to commit to a same-hour response on every case, within the existing policy
+        why: Reasonable in general, but the timestamps show approvers already act within an hour of receiving a case. The wait is in the daily batch between steps, which the approvers do not control.
         misconception: Slow approvers are the cause of slow approvals
       - text: Record cycle time as blocked by an external policy in the final report, because approval rules are a business matter outside what engineering can change
         why: Correct that the FDE cannot change the policy, wrong to stop. The stated goal, cycle time, has not moved and the sponsor has not been shown why.
         misconception: Process problems are out of scope for an engineer
     explanation: |
-      Outcome accountability includes influence over non-code blockers. The FDE does not rewrite policy, but is expected
-      to surface the cause with evidence and a concrete proposal for the person who owns the decision.
+      Outcome accountability includes influence over non-code blockers. Separate the time spent working on a case from
+      the time it spends waiting: here the reviews are quick and the delay is a hand-off the policy imposes, so neither
+      faster approvers nor a software workaround fixes it legitimately. The FDE does not rewrite policy, but is expected
+      to surface the cause with evidence and a concrete proposal for the people who own the decision.
 
   # ---------------------------------------------------------------- role.adjacent
   - id: D1-006
-    version: 1
+    version: 2
     type: single
     subtopic: role.adjacent
     tags: [delivery.scoping]
@@ -179,15 +184,18 @@ items:
         why: Solutions engineers typically support the sale with demos and proofs of concept, then hand off; they are not usually accountable for a supported production run.
         misconception: The person who built the demo should own delivery
       - text: A solutions architect, who designs how the forecasting service fits the retailer's systems and oversees delivery by the retailer's developers
-        why: Architects usually advise and review; they do not usually write and operate the code, or answer for the measured result.
+        why: As described, the architect designs and oversees while the retailer's developers write the code, so the role neither builds and runs the service nor answers for the measured result.
         misconception: Fitting into the landscape is a design task, not a delivery task
       - text: A professional-services team, scoped and billed against defined pilot deliverables with a support period at the end
         why: Deliverables-based engagements can meet scope without the sponsor's measured result being achieved.
         misconception: Services and FDE roles differ only by title
     explanation: |
       Useful discriminators among customer-facing technical roles are who writes the production code, where it lives, who
-      owns the result, and how the work is priced. Presales ends at the proof of concept; an architect advises; consulting
-      delivers scope; the FDE owns a working outcome.
+      owns the result, and how the work is priced. Compare the responsibilities each option describes, not the titles:
+      here the solutions engineer would stretch a presales demo while acting as a contact, the architect advises while
+      others build, and the services team answers for deliverables. Only the FDE option combines production code in the
+      retailer's environment with the measured result. An architect or services team contracted to build, run and answer for that result would
+      compete on the same terms.
 
   - id: D1-007
     version: 1
@@ -219,7 +227,7 @@ items:
       system in the customer's environment. The seam works best when evidence flows one way and fixes flow back.
 
   - id: D1-008
-    version: 1
+    version: 2
     type: multi
     subtopic: role.adjacent
     difficulty: 2
@@ -232,9 +240,9 @@ items:
       - text: The FDE builds on the vendor's platform, and lessons from the work are fed back to improve the product
         correct: true
         why: Field-to-product feedback is a defining feature; integrator deliverables usually stay with the client.
-      - text: The FDE is judged on a business outcome in production, where the consultant is typically judged on scope delivered
+      - text: In the usual engagement models, the FDE is judged on a business outcome in production and the consultant on scope delivered
         correct: true
-        why: The difference in success measure drives the difference in behaviour after go-live.
+        why: Vendors typically staff FDEs against an agreed outcome, while integrator contracts are typically for a defined scope or time. The success measure drives behaviour after go-live; an integrator contracted on outcomes would narrow this gap.
       - text: The FDE writes production code, while consultants mainly produce documents, designs and recommendations
         why: Integrator consultants and engineers write plenty of production code; the claim is out of date.
         misconception: Consultants do not build
@@ -246,7 +254,8 @@ items:
         misconception: Physical or environmental presence defines the role
     explanation: |
       Neither location nor "who codes" separates the roles. What does: where the code lives and whether learning
-      returns to a product, and whether success is an outcome or a delivered scope.
+      returns to a product. The success measure usually differs too, outcome versus delivered scope, but that comes
+      from the engagement model rather than the title, so compare the contracts actually on offer.
 
   - id: D1-009
     version: 1
@@ -308,7 +317,7 @@ items:
       times it is worth generalising, but only as far as the evidence supports.
 
   - id: D1-011
-    version: 1
+    version: 2
     type: single
     subtopic: role.productization
     difficulty: 2
@@ -316,28 +325,29 @@ items:
     time_s: 90
     stem: |
       Two customers asked for an audit-trail export that the FDE built twice as one-offs. A third customer now asks
-      for it. The export touches how every customer's event data is stored, so product owns the design and reviews
-      core changes. The platform team is busy, and the FDE could write a generalised version for core this week. What
-      is the best course of action?
+      for it. The export touches how every customer's event data is stored, so product owns the design: core features
+      are agreed with product before implementation starts, and the platform team reviews core changes. The platform
+      team is busy, and the FDE could write a generalised version for core this week. What is the best course of action?
     options:
       - text: Deliver the third customer with the existing build, and give product the evidence for making it a core feature
         correct: true
         why: Serves the customer now, and leaves the roadmap call with the owner of the roadmap, backed by three data points.
-      - text: Submit a generalised version to core this week, because the FDE who built it twice knows the requirement best
-        why: Puts a storage-level design decision on a busy platform team before product has decided whether and how the feature should exist, and every customer inherits the result.
-        misconception: The person closest to the need should decide what enters the core
+      - text: Write a generalised version for core this week and submit it for review, since the FDE who built it twice knows the requirement best
+        why: A pull request is a reviewable proposal, not a merge, but it starts a storage-level design before product has agreed whether and how the feature should exist, and hands the busy platform team an unplanned review.
+        misconception: Knowing the requirement best entitles the field to start the core design
       - text: Tell the third customer to wait until the platform team has built it as a core feature
         why: Customer value is delayed for something the FDE can deliver now with existing work.
         misconception: Platform purity beats customer outcomes
       - text: Deliver the third as another one-off and raise it with product only after a fourth or fifth request, since three is still a small sample
-        why: Three independent requests is already the usual trigger for a conversation; waiting multiplies one-off maintenance.
+        why: Three independent requests are already enough to start a conversation, which costs little; waiting multiplies one-off maintenance.
         misconception: Generalisation needs a much larger sample
     explanation: |
-      A rule of thumb is to generalise on the third occurrence. The FDE's role is to bring the evidence; product decides
+      A common rule of thumb treats the third occurrence as the time to discuss generalising: a prompt for a
+      conversation with the owner, not a mandate to build. The FDE's role is to bring the evidence; product decides
       priority and design. Meanwhile the customer still gets value from the existing implementation.
 
   - id: D1-012
-    version: 1
+    version: 2
     type: single
     subtopic: role.productization
     tags: [role.economics]
@@ -349,21 +359,23 @@ items:
       605. Deployments were of comparable scope each quarter, and revenue has grown only as fast as FDE headcount.
       How should a leader read this?
     options:
-      - text: Nothing is compounding. Field work is rebuilt per customer instead of converging into the product, so invest in reusable assets or accept services economics
+      - text: Flat hours on comparable scope warn that no delivery leverage is visible, so find which work repeats and whether it can be reused
         correct: true
-        why: Customisation effort per deployment should fall as assets accumulate. A flat line with linear headcount is the signature of a services business.
+        why: On comparable scope, effort per deployment should fall as assets accumulate; a flat line with headcount-linear revenue looks like a services business. The figures do not show why, so inspect repeated work and reuse before adding headcount or accepting that model.
       - text: A flat effort level shows a predictable, mature delivery process, which is what a good operating model should produce
-        why: Predictability is good, but a flat effort curve means nothing is compounding.
+        why: Predictability is good, but on comparable scope a flat effort curve means no leverage is building up from one deployment to the next.
         misconception: Stability implies health
       - text: Add more FDEs and let them specialise by industry, since specialists should bring hours per deployment down without further product investment
-        why: Specialisation helps a little, but it adds headcount to the same model. Without reusable assets and product features, effort per deployment stays flat.
+        why: Specialisation may help, but it adds headcount to the same model before anyone has checked what work repeats. Without reuse, effort per deployment is likely to stay flat.
         misconception: More specialised people substitute for reusable assets
       - text: Raise per-deployment prices to protect margin, because the effort per customer cannot be reduced
         why: Pricing may help margin short-term but assumes the conclusion. It leaves the structural issue untouched.
         misconception: Margin is a pricing problem only
     explanation: |
       Per-customer customisation effort should fall over time as reusable assets and product features absorb repeated
-      work. If it does not, headcount scales linearly with revenue, which is how professional services behave.
+      work. If it does not, headcount scales linearly with revenue, which is how professional services behave. Treat
+      the flat line as a signal, not a diagnosis: check what work repeats, what is reused, and how the deployment mix and
+      support load have changed, then decide whether to invest in productization or accept services economics.
 
   - id: D1-013
     version: 1
@@ -401,7 +413,7 @@ items:
       per-customer rules are reuse in appearance only.
 
   - id: D1-014
-    version: 1
+    version: 2
     type: single
     subtopic: role.productization
     tags: [comms.tradeoffs]
@@ -422,14 +434,14 @@ items:
         why: Vivid, but individual stories are exactly what the label "anecdotal" dismisses. Product needs frequency and cost to rank it against other work.
         misconception: Qualitative stories persuade better than counts
       - text: Ask the customer's executive sponsor to lobby the vendor's product leadership directly about the missing capability
-        why: Can work once but spends goodwill and teaches the product team to resent field escalations.
+        why: May get attention once, but it goes around prioritisation without answering the objection. Pressure from one sponsor still says nothing about how often the gap occurs or what it costs.
         misconception: Escalation through the customer is the fastest route
     explanation: |
       Field-to-product feedback works when it is evidence-based and prioritisation-ready: how often, how costly, and
       what a good fix looks like. The product team decides; the FDE makes the decision easy.
 
   - id: D1-015
-    version: 1
+    version: 2
     type: single
     subtopic: role.productization
     tags: [comms.stakeholders, delivery.scoping]
@@ -442,9 +454,9 @@ items:
       is in five weeks. Core releases go to every customer and each core change needs a full review cycle. The
       platform has a supported extension point. What should the FDE do?
     options:
-      - text: Build it on the supported extension point, isolated from core, with product agreeing a date to fold it into core or retire it
+      - text: Build it on the supported extension point, isolated from core, with an owner and a review date agreed with product
         correct: true
-        why: Meets the deadline without touching the core, and the agreed end date stops the extension from becoming permanent.
+        why: Meets the deadline without touching the core. The owner and review keep the extension maintained and make a deliberate call on whether it stays, moves into core or is retired.
       - text: Fork the platform for this customer so that nothing blocks the renewal, and merge the changes back to the core when time allows
         why: Fast, but forks rarely merge back, and this one would carry core fixes forever.
         misconception: A fork is an acceptable temporary measure
@@ -455,8 +467,11 @@ items:
         why: The customer-specific path ships to every customer, cannot clear the review cycle in five weeks, and flags added under deadline tend to outlive it.
         misconception: A flag makes a core hack safe
     explanation: |
-      Customisation is a spectrum: configuration, then supported extension, then core change. When time forces an
-      extension, record the decision, limit its reach, and set an exit so that it does not become a fork by another name.
+      Customisation is a spectrum: configuration, then supported extension, then core change. A maintained extension
+      on a supported interface can be the right long-term home for a customer-specific need; it is not a fork. When
+      time forces the choice, record the decision, limit its reach, and give it an owner, a compatibility commitment
+      and a review against agreed criteria for keeping it, moving it into core if other customers need it, or retiring
+      it. That governance is what stops it drifting into a fork by another name.
 
   # ---------------------------------------------------------------- role.economics
   - id: D1-016
@@ -518,7 +533,7 @@ items:
       and errors, versus the new total cost of operation including the work humans still do.
 
   - id: D1-018
-    version: 1
+    version: 2
     type: multi
     subtopic: role.economics
     tags: [obs.cost]
@@ -531,7 +546,7 @@ items:
     options:
       - text: Ongoing evaluation, monitoring and prompt or model maintenance labour after launch
         correct: true
-        why: Often exceeds build cost for AI systems since quality drifts and models change.
+        why: A recurring cost for the life of the capability, since quality drifts and models change, and how much of it the customer carries differs by option.
       - text: Integration and change-management effort on the customer side, beyond the vendor's fee
         correct: true
         why: Real cost to the customer, and it differs by option.
@@ -552,7 +567,7 @@ items:
       first-year-only view and benefits counted as if they were costs all distort a build, buy or partner decision.
 
   - id: D1-019
-    version: 1
+    version: 2
     type: single
     subtopic: role.economics
     tags: [delivery.scoping, role.productization]
@@ -580,7 +595,7 @@ items:
     explanation: |
       Outcome-based pricing moves performance risk to the vendor, so the vendor needs the outcome to be defined,
       measurable and not controllable by the customer alone. A floor or a cap shifts risk but does not settle what
-      counts; a baseline-and-definition clause does.
+      counts; a shared definition, measured from evidence both sides can inspect, does.
 
   # ---------------------------------------------------------------- numeric
   - id: D1-020
@@ -608,7 +623,7 @@ items:
       (gives $106,760), when in fact the pipeline processes every claim.
 
   - id: D1-021
-    version: 1
+    version: 2
     type: numeric
     subtopic: role.economics
     tags: [obs.cost, delivery.scoping]
@@ -621,18 +636,19 @@ items:
       assistant resolves 70% of tickets it receives. Inference costs $0.40 for every ticket received (resolved or not),
       and the FDE team costs a fixed $90,000 per month. At how many tickets received per month does the vendor
       break even? Round to the nearest thousand.
-    answer: {value: 67000, tolerance: 1000, tolerance_type: abs, unit: "tickets/month"}
+    answer: {value: 67000, tolerance: 500, tolerance_type: abs, unit: "tickets/month"}
     work: |
-      Margin per ticket received = 0.70 × 2.50 − 0.40 = 1.75 − 0.40 = $1.35.
+      Contribution per ticket received = 0.70 × 2.50 − 0.40 = 1.75 − 0.40 = $1.35.\
       Break-even volume = 90,000 / 1.35 = 66,667 → about 67,000 tickets per month.
     explanation: |
       Under outcome-based pricing the vendor carries volume and resolution-rate risk. Ignoring the resolution rate gives
-      about 43,000 (90,000 / 2.10); ignoring inference cost gives about 51,000 (90,000 / 1.75). Both understate the volume
-      needed. Below break-even volume the contract loses money however well it performs.
+      about 43,000 (90,000 / 2.10); ignoring inference cost gives about 51,000 (90,000 / 1.75); charging inference only
+      on resolved tickets gives about 61,000 (90,000 / 1.47). All understate the volume needed. At a 70% resolution
+      rate, any month below about 67,000 tickets loses money; a higher resolution rate would lower the break-even point.
 
   # ---------------------------------------------------------------- open
   - id: D1-022
-    version: 1
+    version: 2
     type: open
     subtopic: role.definition
     tags: [role.economics, role.adjacent]
@@ -641,43 +657,44 @@ items:
     level: evaluate
     time_s: 480
     stem: |
-      A customer's CFO writes: "Why are we paying for forward deployed engineers? A systems integrator would cost less
-      per day, and your product is supposedly self-service." Write the reply you would send as the vendor's lead FDE.
-      Keep it under 250 words.
+      A customer's CFO writes: "Why are we paying for forward deployed engineers? A systems integrator has quoted a
+      lower day rate to build the same system, and your product is supposedly self-service. How would I know you are
+      worth it, and how long will we need you?" Write the reply you would send as the vendor's lead FDE. Keep it under
+      250 words.
     rubric:
       - criterion: Bottom line first, in the CFO's terms
         points: 2
-        guidance: "2 if the reply opens with a direct position on value and cost; 1 if the position appears only late; 0 if it opens with defensive background or role definitions."
-      - criterion: Explains what the FDE is accountable for versus an integrator
+        guidance: "2 if the reply opens with a clear position on value and cost and acknowledges the concern; 1 if a position is present but buried or loosely tied to cost; 0 if there is no usable position or it opens with a defensive role definition."
+      - criterion: Explains what this engagement contributes and compares it fairly with the integrator's quote
         points: 3
-        guidance: "3 if it contrasts outcome accountability and production ownership with scope delivery; 2 if it states the difference without why it matters to the CFO; 1 if it only says FDEs are more technical; 0 if missing."
+        guidance: "3 if it explains what the FDE engagement adds beyond building the system (for example product depth, a route to product fixes, production responsibility, work on the agreed outcome) and compares it fairly with what the integrator is quoting to do; 2 if the contribution is credible but the comparison or why it matters to the CFO is weak; 1 if it only claims FDEs are better or more technical; 0 if missing or if it rests on a materially false distinction, such as integrators being unable to build or run production systems."
       - criterion: Addresses day rate versus total cost
         points: 2
-        guidance: "2 if it reframes from day rate to total cost or time to value and acknowledges the integrator may be cheaper per day; 1 if it only asserts higher value; 0 if it ignores the cost point."
-      - criterion: Commits to something measurable and a path to less dependence
+        guidance: "2 if it moves from day rate to total cost, time to value or ongoing cost and concedes where the integrator may be cheaper or a better fit (recommending the integrator for part of the work, or a smaller FDE role, can earn full credit if justified); 1 if it covers only one cost or value dimension or merely asserts higher value; 0 if it ignores the cost point."
+      - criterion: Proposes how value will be checked and how dependence will fall
         points: 3
-        guidance: "3 if it proposes agreed outcome metrics and an expectation that FDE effort falls or hands off over time; 2 if only one; 1 if vague; 0 if none."
+        guidance: "3 if it proposes agreed outcome metrics with a baseline, a credible plan for the customer to take over or for FDE effort to fall, and a decision point if value is not shown; 2 if metrics and reduced dependence are both covered but one is vague, or one is covered well; 1 if only a vague commitment; 0 if neither. Exact dates and wording are not required."
     model_answer: |
-      You are right to ask: day rate is the wrong yardstick, and I would rather show you a better one.
+      Fair question, and day rate alone won't answer it. Here is what the difference buys, and how you can check it.
 
-      The integrator may well be cheaper per day, and for a defined scope they are a sound choice. The difference
-      is what each of us is accountable for. An integrator delivers an agreed scope. My team is accountable for the
-      outcome we agreed with you, which is claims handled faster in your adjusters' real workflow, and we work on
-      the same platform your teams will run, so fixes and improvements don't depend on a separate project.
+      The integrator may well be cheaper per day, and for well-defined build work they can be a sound choice; we can
+      look together at which parts of this programme fit that. What our engagement adds is what happens beyond the
+      build. We work on the platform itself, with a direct route to our product team for fixes, and we answer for the
+      outcome we agree with you in production, not only for delivering the system.
 
-      "Self-service" is true for the product and less so for your environment: your data access, permissions, legacy
-      systems and process changes are where deployments stall, and those are the work we do.
+      "Self-service" is true for the product and less so for your environment. Data access, permissions, legacy
+      systems and process change are where deployments stall, and that is the work we do.
 
-      To make this checkable, I propose three things. First, we agree a baseline and a target for handling time this
-      week. Second, you see weekly usage and quality numbers, not just activity reports. Third, we plan to reduce our
-      involvement: by the end of the second quarter your team should be operating and changing the system, with us
-      on escalation only. If the metrics are not moving by day 60, we should talk openly about whether this model is
-      right for you.
+      To make this checkable, I propose three things. First, this week we confirm the business metric this programme
+      must move, with a baseline and a target. Second, you see weekly usage and outcome numbers, not activity reports.
+      Third, our involvement shrinks on a plan: by the end of next quarter your team operates and changes the system,
+      with us on escalation. If the metric has not moved by day 60, we decide together whether this model, a smaller
+      FDE role or the integrator is the better use of your money.
     max_chars: 2000
 
   # ---------------------------------------------------------------- audio
   - id: D1-023
-    version: 1
+    version: 2
     type: audio
     subtopic: role.productization
     tags: [role.economics]
@@ -689,33 +706,33 @@ items:
     max_s: 120
     stem: |
       A founder says: "We want to deploy engineers to customers, but we also want software margins. Can we have
-      both?" Give your answer out loud, in about two minutes.
+      both?" Give your answer out loud, in about two minutes, including how they would know whether it is working.
     rubric:
       - criterion: Clear position up front
         points: 2
-        guidance: "2 if a direct answer is given in the first sentences (for example: possible over time, not at the start); 1 if a position appears late; 0 if none."
+        guidance: "2 if a direct answer is given in the first sentences (for example: possible over time, under conditions); 1 if a position appears late; 0 if none."
       - criterion: Explains the mechanism that moves margin
         points: 3
-        guidance: "3 if it explains that effort per customer must fall through reusable assets, configuration over customisation and field learning feeding the product; 2 if it names reuse without the mechanism; 1 if vague; 0 if absent."
+        guidance: "3 if it explains how delivery effort per customer falls relative to what customers pay, through reusable assets, configuration over customisation and field learning feeding the product (equivalent mechanisms, such as pricing deployment work separately, earn credit if explained); 2 if it names reuse without the mechanism; 1 if vague; 0 if absent."
       - criterion: Names a metric or signal to track
         points: 2
-        guidance: "2 if it gives a concrete measure such as hours to production per deployment or share of customer-specific code; 1 if vague; 0 if none."
+        guidance: "2 if it gives a concrete measure such as hours to production per deployment, share of customer-specific code, or delivery cost as a share of revenue; 1 if vague; 0 if none."
       - criterion: Acknowledges the trade-off honestly
         points: 2
-        guidance: "2 if it states that margins will be lower early and that forward deployment is a deliberate investment; 1 if implied; 0 if it promises both immediately."
+        guidance: "2 if it gives a concrete, conditional account of the trade-off (for example: heavy deployment effort can hold margins down while the product matures, so it is a deliberate investment that needs a check on whether it is paying off); 1 if a relevant but incomplete caution; 0 if it promises both immediately or guarantees either outcome."
     model_answer: |
-      Yes, but not on day one, and only if you manage it deliberately. Early on, forward deployed engineers cost
-      more than they bill, so gross margin will look like a services business. That is a choice: you are paying for
-      access to hard problems and for what you learn from them.
+      Yes, but probably not on day one, and only if you manage it deliberately. While each deployment takes weeks of
+      engineering, delivery cost can pull gross margin toward services levels. That can be a sensible choice: you are
+      paying for access to hard problems and for what you learn from them.
 
-      Margin improves only if the effort per customer falls over time. That does not happen by scaling alone. It
-      happens when what your engineers build is separated into the core product and per-customer configuration,
-      when connectors, evaluation sets and known failure patterns are reused, and when repeated requests are fed back
-      to the product team and turned into features.
+      Pricing and hosting costs matter too, but the lever this model adds is effort per customer, and it has to fall
+      over time. That does not happen by scaling alone. It happens when what your engineers build is separated into
+      the core product and per-customer configuration, when connectors, evaluation sets and known failure patterns
+      are reused, and when repeated requests are fed back to the product team and turned into features.
 
       I would track hours to reach production per new deployment, and the share of each deployment that is
-      customer-specific code versus configuration. If those aren't falling quarter on quarter, you are running a
-      services business with a software logo.
+      customer-specific code versus configuration. If those aren't falling quarter on quarter, treat it as a warning
+      that you are scaling a services business, and find out what keeps being rebuilt.
 
-      So: have both, but sequence them. Accept lower margins now, instrument the trend, and give product a clear route
-      to absorb what the field learns.
+      So: have both, but sequence them. Expect lower margins while you invest, instrument the trend, and give product
+      a clear route to absorb what the field learns.
