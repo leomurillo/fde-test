@@ -117,3 +117,15 @@ def test_code_case_can_require_unchanged_arguments():
     bad = grade_code(mutating, "tail", cases)
     assert not bad.correct and bad.detail["cases"][0]["error"] == "modified its input arguments"
     assert grade_code(mutating, "tail", [{"args": [[1, 2, 3]], "expected": [3]}]).correct  # flag is opt-in
+
+
+def test_code_case_can_require_a_call():
+    from app.graders.code import grade_code
+    safe = "import hmac\ndef same(a, b):\n    return hmac.compare_digest(a, b)\n"
+    imported = "from hmac import compare_digest\ndef same(a, b):\n    return compare_digest(a, b)\n"
+    naive = "def same(a, b):\n    return a == b\n"
+    cases = [{"args": ["x", "x"], "expected": True, "must_call": "hmac.compare_digest"}]
+    assert grade_code(safe, "same", cases).correct
+    assert grade_code(imported, "same", cases).correct
+    bad = grade_code(naive, "same", cases)
+    assert not bad.correct and bad.detail["cases"][0]["error"] == "did not call hmac.compare_digest"

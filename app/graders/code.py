@@ -31,6 +31,20 @@ def same(a, b, tol):
         return len(a) == len(b) and all(same(x, y, tol) for x, y in zip(a, b))
     return a == b
 
+calls = {}
+
+def counting(name, original):
+    def wrapper(*a, **kw):
+        calls[name] = calls.get(name, 0) + 1
+        return original(*a, **kw)
+    return wrapper
+
+# Patch required functions before the solution imports them, so `from m import f` gets the wrapper too.
+for name in {c["must_call"] for c in cases if c.get("must_call")}:
+    module_name, attr = name.rsplit(".", 1)
+    module = __import__(module_name, fromlist=[attr])
+    setattr(module, attr, counting(name, getattr(module, attr)))
+
 try:
     import solution
     fn = getattr(solution, fn_name)
@@ -42,10 +56,15 @@ for case in cases:
     try:
         args, kwargs = case.get("args", []), case.get("kwargs", {})
         before = json.dumps([args, kwargs], sort_keys=True)
+        required = case.get("must_call")
+        n_before = calls.get(required, 0)
         got = fn(*args, **kwargs)
         got = json.loads(json.dumps(got))  # tuples -> lists, like the expected values
         if case.get("unchanged") and json.dumps([args, kwargs], sort_keys=True) != before:
             results.append({"passed": False, "error": "modified its input arguments"})
+            continue
+        if required and calls.get(required, 0) == n_before:
+            results.append({"passed": False, "error": f"did not call {required}"})
             continue
         results.append({"passed": same(got, case["expected"], case.get("approx")), "got": got})
     except Exception as exc:
