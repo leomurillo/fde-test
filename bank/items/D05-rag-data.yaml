@@ -63,7 +63,7 @@ items:
       the UI. Hybrid search and reranking help with other failures but not this one.
 
   - id: D5-003
-    version: 1
+    version: 2
     type: single
     subtopic: rag.retrieval
     difficulty: 2
@@ -86,7 +86,7 @@ items:
         why: This still compares BM25 magnitudes with cosine magnitudes, so lexical scores win every time.
         misconception: Taking the max avoids the need to calibrate score scales
       - text: Tune the BM25 weight on a held-out set before deploying any fusion at all
-        why: There is no labelled data, and the tuned weight would be invalidated by the third retriever anyway.
+        why: There is no labelled data to tune on, and the third retriever would add another weight to tune and likely force a retune.
         misconception: Weighted score fusion must be tuned before it is usable
     explanation: |
       Rank-based fusion (RRF) is robust when scores are not comparable and no labels exist; the constant k
@@ -95,7 +95,7 @@ items:
     refs: [https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf]
 
   - id: D5-004
-    version: 1
+    version: 2
     type: single
     subtopic: rag.retrieval
     difficulty: 3
@@ -109,7 +109,7 @@ items:
     options:
       - text: "Raise the query-time search breadth (ef_search) and re-measure recall against latency"
         correct: true
-        why: It widens graph exploration per query, raises recall at the cost of latency the team has spare, and needs no rebuild.
+        why: It widens graph exploration per query, typically trading some of the spare latency for recall, and it needs no rebuild.
       - text: Reduce `M` (links per node) to make the graph sparser and the search more focused
         why: Fewer links shrink memory and often lower recall; changing M also requires a rebuild.
         misconception: A sparser graph is a more focused one
@@ -117,16 +117,18 @@ items:
         why: Build effort sets graph quality; lowering it generally hurts recall and does not make queries faster in a way that helps here.
         misconception: Index build parameters trade off like query parameters
       - text: "Switch to exact (flat) search over all 20 million vectors so that recall is 1.0"
-        why: Exact search over 20 million vectors costs far more than the 125 ms of slack and would need much more compute.
-        misconception: Exact search is always affordable when the corpus fits in memory
+        why: Exact search compares every query with all 20 million vectors, so whether it fits the budget, and on what hardware, needs benchmarking; a query-time setting is a cheaper first step.
+        misconception: Exact search is the natural first fix for approximate-search recall loss
     explanation: |
       ANN indexes trade recall against latency. Query-time parameters (such as `ef_search` in HNSW) can be raised
-      without rebuilding, so tune those first while latency headroom exists; build-time parameters (`M`,
-      `ef_construction`) set graph quality and need a rebuild to change.
+      without rebuilding, so tune those first while latency headroom exists, re-measuring both recall and p95 at each
+      step; gains usually flatten as the setting grows. Build-time parameters (`M`, `ef_construction`) set graph
+      quality and need a rebuild to change. Exact search costs grow with the corpus, so it is a design option to
+      benchmark rather than a quick switch.
     refs: [https://arxiv.org/abs/1603.09320]
 
   - id: D5-005
-    version: 1
+    version: 2
     type: single
     subtopic: rag.retrieval
     difficulty: 2
@@ -135,25 +137,28 @@ items:
     stem: |
       A bank's policy assistant passes the top 5 vector hits to the LLM. Offline review shows the best chunk is
       usually in the top 30 but rarely in the top 5, and users see mediocre answers. Traffic is about 40
-      requests per second with a p95 latency budget of 2.5 seconds for the whole response. Which pipeline change
-      fits best?
+      requests per second with a p95 latency budget of 2.5 seconds for the whole response; today's p95 is
+      1.9 seconds. Which pipeline change fits best?
     options:
       - text: "Retrieve 50 candidates, rerank with a cross-encoder for precision, send the top 5"
         correct: true
-        why: A cross-encoder reads query and chunk together for more accurate ordering, and scoring 50 short pairs fits the latency and throughput budget.
+        why: A cross-encoder reads query and chunk together for more accurate ordering, and small ones typically score 50 short pairs in tens of milliseconds on a GPU, a good fit for the 0.6 s of headroom.
       - text: "Send the top 30 chunks straight to the LLM so the best one is included in the prompt"
         why: Recall is solved, but cost and latency rise, and long noisy contexts often hurt answer quality.
         misconception: Putting more retrieved text in the prompt is free insurance
       - text: Have an LLM rank all 50 candidates in a separate call, then pass the top 5 on
-        why: Works in principle, but an extra LLM call over 50 chunks adds seconds of latency and cost at 40 requests per second.
+        why: It can rank well, but a second LLM call that reads 50 chunks typically takes around a second or more, beyond the 0.6 s of headroom, and adds model cost on every request.
         misconception: An LLM is the best reranker whatever the latency budget
       - text: Re-embed the corpus with a model whose vectors have double the dimensions
-        why: A bi-encoder still scores query and chunk independently, so the ordering gain is small relative to a reranker and the cost is a full re-embed.
+        why: A bi-encoder still scores query and chunk independently, so the ordering gain is typically smaller than a reranker's, and the cost is a full re-embed.
         misconception: Higher-dimensional embeddings fix ordering precision
     explanation: |
       Two-stage retrieval is the standard pattern: a fast bi-encoder gets recall into a candidate set, then a
-      cross-encoder reranker improves precision on that small set. Keep the final context small; more chunks do
-      not mean better answers.
+      cross-encoder reranker improves precision on that small set. The latency budget decides how many candidates
+      you can rerank: at 40 requests per second, 50 candidates means about 2,000 scored pairs a second, so load-test
+      the reranker on the serving hardware before rollout. Keep the final context small; more chunks do not mean
+      better answers.
+    refs: [https://www.sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html]
 
   - id: D5-006
     version: 1
@@ -279,7 +284,7 @@ items:
       The ACL metadata must be refreshed from the source system, or it becomes a stale copy of the permissions.
 
   - id: D5-010
-    version: 1
+    version: 2
     type: single
     subtopic: rag.ingestion
     tags: [llm.failure-modes]
@@ -296,7 +301,7 @@ items:
         correct: true
         why: Keeping column headers attached to each value lets retrieval and the model tell which number belongs where.
       - text: Run OCR at a higher resolution on every page to improve the extracted text
-        why: The PDFs are digitally generated, so characters are already exact; the loss is in table structure, not recognition.
+        why: The PDFs are digitally generated, so the text comes from the text layer without OCR; the loss is in table structure, not recognition.
         misconception: Extraction errors on PDFs are always an image-quality problem
       - text: Increase chunk overlap so that column headers and cell values appear together in more chunks
         why: Overlap duplicates the same flattened word stream and still cannot say which value sits under which header.
@@ -347,7 +352,7 @@ items:
       it current; the index itself must mirror the source's lifecycle.
 
   - id: D5-012
-    version: 1
+    version: 2
     type: single
     subtopic: rag.ingestion
     tags: [gov.audit-compliance, eval.rag-agent]
@@ -358,7 +363,8 @@ items:
       A compliance team requires that a reviewer can check any cited claim in under a minute. The assistant
       currently cites the source file name. For a 300-page policy PDF the reviewer lands on page one, and for
       documents revised since indexing the file they open is a newer revision than the text the assistant saw.
-      Which ingestion change addresses this most directly?
+      The document system keeps every past revision and opens any of them by revision id, under the same access
+      rules. Which ingestion change addresses this most directly?
     options:
       - text: "Store document id, revision, page and section anchor with each chunk, and cite those"
         correct: true
@@ -374,9 +380,10 @@ items:
         misconception: Smaller files are a substitute for provenance metadata
     explanation: |
       Provenance is captured at ingestion: each chunk carries a stable document id, the revision indexed, and a locator
-      (page, section, offset). Citations built from recorded metadata are verifiable and survive later document
-      changes; locations the model generates are not. Claim-level checks of quotes against chunks are a separate,
-      complementary control.
+      (page, section, offset). Metadata makes a citation precise; it stays verifiable after later edits only while the
+      cited revision can still be opened. Here the source keeps old revisions; where it does not, keep an
+      access-controlled snapshot of each indexed revision. Locations the model generates are not provenance.
+      Claim-level checks of quotes against chunks are a separate, complementary control.
 
   - id: D5-013
     version: 1
@@ -410,7 +417,7 @@ items:
       the canonical record so the audit trail survives deduplication.
 
   - id: D5-014
-    version: 1
+    version: 2
     type: single
     subtopic: rag.architecture
     tags: [agents.tools-mcp]
@@ -424,7 +431,7 @@ items:
     options:
       - text: "Give the assistant a read-only query tool over a governed view and let SQL do the totals"
         correct: true
-        why: Totals and group-bys are exact in SQL, always current, and auditable from the query that produced them.
+        why: Totals and group-bys are exact in SQL, current as of the queried source, and auditable from the query that produced them.
       - text: "Embed the rows as proposed but retrieve 200 rows for each question so that the model can sum them"
         why: Top-k similarity returns rows that resemble the question, not all rows in scope, so sums are incomplete and unverifiable.
         misconception: Enough retrieved rows lets the model aggregate accurately
@@ -546,7 +553,7 @@ items:
       permissions authoritative.
 
   - id: D5-018
-    version: 1
+    version: 2
     type: single
     subtopic: rag.architecture
     tags: [agents.patterns]
@@ -557,24 +564,27 @@ items:
       An operations team asks: "Which customers affected by incident INC-204 also have an open P1 ticket, and who
       is their account owner?" The answer depends on three sources: the incident record in the wiki, a tickets
       database, and a CRM. A single retrieval pass over a combined index returns plausible but incomplete answers.
-      What is the best architectural change?
+      Questions like this arrive daily, and each combines the three sources differently: starting from an
+      incident, a customer, a product or an owner. What is the best architectural change?
     options:
       - text: "Let the model chain search, SQL and CRM tool calls step by step, bounded by a step limit"
         correct: true
-        why: The question is multi-hop and each hop needs a different source, so iterative tool use fits where one pass cannot.
+        why: Each question needs several hops across different sources, and the route varies by question, so model-chosen tool calls cover shapes a fixed pipeline does not.
       - text: "Index the CRM, tickets and wiki into one vector store and raise top_k to 50 for each query"
         why: Joins across customers, tickets and owners cannot be expressed as similarity search, however many hits come back.
         misconception: A large enough retrieval set substitutes for joining data
       - text: Build a nightly job that joins all three sources into pre-written summaries for every incident
         why: It is expensive, stale by morning, and only covers question shapes someone anticipated.
         misconception: Pre-computing every possible answer is more reliable than querying
-      - text: Fine-tune the model on previous incident reports so it infers which customers are affected
-        why: The answer depends on current records, which fine-tuning neither contains nor keeps current.
-        misconception: Learned patterns can replace lookups of live data
+      - text: "Hard-code a workflow for this question: incident lookup, then a tickets query, then a CRM call"
+        why: It answers this one shape exactly and cheaply, but questions start from different entities each day, so every new shape needs new code.
+        misconception: A fixed workflow covers ad hoc questions across the same sources
     explanation: |
-      Multi-hop questions over heterogeneous sources are where agentic retrieval earns its cost: the model decides
-      which source to query next based on what it has found. Bound the loop (step and cost limits) and prefer
-      exact tools (SQL, API) for structured hops over similarity search.
+      Multi-hop questions over heterogeneous sources need several exact lookups, each feeding the next. When the
+      route is fixed and known in advance, a coded workflow over the same tools is simpler, cheaper and easier to
+      test. When question shapes vary, as here, letting the model choose the next tool call based on what it has
+      found earns its cost. Bound the loop (step and cost limits), log each step, and prefer exact tools (SQL, API)
+      over similarity search for structured hops.
 
   - id: D5-019
     version: 1
@@ -721,7 +731,7 @@ items:
       and the temp B-tree is gone.
 
   - id: D5-023
-    version: 1
+    version: 2
     type: multi
     subtopic: data.sql
     tags: [eval.rag-agent, llm.failure-modes]
@@ -750,7 +760,7 @@ items:
         why: A deterministic query can be consistently wrong; the cause here is missing business definitions, not randomness.
         misconception: Determinism is the same as correctness
       - text: Replace result comparisons with a second model call that reads each query and judges whether it looks right
-        why: A reader of SQL text lacks the same business knowledge and approves plausible joins; only running queries against known answers catches this.
+        why: A reader of SQL text lacks the same business knowledge and approves plausible joins; running queries against known answers tests the results themselves.
         misconception: An LLM review of query text is as good as testing results
     explanation: |
       Text-to-SQL fails mostly on meaning, not syntax: which table, which join, what a business term denotes. Give the
@@ -796,7 +806,7 @@ items:
       Use EXISTS/IN for filtering, or aggregate the child table first and join the result.
 
   - id: D5-025
-    version: 1
+    version: 2
     type: single
     subtopic: data.modeling
     tags: [obs.slo]
@@ -805,8 +815,9 @@ items:
     time_s: 90
     stem: |
       A SaaS company stores agent-run logs (about 500 million rows) in the same Postgres database that serves
-      its live application. Analysts run group-by queries over two years of history, and the dashboards must
-      respond in under a second; each heavy query now causes latency spikes in the product. What is the best direction?
+      its live application. Throughout the working day, analysts run ad hoc group-by queries over two years of
+      history, and the dashboards must include the current day's runs and respond in under a second. Each heavy
+      query now causes latency spikes in the product. What is the best direction?
     options:
       - text: "Replicate the data to a columnar analytical store and point the dashboards there"
         correct: true
@@ -815,7 +826,7 @@ items:
         why: Wide scans and aggregations still touch most rows, while each added index slows the product's writes.
         misconception: Indexes make analytical aggregations cheap
       - text: "Move the heavy queries to run overnight on the same database instead of during the day"
-        why: Dashboards need fresh sub-second answers during the day, and the nightly window shrinks as the data grows.
+        why: Ad hoc daytime questions cannot wait for a night run, and overnight results would miss the current day's runs the dashboards must show.
         misconception: Scheduling alone resolves workload contention
       - text: "Move to a bigger instance class for the primary database to absorb the analytical load"
         why: It buys headroom for a while, but analytical scans and transactional traffic still compete for the same resources.
@@ -823,7 +834,8 @@ items:
     explanation: |
       OLTP stores are tuned for many small reads and writes of whole rows; OLAP stores are tuned for scans and
       aggregations over columns. Offloading analytics through replication or ELT protects the product and makes the
-      dashboards fast. A read replica helps with isolation but remains a row store.
+      dashboards fast; keep the replication lag (for example change data capture or frequent loads) within the
+      same-day freshness the dashboards need. A read replica helps with isolation but remains a row store.
 
   - id: D5-026
     version: 1
@@ -915,7 +927,7 @@ items:
       forgetting the overlap altogether (24 million). Overlap adds about 14% to embedding cost here.
 
   - id: D5-029
-    version: 2
+    version: 3
     type: numeric
     subtopic: rag.retrieval
     tags: [deploy.compute, obs.cost]
@@ -932,14 +944,14 @@ items:
     work: |
       Float32: 12,000,000 * 1,024 * 4 bytes = 49,152,000,000 bytes = 45.78 GiB.\
       Int8: 12,000,000 * 1,024 * 1 byte = 12,288,000,000 bytes = 11.44 GiB.\
-      Saving = 45.78 - 11.44 = 34.33 GiB (75%).
+      Saving = 49,152,000,000 - 12,288,000,000 = 36,864,000,000 bytes = 34.33 GiB (75%).
     explanation: |
       Common mistakes: reporting the quantised size (11.44 GiB) instead of the saving, using 1 GB = 10^9 bytes
-      (giving 36.9). Quantisation trades a little recall for 4x less memory;
-      measure recall before adopting it.
+      (giving 36.9). Subtract in bytes, or before rounding: the rounded sizes give 45.78 - 11.44 = 34.34.
+      Quantisation usually costs a little recall for 4x less vector memory; measure recall before adopting it.
 
   - id: D5-030
-    version: 1
+    version: 2
     type: open
     subtopic: rag.retrieval
     tags: [eval.rag-agent, comms.stakeholders]
@@ -952,40 +964,41 @@ items:
       and procedure documents. A quality review of 200 questions found 22% wrong or incomplete answers. The client's
       VP of Operations has written: "Clearly the model is too weak. Please upgrade to the most expensive one before
       the steering committee on Friday." Write your reply. Explain how you will find the actual cause, what you
-      will do before Friday, and what you will ask of the VP.
+      will do before Friday, what result would change your recommendation, and what you will ask of the VP.
     rubric:
-      - criterion: Bottom line first and respectful pushback
+      - criterion: Clear, respectful recommendation
         points: 2
-        guidance: 2 if the reply opens with a clear position (do not buy the upgrade yet, diagnose first) in a respectful tone; 1 if the position is present but buried or hedged; 0 if it simply agrees or never states one.
-      - criterion: Stage-by-stage diagnosis of the failures
+        guidance: 2 if the reply opens with a provisional position and its reason (for example, hold the upgrade until the evidence shows where the failures arise) and makes the upgrade decision conditional on evidence, in a respectful tone; 1 if a position is present but buried, hedged into no position, or not justified; 0 if there is no actionable position, or it endorses the purchase without evidence.
+      - criterion: Evidence-based diagnosis of the failures
         points: 3
-        guidance: 3 if it proposes classifying the 200 failures by stage (retrieval miss, ranking, parsing or chunking, permissions, generation) using the retrieved chunks and measures retrieval recall separately; 2 if it separates retrieval from generation but stops there; 1 if it only says analyse errors; 0 if absent.
-      - criterion: Concrete plan and cheap test of the model hypothesis
+        guidance: 3 if it explains how examining the 44 failing answers, and what was retrieved for each, separates evidence problems (the right passage not retrieved, ranked too low, mangled by parsing or chunking, or removed by a permission filter) from generation problems, with relevant stage detail; equivalent methods earn full credit, and listing every stage is not required; 2 if it credibly separates retrieval from generation but says little about how; 1 if it only says it will analyse errors; 0 if there is no diagnostic approach.
+      - criterion: Feasible pre-Friday plan that tests the model hypothesis
         points: 3
-        guidance: 3 if it includes a Friday-feasible plan (error taxonomy, a fix experiment such as hybrid search or parsing for the top failure category, and a side-by-side run of the larger model on the same failures to test the VP's hypothesis, with a cost comparison); 2 if plan or test is present but vague; 1 if only one element; 0 if none.
-      - criterion: Risks, success measure and the ask
+        guidance: 3 if it commits to a realistic plan before Friday that tests the VP's hypothesis or an equally informative alternative (for example the larger model on the failing questions with the same retrieved context, or showing that the needed evidence was never retrieved), says what evidence it will produce, and recognises that a result on the failures alone cannot justify a switch without checking the full set (or another representative set) for regressions on answers that are right today; 2 if the plan is useful but has one material gap (feasibility, a fair comparison, or regressions); 1 if it offers only a vague action or an isolated experiment; 0 if there is no executable pre-Friday plan. Naming a particular fix or model is not required.
+      - criterion: Decision rule and the ask
         points: 2
-        guidance: 2 if it states what result would change the plan, a measurable target on the same 200-question set, and a specific ask (domain experts to label, access to logs, decision rule for the upgrade); 1 if only one of these; 0 if none.
+        guidance: 2 if it states what result would change the recommendation (for example, evidence present but answered wrongly favours the upgrade; evidence missing favours fixing retrieval or parsing) and makes a specific ask of the VP (expert time to confirm answers, access to logs, or agreement on the decision rule); 1 if it gives only one of these; 0 if neither. No particular numeric target is required.
     model_answer: |
-      Short answer: I would hold the upgrade decision until Thursday. We have not yet shown the model is the
-      bottleneck, and upgrading is the most expensive way to find out.
+      Short answer: I recommend holding the upgrade decision until Thursday. We have not yet shown that the model is
+      the bottleneck, and upgrading is the most expensive way to find out.
 
       What I will do before Friday: take the 44 failing questions and, for each, look at what was retrieved and
       classify the failure: the right document was not retrieved (a recall problem), it was retrieved but ranked too
       low, the text was mangled at parsing (tables and scans are common in claims material), a permission filter removed
-      it, or the evidence was present and the model still got it wrong. That takes a day and tells us where the 22% comes
-      from. In parallel I will run the larger model on exactly those 44 questions with the same retrieved context, so
-      we get a measured answer on your hypothesis and a cost-per-answer comparison, instead of a guess.
+      it, or the evidence was present and the model still got it wrong. That takes about a day and tells us where the
+      22% comes from. In parallel I will run the larger model on those 44 questions with the same retrieved context,
+      so we get a measured answer on your hypothesis and a cost-per-answer comparison, instead of a guess.
 
-      My expectation, from similar pilots, is that most failures sit in retrieval and parsing, which a bigger model
-      cannot repair. If so, the fix is cheaper: hybrid search, better parsing of tables, and a reranker, each tested
-      on the same 200 questions. If instead the evidence is present and the model fails, I will recommend the upgrade.
+      If most failures trace to missing or mangled evidence, a bigger model cannot repair them, and cheaper fixes
+      come first: hybrid search, better table parsing or a reranker, each tested on the same 200 questions. If the
+      evidence is present and the larger model gets those answers right, I will recommend the upgrade, once a run on
+      all 200 questions confirms it does not break answers that are right today.
 
-      For the steering committee I will show the failure breakdown, the first fix and its measured improvement, and
-      a target (for example, under 10% wrong on this set).
+      For the steering committee I will show the failure breakdown, the results of both tests, and the cost of each
+      option, so the committee can agree a quality target and the trade-off.
 
       What I need from you: two claims specialists for two hours to confirm the correct answers on the failures, and
-      agreement that the upgrade is approved if the evidence points to the model.
+      agreement that we upgrade if the evidence points to the model.
     max_chars: 2500
 
   - id: D5-031
@@ -1170,7 +1183,7 @@ items:
       a reopening under this definition, which is why T2 and T5 do not appear.
 
   - id: D5-034
-    version: 1
+    version: 2
     type: sql
     subtopic: rag.ingestion
     tags: [data.sql]
@@ -1231,7 +1244,11 @@ items:
     explanation: |
       A LEFT JOIN keeps documents with no chunks, and aggregating per document lets HAVING test the chunk count and
       the latest index time together. Document `c` is not stale because its update time equals its latest index time,
-      and `f` is fine because one of its chunks was indexed after the update.
+      and `f` passes because one of its chunks was indexed after the update.
+
+      This is a timestamp diagnostic, and `f` shows its limit: chunk 7 was indexed before the update, so `f` may still
+      mix old and new text. Proving that every active chunk matches the current revision needs a revision id on each
+      chunk, or an indexer that replaces a document's chunks as a unit.
 
   - id: D5-035
     version: 1
@@ -1286,7 +1303,7 @@ items:
       Divide by `100.0`, not `100`, or integer division truncates the cents.
 
   - id: D5-036
-    version: 1
+    version: 2
     type: sql
     subtopic: data.sql
     tags: [rag.architecture, eval.online]
@@ -1298,8 +1315,9 @@ items:
       A support portal logs article usage in `kb_articles(article_id, category, title, views_30d)`; `views_30d`
       is NULL for articles published in the last few days (treat NULL as 0).
 
-      For each category, return the articles in the top two by `views_30d`, counting all articles tied with the
-      second-highest view count (so a category can return more than two). Return four columns in this
+      For each category, return its top two articles by `views_30d` together with any ties: include an article
+      when fewer than two articles in its category have more views than it. For example, views of 500, 300 and 300
+      return all three articles, while 500, 500 and 300 return only the two with 500. Return four columns in this
       order: `category`, `article_id`, `views_30d` (NULL shown as 0) and `share` — the article's views divided by the
       category's total views (NULL counted as 0), rounded to 3 decimals (0 if the category total is 0). Order by
       `category`, then `views_30d` descending, then `article_id`.
@@ -1318,7 +1336,10 @@ items:
           (9,'agents','Tool limits',120),
           (10,'agents','Run history',NULL),
           (11,'agents','Retries',NULL),
-          (12,'onboarding','Welcome',NULL);
+          (12,'onboarding','Welcome',NULL),
+          (13,'security','MFA setup',500),
+          (14,'security','Audit logs',500),
+          (15,'security','IP allowlists',300);
       reference: |
         WITH v AS (
           SELECT article_id, category, COALESCE(views_30d, 0) AS views
@@ -1338,10 +1359,13 @@ items:
       order_matters: true
       float_round: 3
     explanation: |
-      `RANK()` leaves ties at the same rank (so both 300-view articles appear), unlike `ROW_NUMBER()`, which would
-      arbitrarily cut one. The window `SUM(...) OVER (PARTITION BY category)` provides the denominator without a
-      separate join. The all-zero `onboarding` category exercises the division-by-zero guard, and `agents` shows
-      NULL views being treated as 0.
+      "Fewer than two articles have more views" is exactly `RANK() <= 2`, because rank is one plus the number of rows
+      with more views. `RANK()` gives ties the same rank (so both 300-view billing articles appear), unlike
+      `ROW_NUMBER()`, which would arbitrarily cut one. `DENSE_RANK()` ranks distinct values with no gaps, so
+      `DENSE_RANK() <= 2` would also return the 300-view `security` article after the two tied at 500. The window
+      `SUM(...) OVER (PARTITION BY category)` provides the denominator without a separate join. The all-zero
+      `onboarding` category exercises the division-by-zero guard, and `agents` shows NULL views being treated as 0.
+    refs: [https://www.sqlite.org/windowfunctions.html]
 
   - id: D5-037
     version: 1
