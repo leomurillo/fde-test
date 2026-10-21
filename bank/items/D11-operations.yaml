@@ -31,7 +31,7 @@ items:
     refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
 
   - id: D11-002
-    version: 1
+    version: 2
     type: single
     subtopic: obs.tracing
     tags: [obs.cost, int.enterprise-devex]
@@ -46,25 +46,27 @@ items:
     options:
       - text: Emit OpenTelemetry's GenAI telemetry for operation, model and token usage from every team, pinned to one convention version
         correct: true
-        why: A vendor-neutral standard that the existing OTel pipeline already ingests, so all teams land in one schema without custom mapping or a new data processor.
+        why: A vendor-neutral standard that the existing OTel pipeline already carries; each team still instruments its framework, but all of them converge on one published schema without a new prompt-receiving product.
       - text: Move all three teams onto whichever framework has the best built-in tracing, so dashboards share one native schema
-        why: Forces three rewrites and ties the platform to one framework to solve what a telemetry convention solves without code changes in the apps.
+        why: Forces three rewrites and ties the platform to one framework, when instrumenting each framework to a shared convention gives one schema without changing frameworks.
         misconception: Standardising on one framework is the way to standardise telemetry
       - text: Adopt a specialised LLM-observability SaaS and have each team install its SDK for prompts, traces and cost
         why: Creates a second telemetry pipeline beside the OTel one, and sends prompts to a vendor the security team will not approve.
         misconception: A purpose-built LLM tool is always the better telemetry choice
       - text: Publish a shared log-field schema on the internal wiki and ask each team to map its own keys onto it
-        why: A convention that depends on each team's discipline drifts; nothing enforces it and no backend understands it natively.
+        why: As proposed, nothing checks each team's mapping, so it drifts, and every dashboard and tool has to be taught a schema used only at this client.
         misconception: Documented naming conventions are as good as a shared standard
     explanation: |
       OpenTelemetry's GenAI semantic conventions define shared attribute names for operations, models and token
-      usage, so telemetry from different frameworks lands in one schema in the backend the client already runs. The
+      usage, so telemetry from different frameworks can land in one schema in the backend the client already runs.
+      The standard does not remove the work: each team still emits the attributes, through an instrumentation library
+      for its framework or a thin adapter, and the pipeline should check that they arrive as expected. The
       conventions are still marked as in development and have moved repositories, so pin the version you emit and
       plan upgrades; do not hard-code expectations about individual attribute names.
     refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
 
   - id: D11-003
-    version: 1
+    version: 2
     type: multi
     subtopic: obs.tracing
     tags: [gov.audit-compliance]
@@ -73,31 +75,37 @@ items:
     time_s: 100
     stem: |
       A hospital group wants full traces of its clinical-documentation assistant for debugging, but prompts and
-      outputs contain patient data. Which practices resolve the tension?
+      outputs contain patient data. The general telemetry backend is readable by every engineer on the team.
+      Which practices resolve the tension?
     options:
       - text: Leave message content off spans by default, and enable capture per environment with redaction before export
         correct: true
-        why: Content is the sensitive and bulky part, so it should be opt-in, scoped and scrubbed.
-      - text: Always record metadata such as model, token counts, tool names, latency and a content identifier
+        why: Content is the most sensitive and bulky part, so it should be opt-in, scoped and scrubbed before it leaves the service.
+      - text: Record an approved list of metadata, such as model, token counts, tool names, latency and an opaque content ID
         correct: true
-        why: Most diagnosis needs structure and timing, not text, and none of that is sensitive.
+        why: Most diagnosis needs structure and timing, not text. The list is reviewed because identifiers and tool names can still be linkable or revealing in a clinical setting.
       - text: Keep full message bodies, when needed, in an access-controlled store and put only a reference on the span
         correct: true
-        why: Authorised engineers can still replay a case, and the general telemetry backend stays free of patient data.
+        why: Authorised engineers can still replay a case while message bodies stay out of the shared backend; the store sets its own access and retention.
       - text: Log everything in production and rely on the observability vendor's retention settings for compliance
         why: Retention settings do not fix who can read the data or where it is stored.
         misconception: A retention window is the same as a privacy control
-      - text: Hash every prompt and response so nothing readable is stored anywhere, including the debug store
-        why: Hashes support matching but not inspection or replay, which removes the main debugging value.
-        misconception: Hashing preserves debuggability
+      - text: Attach a hash of the patient's record number to every span so engineers can find all of a patient's runs
+        why: Record numbers are short and predictable, so an unkeyed hash can be reversed by hashing every possible number, and it ties each trace to a patient in a backend every engineer reads.
+        misconception: Hashing an identifier anonymises it
       - text: Turn tracing off in production and debug from staging with synthetic data only
         why: Production-only failures, such as real data shapes and permissions, become undiagnosable.
         misconception: Telemetry and privacy are mutually exclusive
     explanation: |
-      Separate the structure of a run (always safe to keep) from its content (sensitive, opt-in). Redact before
-      export, keep any retained content in a restricted store referenced from the trace, and avoid options that
-      either leak data or make failures impossible to inspect.
-    refs: [https://opentelemetry.io/docs/specs/semconv/gen-ai/]
+      Separate the structure of a run from its content, and minimise both. Keep an approved list of attributes on
+      spans, judged for what they reveal in this context: an identifier can link to a patient record, a tool name
+      can reveal a clinical workflow, and hashing a predictable identifier does not anonymise it. Make content
+      capture opt-in and redact before export. Keep any retained bodies in a restricted store with its own access
+      and retention, referenced from the trace by an opaque ID. Avoid options that either leak data or make
+      failures impossible to inspect.
+    refs:
+      - https://opentelemetry.io/docs/security/handling-sensitive-data/
+      - https://opentelemetry.io/docs/specs/semconv/gen-ai/
 
   - id: D11-004
     version: 1
@@ -284,7 +292,7 @@ items:
       against the model used. With that you can answer who and what drives spend before deciding what to optimise.
 
   - id: D11-010
-    version: 1
+    version: 2
     type: single
     subtopic: obs.cost
     tags: [llm.fundamentals]
@@ -292,7 +300,7 @@ items:
     level: analyze
     time_s: 100
     stem: |
-      Two internal services share the same 6,000-token instruction prefix. Service A sends 40 requests in a
+      Two internal services each send their own 6,000-token instruction prefix. Service A sends 40 requests in a
       two-minute burst, a few seconds apart, then is idle for an hour. Service B receives one request about every 10
       minutes, around the clock. The provider charges 25% more than the normal input price to write a prefix to the
       prompt cache and 90% less to read it, and entries expire after 5 minutes without a hit. After caching was
@@ -314,11 +322,13 @@ items:
       Prompt caching is a bet on reuse. Writes cost a premium, reads are heavily discounted, and entries expire after
       a short period without hits. Traffic that arrives in bursts, or at least once per lifetime, profits; sparse,
       evenly spaced traffic with gaps longer than the lifetime pays the premium and never collects the discount.
-      Measure cache read and write tokens per route before and after enabling it.
+      Entries are shared only within the provider's cache scope, so services sending an identical prefix in the
+      same scope can also hit each other's entries. Measure cache read and write tokens per route before and after
+      enabling it.
     refs: [https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching]
 
   - id: D11-011
-    version: 1
+    version: 2
     type: single
     subtopic: obs.cost
     tags: [llm.prompting, eval.gates]
@@ -327,16 +337,17 @@ items:
     time_s: 100
     stem: |
       A contract-summary feature costs more than forecast. Each request has about 7,000 input tokens, mostly a fixed
-      clause library already served from the prompt cache, and about 1,100 output tokens. Output tokens are priced at
-      five times the input rate. Reviewers say the summaries open by restating the request and end with generic
-      caveats; the useful content is about 350 tokens. Which change best cuts cost without hurting the product?
+      clause library already served from the prompt cache, and about 1,100 output tokens. Cache reads are billed at a
+      tenth of the input rate, and output tokens at five times the input rate. Reviewers say the summaries open by
+      restating the request and end with generic caveats; the useful content is about 350 tokens. Which change best
+      cuts cost without hurting the product?
     options:
       - text: Instruct for a fixed summary structure with no restatement or boilerplate, verify on the golden set, and keep a max-token limit as a backstop
         correct: true
-        why: Output tokens dominate the bill (1,100 x 5 against 7,000 cached reads), and the waste is in what is generated, so shaping the output removes it without cutting content.
+        why: Output is most of the bill (about 1,100 x 5 = 5,500 input-rate units against under 4,000 for the mostly cached input), and the waste is in what is generated, so shaping it removes the waste without cutting content.
       - text: Set the maximum output tokens to about 400 so that every summary is cut off at the length of its useful content
-        why: The padding is at the start and end, so a hard cut removes the end of the real content and can truncate mid-sentence; length must be controlled by instruction.
-        misconception: A max-token cap is how you control output length
+        why: The padding is at the start and end, so a 400-token cut removes the end of the real content, often mid-sentence; a cap bounds length but does not decide what is generated.
+        misconception: A tight max-token cap removes padding
       - text: Shrink the clause library in the cached prefix to cut the number of input tokens sent with every request
         why: Cached input is the cheap part of the bill; shortening it saves little and may remove clauses the summaries need.
         misconception: Input tokens are the main cost driver
@@ -407,37 +418,44 @@ items:
       graded production traffic, which is what lets an error budget cover wrong-but-fast answers.
 
   - id: D11-014
-    version: 1
+    version: 2
     type: multi
     subtopic: obs.slo
     tags: [eval.online]
     difficulty: 2
     level: apply
-    time_s: 100
+    time_s: 110
     stem: |
-      You are defining service level indicators for a streaming customer-support assistant. Which are good SLIs?
+      You are defining service level indicators for a streaming customer-support assistant. Each SLI must be the
+      primary measure of one of three user-facing problems: slow first output on the slowest requests, answers not
+      supported by the retrieved sources, and conversations in which the customer's requested action (a refund, a
+      ticket, an address change) does not complete. Which indicators fit?
     options:
       - text: p95 time to first token for streamed answers, measured at the client edge
         correct: true
-        why: Tail latency to first visible output is what users feel in a streamed interface.
+        why: Tail latency to the first visible output is the delay users feel in a streamed interface.
       - text: Share of sampled responses rated grounded by calibrated reviewers or a validated judge
         correct: true
-        why: A user-facing quality measure that can carry a target and an error budget.
-      - text: Fraction of tool calls that complete successfully within their timeout
+        why: Measures directly whether answers are supported, and a calibrated sample can carry a target and an error budget.
+      - text: Share of conversations whose requested action completes, per workflow records
         correct: true
-        why: Tool failures cause visible task failures and are measurable from traces.
-      - text: Mean end-to-end latency across all requests in a rolling hour
-        why: Means hide the slow tail that frustrated users experience.
-        misconception: Average latency represents user experience
-      - text: GPU utilisation of the inference fleet serving the model
-        why: A resource metric that explains causes, not a user outcome; it also does not exist for a hosted API.
-        misconception: Resource saturation metrics are SLIs
-      - text: Average output tokens per response for each day
-        why: Describes response size and cost, not whether users got a timely or correct answer.
-        misconception: Volume metrics indicate service quality
+        why: Counts the user outcome end to end, whatever retries or fallbacks happened along the way.
+      - text: Fraction of tool calls that complete successfully within their configured timeout
+        why: A per-attempt dependency signal; retries and fallbacks recover many failed calls, and a successful call can still leave the task undone. Useful for diagnosis, not the primary task measure.
+        misconception: Component success equals user task success
+      - text: Mean end-to-end latency across all requests in a rolling one-hour window
+        why: A valid supplementary indicator, but a mean of full-response time can stay flat while first output on the slowest requests degrades.
+        misconception: An average alone captures tail latency
+      - text: Share of answers that include at least one citation to a retrieved source document
+        why: A format check; an answer can cite a document that does not support what it says.
+        misconception: A citation proves the answer is grounded
     explanation: |
-      Good SLIs describe what users experience: tail latency, correctness and task completion. Resource and volume
-      metrics are useful for diagnosis and capacity but are not objectives to promise.
+      A primary SLI measures the user outcome it stands for: tail latency to the first visible output, calibrated
+      groundedness on sampled responses, and end-to-end completion of the requested action. Averages are legitimate
+      indicators but can hide a slow tail; tool-call success is a dependency indicator, because retries and
+      fallbacks recover many failed attempts; citation presence checks format, not support. Keep such signals as
+      supplementary or diagnostic metrics rather than the indicators the objectives are set on.
+    refs: [https://sre.google/sre-book/service-level-objectives/]
 
   - id: D11-015
     version: 1
@@ -501,7 +519,7 @@ items:
 
   # ---------------------------------------------------------------- numeric
   - id: D11-017
-    version: 2
+    version: 3
     type: numeric
     subtopic: obs.cost
     tags: [llm.fundamentals]
@@ -515,12 +533,13 @@ items:
       of the normal input rate to store it again. Small tenants send sparse traffic, so their cached block often
       expires before the next call. Looking only at the cost of this block, what is the lowest cache hit rate, in
       percent, at which caching costs no more than not caching at all? Answer to one decimal place.
-    answer: {value: 21.7, tolerance: 0.5, tolerance_type: abs, unit: "%"}
+    answer: {value: 21.7, tolerance: 0.1, tolerance_type: abs, unit: "%"}
     work: |
       Take the normal input rate as 1 per token. Without caching the block costs 8,000 × 1.00 = 8,000 units; a hit costs
       8,000 × 0.10 = 800; a miss costs 8,000 × 1.25 = 10,000.\
       With hit rate h: 800·h + 10,000·(1 − h) = 8,000, so 2,000 = 9,200·h and h = 0.2174, i.e. 21.7%.\
-      (Same result from the ratios: (1.25 − 1) / (1.25 − 0.10) = 0.25 / 1.15.)
+      (Same result from the ratios: (1.25 − 1) / (1.25 − 0.10) = 0.25 / 1.15 = 0.21739.)\
+      Exact break-even is 21.739%, so 21.8% is also accepted: strictly, caching at 21.7% still costs slightly more.
     explanation: |
       Every miss pays a write premium, so caching loses money below a break-even hit rate; at fleet level this is
       decided per tenant or feature from measured hit rates, not assumed from the read discount. Common wrong
@@ -529,7 +548,7 @@ items:
       are better served by turning caching off.
 
   - id: D11-018
-    version: 2
+    version: 3
     type: numeric
     subtopic: obs.cost
     tags: [int.resilience]
@@ -541,8 +560,9 @@ items:
       A multi-tenant platform gives each tenant a daily model budget of $230, and a spend circuit breaker blocks the
       tenant's calls once the day's spend reaches it. A typical request has 4,000 input tokens and 600 output tokens,
       at $2.50 per million input tokens and $10.00 per million output tokens. 15% of requests fail and are retried
-      once; every attempt, including the failed one, is billed in full. How many requests can a tenant make in a day
-      before the breaker trips?
+      once; every attempt, including the failed one, is billed in full. Assuming every request costs the average
+      implied by these figures, and ignoring calls still in flight when the breaker trips, about how many requests
+      does the daily budget cover?
     answer: {value: 12500, tolerance: 0.01, tolerance_type: rel, unit: "requests"}
     work: |
       Cost per attempt: input 4,000 × $2.50/M = $0.0100; output 600 × $10/M = $0.0060; total $0.0160.\
@@ -551,8 +571,10 @@ items:
     explanation: |
       A budget breaker has to count what the provider bills, which includes retries. Common wrong methods: ignoring
       retries ($230 / $0.016 = 14,375), leaving out output tokens (20,000), or treating the 15% of failed requests
-      as free (about 12,219). Setting the breaker from real per-attempt cost, and alerting before it trips, keeps
-      one tenant's retry storm from spending the fleet's budget.
+      as free (about 12,219). This is a planning estimate: the request on which the breaker actually trips depends
+      on the real mix of request sizes and failures and on how in-flight calls are counted. Metering the breaker on
+      billed cost per attempt, and alerting before it trips, keeps one tenant's retry storm from spending the fleet's
+      budget.
 
   - id: D11-019
     version: 1
@@ -576,7 +598,7 @@ items:
       gives 11.8 s and overstates the run; this is the arithmetic a trace waterfall shows visually.
 
   - id: D11-020
-    version: 1
+    version: 2
     type: numeric
     subtopic: obs.slo
     competencies: [x.estimation]
@@ -589,14 +611,20 @@ items:
       of the window elapsed. What is the burn rate, rounded to one decimal?
     answer: {value: 1.9, tolerance: 0.05, tolerance_type: abs}
     work: |
-      Budget = 0.5% x 2,400,000 = 12,000 failed requests. Consumed fraction = 9,100 / 12,000 = 0.758. Elapsed
-      fraction = 12 / 30 = 0.40. Burn rate = 0.758 / 0.40 = 1.9.
+      Budget = 0.5% × 2,400,000 = 12,000 failed requests.\
+      Consumed fraction = 9,100 / 12,000 = 0.7583.\
+      Elapsed fraction = 12 / 30 = 0.40.\
+      Burn rate = 0.7583 / 0.40 = 1.896, i.e. 1.9.
     explanation: |
-      A burn rate above 1 means the budget runs out before the window ends (here around day 16 of 30). Quoting the 76%
-      consumed alone ignores how far into the window you are; the same 76% on day 25 would be burn rate 0.9.
+      A burn rate above 1 means that, if failures continue at this average pace, the budget runs out before the
+      window ends (here around day 16 of 30). Quoting the 76% consumed alone ignores how far into the window you
+      are; the same 76% on day 25 would be burn rate 0.9. This definition compares budget spent with time elapsed
+      against the expected total volume. Operational burn-rate alerts usually compare the error ratio observed over
+      a recent window with the ratio the SLO allows, which does not depend on a volume forecast.
+    refs: [https://sre.google/workbook/alerting-on-slos/]
 
   - id: D11-021
-    version: 1
+    version: 2
     type: numeric
     subtopic: obs.slo
     tags: [int.resilience]
@@ -611,11 +639,14 @@ items:
       fails only if both providers are down. What is the composite availability, in percent, rounded to two decimals?
     answer: {value: 99.9, tolerance: 0.01, tolerance_type: abs, unit: "%"}
     work: |
-      Model layer = 1 - (0.001 x 0.005) = 0.999995. Composite = 0.9995 x 0.999995 x 0.9995 = 0.998995, i.e. 99.90%.
+      Model layer = 1 − (0.001 × 0.005) = 0.999995.\
+      Composite = 0.9995 × 0.999995 × 0.9995 = 0.998995, i.e. 99.90%.
     explanation: |
       Serial dependencies multiply; redundant ones multiply failure probabilities. Without the fallback the product
-      is 0.9995 x 0.999 x 0.9995 = 99.80%. Taking the average of the three availabilities (about 99.8%) or the
-      minimum are common wrong shortcuts. Real failover is imperfect and failures are rarely fully independent, which is why this figure is an upper bound.
+      is 0.9995 × 0.999 × 0.9995 = 99.80%. Common wrong shortcuts are averaging availabilities (99.93% for the three
+      original components, 99.97% with the combined model layer) or quoting the weakest single figure. The result is
+      an idealised planning estimate: real failover is imperfect and failures are often correlated, so treat it as
+      optimistic rather than as a guaranteed figure.
 
   - id: D11-022
     version: 2
@@ -644,7 +675,7 @@ items:
 
   # ---------------------------------------------------------------- open
   - id: D11-023
-    version: 1
+    version: 2
     type: open
     subtopic: obs.cost
     tags: [comms.stakeholders, agents.state]
@@ -653,48 +684,52 @@ items:
     level: evaluate
     time_s: 540
     stem: |
-      Monday morning: over the weekend a retry loop in your deployed agent burned about $18,000 in model spend for a
-      single tenant. The client's CFO and CTO are on the thread and the CFO is angry. Write the message you would
-      send, covering what happened, what you are changing and what you need from them.
+      Monday morning. Over the weekend your deployed agent kept retrying a failing tool call and burned about $18,000
+      of model spend for a single tenant. Known so far: the agent had no per-run cap on steps or cost, no spend alert
+      fired, and on-call stopped the run at 07:00 today. Not yet known: why the tool began failing. The client's CFO
+      and CTO are on the thread, and the CFO is angry. Write the message you would send, covering what happened,
+      what is still being checked, what you are changing and what you need from them.
     rubric:
       - criterion: Opens with impact and ownership
         points: 2
-        guidance: 2 if the first lines state the amount, the cause category and that the team owns the fix; 1 if the facts are there but buried or defensive; 0 if it opens with excuses or jargon.
-      - criterion: Plain-language cause
+        guidance: 2 if the first lines state the amount, the single-tenant scope, that the run is stopped and that the team owns the response; 1 if these facts are present but buried or defensive; 0 if it opens with excuses or jargon.
+      - criterion: Accurate cause and open questions
         points: 2
-        guidance: 2 if it explains that a failing tool call made the agent retry without a limit and there was no spend cap or alert; 1 if vague ("a bug"); 0 if absent or blaming the provider.
-      - criterion: Concrete controls with owners and dates
+        guidance: 2 if it explains in plain language what is known (a failing tool call, retries with no per-run cap, no alert) and says that why the tool failed is still being checked, without presenting unconfirmed causes, timelines or reassurances as fact; 1 if the account is vague ("a bug") or states one unconfirmed point as established; 0 if absent, largely invented, or blaming the provider or the client.
+      - criterion: Controls that bound the spend
         points: 3
-        guidance: 3 if it lists per-run step and cost caps, per-tenant spend limits that halt work, alerts and a kill switch, each with an owner or date; 2 if controls are named without dates; 1 if only monitoring; 0 if none.
-      - criterion: Financial and follow-up handling
+        guidance: 3 if it gives a coherent plan that would stop a repeat automatically, bounding retries or cost per run and spend per tenant (caps, limits that halt work, a usable stop mechanism, spend-rate alerting, or equivalent mechanisms), with owners or target dates; 2 if the controls are credible but one level of bounding or the owners and dates are missing; 1 if only monitoring or a single weak action; 0 if none.
+      - criterion: Money, follow-up and asks
         points: 2
-        guidance: 2 if it addresses the cost (credit or review with the provider, how the tenant is treated) and promises a written post-incident review by a date; 1 if one; 0 if neither.
+        guidance: 2 if it covers all three - how the charge will be handled (for example a review with the provider and a proposal on cost treatment), a committed follow-up such as a written review or next update by a date, and a specific ask of the CFO or CTO (a decision, a contact or a budget); 1 if one or two of these are useful; 0 if none is.
       - criterion: Tone and audience fit
         points: 1
-        guidance: 1 if calm, direct and appropriate for a CFO and CTO, with no blame; 0 otherwise.
+        guidance: 1 if calm, direct and appropriate for a CFO and CTO, with no blame; 0 if dismissive, blaming or unusably technical.
     model_answer: |
-      Subject: Weekend overspend ($18k) - what happened and what we are changing
+      Subject: Weekend overspend (about $18k) - what happened and what we are changing
 
-      We are responsible for this. Between Saturday 02:00 and Monday 06:00 one agent run on the Acme tenant retried
-      a failing ERP call without any limit and spent about $18,000. It is stopped, and no customer data was involved.
+      We are responsible for this. Over the weekend one agent run for a single tenant kept retrying a failing tool
+      call and spent about $18,000 in model usage. Our on-call engineer stopped it at 07:00 today.
 
-      Cause: the ERP lookup began returning errors and the agent kept retrying. We had no per-run limit on steps or
-      cost, and our spend alerts reported daily rather than as it happened, so nobody was paged.
+      What we know: the agent had no per-run limit on steps or cost, and no spend alert fired, so nothing stopped it
+      or paged anyone. What we are still checking: why the tool started failing, and why the alert stayed silent.
+      I will share both when we have evidence rather than guess now.
 
-      What we are changing (owners and dates):
-      1. Per-run caps on steps, tokens and cost that stop the run: Tuesday.
-      2. Per-tenant spend limits that pause work automatically, with an alert at 50% and 80%: Thursday.
-      3. A kill switch your operations team can use and a paging alert on abnormal spend rate: next Monday.
-      4. Failed tool calls will use bounded retries with backoff and escalate to a human.
+      What we are changing:
+      1. Per-run caps on steps, tokens and cost that stop the run - live by Wednesday (owner: me).
+      2. Per-tenant spend limits that pause work automatically, with alerts at 50% and 80% - by Friday.
+      3. A paging alert on abnormal spend rate, tested end to end - by Friday.
+      4. Bounded retries with backoff on tool calls, escalating to a person after repeated failures.
 
-      Money: we are reviewing the provider usage with them and will propose how to handle the cost in our call tomorrow.
-      
-      Next steps: a short written post-incident review by Friday. From you: the on-call contact for after-hours escalation and
-      agreement on a monthly budget per tenant.
+      Money: we are reviewing the usage with the provider and will send you a proposal on how the cost is handled
+      by Thursday.
+
+      Next: a written incident review by next Monday. From you: an after-hours escalation contact, and agreement on
+      a monthly spend ceiling per tenant.
     max_chars: 2000
 
   - id: D11-024
-    version: 1
+    version: 2
     type: open
     subtopic: obs.tracing
     tags: [obs.slo, gov.audit-compliance]
@@ -712,13 +747,13 @@ items:
         guidance: 3 if it describes traces with spans per model and tool call, metrics, and structured logs correlated by IDs, with token usage, model and tenant on the data; 2 if traces and metrics but thin on attributes; 1 if generic logging; 0 if none.
       - criterion: Privacy handling
         points: 2
-        guidance: 2 if message content is off or redacted by default, with controlled access to any retained content; 1 if mentioned without mechanism; 0 if ignored.
-      - criterion: Cost attribution and limits
+        guidance: 2 if message content is off or redacted by default, any retained content has controlled access and retention, and the identifiers and attributes kept on telemetry are chosen not to expose personal data (for example opaque IDs); 1 if privacy is mentioned without a mechanism, or only content or only attributes are handled; 0 if ignored.
+      - criterion: Cost attribution and spend control
         points: 2
-        guidance: 2 if cost per tenant and feature comes from token records and there are budget caps with alerts; 1 if reporting only; 0 if absent.
+        guidance: 2 if cost per tenant is computed from per-call token records priced by model and runaway spend is caught with a defined response (automatic per-run or per-tenant limits, or spend-rate alerts that an operator acts on); 1 if cost is only reported after the fact; 0 if absent. Further breakdowns such as per feature are a plus, not a requirement.
       - criterion: SLOs and paging discipline
         points: 3
-        guidance: 3 if it defines separate availability, latency and sampled quality objectives and pages only on user-impacting or fast-burn conditions, with runbooks; 2 if SLOs without paging discipline; 1 if a flat list of alerts; 0 if none.
+        guidance: 3 if it defines separate availability, latency and sampled quality objectives and, given the small on-call team, pages only on user-impacting or fast-burn conditions, with runbooks; 2 if SLOs without paging discipline; 1 if a flat list of alerts; 0 if none. Specific burn-rate thresholds or windows are not required; any justified choice counts.
     model_answer: |
       Design in four layers.
 
@@ -726,22 +761,25 @@ items:
       and token usage, plus tenant, feature and run ID on every span. Metrics for request rate, errors, latency and
       tokens; structured logs carry the trace ID.
 
-      Privacy: prompt and output content is not captured by default. A redacting pipeline plus an opt-in, access-controlled
-      store holds content for debugging, with short retention. Spans keep references, not text.
+      Privacy: prompt and output content is not captured by default. A redacting pipeline plus an opt-in,
+      access-controlled store holds content for debugging, with short retention. Spans carry an approved attribute
+      list with opaque tenant, user and run IDs, never names or policy numbers, and a reference instead of text.
 
       Cost: spend per tenant, feature and model computed from recorded tokens and a price table, with per-run caps
       on steps and cost, per-tenant limits that halt work, and a daily review of the top spenders.
 
-      SLOs: availability, time-to-first-token p95, and a quality SLI from weekly sampled, graded conversations. Page
-      only on fast error-budget burn (for example 14x over one hour), safety incidents and cost-rate spikes;
-      everything else creates tickets. Each page links to a runbook with a kill switch for retrieval and tools.
-      
+      SLOs: availability, time-to-first-token p95, and a quality SLI from conversations sampled and graded
+      automatically every day, with a weekly human review to keep the grader calibrated. Page only on fast
+      error-budget burn (for example 14x over one hour), safety incidents and cost-rate spikes; everything else
+      creates tickets. Each page links to a runbook with a kill switch for retrieval and tools.
+
       Before go-live: a game day where we break a tool, spike cost and verify that the alerts fire.
     max_chars: 2000
+    refs: [https://sre.google/workbook/alerting-on-slos/]
 
   # ---------------------------------------------------------------- audio
   - id: D11-025
-    version: 1
+    version: 2
     type: audio
     subtopic: obs.slo
     tags: [comms.stakeholders, gov.audit-compliance]
@@ -764,28 +802,28 @@ items:
         guidance: 2 if it clearly separates what is known from what is unknown, without speculating about the cause; 1 if partially; 0 if it guesses or hides uncertainty.
       - criterion: Actions in progress
         points: 3
-        guidance: 3 if it covers containment, evidence preservation, identifying affected customers from logs and the plan to correct their information; 2 if two of these; 1 if one; 0 if none.
+        guidance: Beyond the disabled feature, which the opening covers, 3 if it covers preserving evidence, identifying the affected conversations or customers, and a plan to correct their information; 2 if two of these; 1 if one; 0 if none.
       - criterion: Next update and asks
         points: 3
-        guidance: 3 if it commits to a specific next update time and asks for a decision or contact (customer communication owner, compliance contact); 2 if only the time; 1 if vague; 0 if none.
+        guidance: 3 if it commits to a specific next update (a time or an interval) and makes a specific ask (a decision, or a contact such as the customer-communication owner or compliance); 2 if one of the two is specific and the other is vague or missing; 1 if both are vague; 0 if neither is present.
     model_answer: |
-      Here is where we stand. Since about eight this morning, the assistant gave some customers incorrect policy
-      information. We have switched that feature off, so it is no longer happening, and customers are being routed
-      to the standard support queue.
+      Here is where we stand. Since this morning, the assistant gave some customers incorrect policy information.
+      We have switched that feature off, so it is no longer happening.
 
-      What we know: roughly 300 conversations may be affected, and we can list them from our logs. We kept the
-      logs and traces so nothing is lost. What we do not know yet is why it happened. I do not want to guess; our
-      engineers are comparing today's behaviour with yesterday's, and I will tell you the cause when we have evidence.
+      What we know: roughly 300 conversations may be affected, and we are pulling the list from our logs. We are
+      preserving those logs and traces so nothing is lost. What we do not know yet is why it happened. I do not
+      want to guess; our engineers are comparing today's behaviour with yesterday's, and I will tell you the cause
+      when we have evidence.
 
       What we are doing now: finding every affected conversation, classifying which ones contained a wrong statement,
       and preparing a corrected message for those customers for your approval.
 
       What I need from you: someone from compliance who can approve the customer wording, and a decision on whether
-      to alert the account managers. My next update will be at three o'clock, whether or not we have the cause.
-    
+      to alert the account managers. I will update you again within the hour, whether or not we have the cause.
+
   # ---------------------------------------------------------------- sql
   - id: D11-026
-    version: 1
+    version: 2
     type: sql
     subtopic: obs.cost
     tags: [data.sql]
@@ -797,7 +835,8 @@ items:
       Tables `llm_calls(call_id, tenant_id, model, input_tokens, output_tokens)` and
       `prices(model, in_per_mtok, out_per_mtok)` (USD per million tokens). For each tenant return `tenant_id`,
       `cost_usd` (total cost over all its calls, rounded to 4 decimals) and `share_pct` (its percentage of the
-      total cost across all tenants, rounded to 1 decimal). Order by `cost_usd` descending, then `tenant_id`.
+      total cost across all tenants, rounded to 1 decimal). Order by the rounded `cost_usd` descending, then
+      `tenant_id`.
     sql:
       setup: |
         CREATE TABLE llm_calls(call_id INT, tenant_id TEXT, model TEXT, input_tokens INT, output_tokens INT);
@@ -807,7 +846,8 @@ items:
         (1,'acme','large',12000,800),(2,'acme','small',5000,300),(3,'acme','large',9000,500),
         (4,'globex','small',20000,1500),(5,'globex','small',18000,1200),
         (6,'initech','large',30000,2500),(7,'initech','large',25000,2000),(8,'initech','small',4000,100),
-        (9,'umbrella','small',1000,100);
+        (9,'umbrella','small',1000,100),
+        (10,'hooli','small',16000,1000),(11,'wayne','small',15960,1015);
       reference: |
         WITH t AS (
           SELECT c.tenant_id,
@@ -819,12 +859,14 @@ items:
                ROUND(cost, 4) AS cost_usd,
                ROUND(100.0 * cost / SUM(cost) OVER (), 1) AS share_pct
         FROM t
-        ORDER BY cost DESC, tenant_id
+        ORDER BY cost_usd DESC, tenant_id
       order_matters: true
       float_round: 4
     explanation: |
       Join to prices on model, aggregate cost per tenant in a CTE, then use a window `SUM(cost) OVER ()` for the
       grand total so the share can be computed in the same pass. Dividing by 1,000,000.0 avoids integer division.
+      Order by the rounded `cost_usd`, as asked: `hooli` and `wayne` both show $0.0100, so they are ordered by
+      name, whereas ordering by the unrounded total would put `wayne` ($0.01001) first.
 
   - id: D11-027
     version: 1
