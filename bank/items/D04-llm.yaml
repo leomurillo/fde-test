@@ -69,7 +69,7 @@ items:
       to a small label set, and measure run-to-run agreement on a fixed set rather than assuming repeatability.
 
   - id: D4-003
-    version: 1
+    version: 2
     type: single
     subtopic: llm.fundamentals
     tags: [int.async, obs.cost]
@@ -87,18 +87,19 @@ items:
         correct: true
         why: Batch work runs off the interactive quota, usually at a lower price, and a completion window of hours fits the 7 a.m. deadline.
       - text: Add exponential backoff with jitter to the nightly job and cap its concurrency
-        why: Good hygiene, but the job still competes with the assistant for the same quota and is slower and costlier than batch for offline work.
+        why: Good hygiene, but the job still draws on the assistant's quota, so the two workloads keep competing, and a tighter cap only trades the assistant's errors for a slower job.
         misconception: Retry and backoff solve a structural quota-sharing problem
       - text: Start the job at midnight, when claims traffic is lighter, and keep its concurrency fixed
         why: Adjusters work around the clock, so a later start only moves the overlap, and it leaves less time before 7 a.m. for 400,000 documents.
         misconception: Shifting a bulk job in time removes a structural quota conflict
       - text: Request a higher rate-limit tier so both workloads fit under the quota at peak
-        why: Pays for permanent peak capacity to serve a deadline-tolerant job, and the nightly burst still risks starving interactive users.
+        why: It depends on the provider granting it, and a larger shared quota still lets the nightly burst grow to crowd out adjusters, while a separate batch quota already exists for this deadline-tolerant work.
         misconception: More quota is the right fix for any 429
     explanation: |
-      Rate-limit errors from mixed workloads are a scheduling problem. Latency-tolerant bulk work belongs on an
-      asynchronous batch path, which isolates it from interactive traffic. Backoff is still needed for
-      the interactive path, but it does not separate the two workloads.
+      Rate-limit errors from mixed workloads are a workload-isolation problem. Latency-tolerant bulk work belongs
+      on an asynchronous batch path, which here runs on its own quota and fits the deadline (10 p.m. plus 6 hours
+      is 4 a.m.). Backoff is still needed for the interactive path, but it does not separate the two workloads.
+      Whether a higher quota tier is available, and how it is billed, varies by provider.
     refs: [https://platform.openai.com/docs/guides/batch, https://docs.anthropic.com/en/docs/build-with-claude/batch-processing]
 
   - id: D4-004
@@ -226,7 +227,7 @@ items:
       before changing models or architecture.
 
   - id: D4-008
-    version: 2
+    version: 3
     type: numeric
     subtopic: llm.fundamentals
     tags: [obs.cost]
@@ -240,7 +241,7 @@ items:
       tokens, cached input $0.30 per million tokens, output $15.00 per million tokens. Assume that the prefix is read
       from the cache on this request (ignore the one-time cache write) and that output is not discounted. By what
       percentage does prompt caching reduce the cost of this single request? Answer in percent, to one decimal place.
-    answer: {value: 77.3, tolerance: 0.5, tolerance_type: abs, unit: "%"}
+    answer: {value: 77.3, tolerance: 0.1, tolerance_type: abs, unit: "%"}
     work: |
       Without caching: input 10,400 tokens × $3/M = $0.0312; output 250 × $15/M = $0.00375; total $0.03495.\
       With caching: cached 10,000 × $0.30/M = $0.0030; fresh input 400 × $3/M = $0.0012; output $0.00375;
@@ -255,7 +256,7 @@ items:
   # ===================== llm.prompting =====================
 
   - id: D4-009
-    version: 1
+    version: 2
     type: single
     subtopic: llm.prompting
     tags: [eval.datasets]
@@ -278,7 +279,7 @@ items:
         why: A reasonable design for a pair that stays confusing, but it is heavier than the stated first step and still needs the boundary examples to work.
         misconception: Decomposing the task is the first remedy for a confusable pair
       - text: Fine-tune a model on the 300 labeled tickets first, and revisit the prompt only if that falls short
-        why: A heavier step that is premature; 300 examples is thin, and cheaper prompt-level fixes have not been tried.
+        why: The team asked for a prompt-level fix first, and a training run is slower and costlier to iterate on than a prompt change that has not been tried yet.
         misconception: Fine-tuning is the next step whenever prompting is imperfect
     explanation: |
       Few-shot examples are most valuable when they show the cases the model gets wrong, especially pairs that
@@ -286,7 +287,7 @@ items:
       analysis rather than sampling at random, and keep a held-out part of the labeled set to check the fix.
 
   - id: D4-010
-    version: 1
+    version: 2
     type: single
     subtopic: llm.prompting
     tags: [llm.model-selection, obs.slo]
@@ -295,13 +296,14 @@ items:
     time_s: 100
     stem: |
       A team moved a loan-document reconciliation task from a standard chat model to a reasoning model. They
-      kept the old prompt: a 25-step numbered procedure plus "think step by step and show your work". Accuracy
-      is unchanged and latency is three times higher, and they want lower latency without losing accuracy. Which
+      kept the old prompt: a 25-step numbered procedure plus "think step by step and show your work". The steps
+      were written to walk the old model through the task, and none of them is an audit requirement. Accuracy is
+      unchanged and latency is three times higher, and they want lower latency without losing accuracy. Which
       prompt revision is most likely to help?
     options:
       - text: State the goal, the non-negotiable rules and the definition of done; drop the step list and try a lower reasoning budget
         correct: true
-        why: Reasoning models plan their own intermediate steps. Clear rules and acceptance criteria, plus a smaller reasoning budget, cut cost and latency without constraining the plan.
+        why: Reasoning models plan their own intermediate steps. Keeping the real rules and acceptance criteria while removing scripted steps, plus a smaller reasoning budget, can cut latency; a held-out set confirms accuracy holds.
       - text: Break the 25 steps into finer sub-steps so that the model has less room to skip or reorder any of them when reconciling
         why: More prescriptive scaffolding duplicates the model's own reasoning, adds latency and can lock it into a worse procedure than it would choose.
         misconception: More explicit steps always help reasoning
@@ -309,13 +311,15 @@ items:
         why: This adds output tokens and latency and does not improve accuracy; a visible rationale is also not a guaranteed faithful record of the computation.
         misconception: Showing reasoning improves correctness and is reliable audit evidence
       - text: Append three worked examples that each walk through all 25 steps of the procedure in full
-        why: Lengthens the prompt and reinforces the same procedure, so cost rises and the model is still steered along the old path.
-        misconception: Few-shot walk-throughs transfer to reasoning models
+        why: Lengthens the prompt and demonstrates the same scripted procedure, so cost and latency rise and the model is still steered along the old path. Examples of desired outputs or hard cases can help a reasoning model; scripts of every step add little.
+        misconception: Scripted step-by-step walk-throughs speed up a reasoning model
     explanation: |
       Step-by-step scaffolding was a workaround for models that did not reason before answering. Reasoning
       models do this internally, so prompts work best as a clear objective, relevant context, constraints that
-      are real requirements, and a definition of done. Use the effort or thinking-budget control for the
-      cost/latency trade-off, and verify with a held-out set rather than assuming.
+      are real requirements, and a definition of done. Steps that a regulator or auditor requires stay in, as rules;
+      steps that only scripted the old model can go. Examples still help when they show the desired output or a hard
+      case. Use the effort or thinking-budget control for the cost/latency trade-off, and verify with a held-out set
+      rather than assuming.
     refs: [https://developers.openai.com/api/docs/guides/reasoning-best-practices]
 
   - id: D4-011
@@ -382,7 +386,7 @@ items:
       of weights.
 
   - id: D4-013
-    version: 1
+    version: 2
     type: multi
     subtopic: llm.prompting
     tags: [rag.architecture]
@@ -390,32 +394,36 @@ items:
     level: apply
     time_s: 100
     stem: |
-      A bank's internal Q&A assistant answers from policy excerpts supplied in the prompt. Reviewers find it
-      sometimes answers from general knowledge when the excerpts lack the answer, and its formatting varies
-      between answers. Which system-prompt changes are likely to improve reliability?
+      A bank's internal Q&A assistant answers from policy excerpts supplied in the prompt, and bank policy
+      requires every answer to rest on those excerpts. Reviewers find it sometimes answers from general knowledge
+      when the excerpts lack the answer, and its formatting varies between answers. Which system-prompt changes
+      are likely to improve reliability?
     options:
       - text: Say what to do when the excerpts lack the answer, such as replying that it is not covered and naming the closest section
         correct: true
         why: Gives the model a sanctioned alternative to guessing, which directly targets the observed behavior.
-      - text: Explain the reason behind key rules, for example that answers are pasted into customer emails and must avoid internal jargon
+      - text: Define the answer format and show a few examples in it, covering questions the excerpts answer and ones they do not
         correct: true
-        why: A stated purpose lets the model generalize to cases the rule did not list, which improves format and tone consistency.
+        why: States the output contract and demonstrates it across varied cases, including the not-covered reply, so the format holds while the content changes.
       - text: Keep durable rules in the system prompt and put each question with its excerpts in the user turn inside labeled tags
         correct: true
         why: Separates stable policy from per-request data and makes it clear what is material to answer from.
       - text: Open with an expert persona such as a compliance officer with 30 years of experience to raise factual accuracy
         why: A role can shift tone and vocabulary, but it does not stop the model answering beyond the excerpts.
         misconception: A persona improves factual grounding
-      - text: Add a prohibition for every failure seen in review so that each past mistake has its own "do not" line
+      - text: Add a prohibition for every failure seen in review so that each past mistake has its own "do not" line in the prompt
         why: The list grows without bound, rules begin to conflict, and negatives say what to avoid rather than what to do.
         misconception: Exhaustive prohibitions are the most reliable way to steer
-      - text: Show five examples that share the same length and sentence structure so the format is unmistakable
-        why: Models copy surface features of examples, so uniform examples produce rigid, over-fitted output.
-        misconception: Identical examples give the strongest format signal
+      - text: Allow general knowledge when the excerpts fall short, as long as the answer labels that part clearly as general guidance
+        why: Labeling does not make an ungrounded answer acceptable; policy requires answers from the excerpts, so the model needs a not-covered reply instead.
+        misconception: Disclosing that content is ungrounded makes it acceptable
     explanation: |
-      Reliable prompts specify the output contract and the fallback behavior, give reasons rather than bare
-      commands, and separate stable instructions from changing data. Personas help tone, long blacklists
-      are brittle, and examples should vary in surface form so the model learns the pattern, not the template.
+      Reliable prompts specify the output contract and the fallback behavior, and separate stable instructions
+      from changing data. Examples are a strong way to show the contract: keep the format you want consistent
+      across them while varying the questions and cases (including the fallback), and avoid accidental
+      invariants you do not want copied, such as one example's facts. Personas shift tone rather than grounding,
+      and long lists of prohibitions are brittle.
+    refs: [https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/multishot-prompting, https://developers.openai.com/api/docs/guides/prompt-engineering]
 
   - id: D4-014
     version: 1
@@ -506,7 +514,7 @@ items:
   # ===================== llm.structured-tools =====================
 
   - id: D4-017
-    version: 1
+    version: 2
     type: single
     subtopic: llm.structured-tools
     difficulty: 1
@@ -514,12 +522,13 @@ items:
     time_s: 75
     stem: |
       A logistics client extracts shipment fields using a prompt that says "Return ONLY valid JSON". About 3% of
-      responses fail to parse: a lead-in sentence, a trailing comma or a missing closing brace. The pipeline
-      handles 200,000 documents a month. What is the best fix?
+      responses fail to parse: a lead-in sentence, a trailing comma or a missing closing brace. None of the failing
+      responses hit the output-token limit, and the schema uses only features the provider's constrained mode
+      supports. The pipeline handles 200,000 documents a month. What is the best fix?
     options:
       - text: Use the provider's schema-constrained output mode and still validate results in the application
         correct: true
-        why: Constrained decoding removes the syntax failures at the source, and application-side validation covers what the schema cannot express.
+        why: Constrained decoding keeps completed responses within the schema, which removes these syntax failures at the source; the application still validates what the schema cannot express and handles refusals and cut-off responses.
       - text: Strengthen the prompt with more emphatic wording and two further examples of clean JSON
         why: Prompt wording lowers the failure rate but cannot guarantee well-formed output, so a residual percentage keeps failing at this volume.
         misconception: Instructions alone can make format compliance reliable
@@ -530,13 +539,15 @@ items:
         why: Temperature changes sampling randomness, not whether the model chooses to add prose or finish the object.
         misconception: Temperature 0 enforces output format
     explanation: |
-      "Please return JSON" is a request; schema-constrained decoding is a guarantee about syntax and schema shape.
-      Use it where available, and keep a validate step for business rules, with a bounded repair path for
-      the cases that still fail.
-    refs: [https://platform.openai.com/docs/guides/structured-outputs]
+      "Please return JSON" is a request; schema-constrained decoding guarantees syntax and schema shape for a
+      response that completes normally against a supported schema. It does not cover a response cut off by the
+      output-token limit or a refusal, which the application must detect from the stop reason or refusal field, and
+      it says nothing about whether the values are right. Use it where available, and keep a validate step for
+      business rules, with a bounded repair path for the cases that still fail.
+    refs: [https://developers.openai.com/api/docs/guides/structured-outputs, https://platform.claude.com/docs/en/build-with-claude/structured-outputs]
 
   - id: D4-018
-    version: 1
+    version: 2
     type: single
     subtopic: llm.structured-tools
     difficulty: 3
@@ -549,7 +560,7 @@ items:
     options:
       - text: The schema forces a value; allow null for absent dates and verify extracted values against the source
         correct: true
-        why: A required field leaves no valid way to say "not present", so the model fills it in. Allowing null plus a source check removes the pressure and catches the rest.
+        why: A required field leaves no valid way to say "not present", so the model fills it in. Allowing null removes that pressure, and a source check flags dates that still do not appear in the invoice.
       - text: The date pattern is too loose, so tighten the pattern and add an enum of the valid date formats
         why: A stricter pattern only constrains how a fabricated date is written, not whether it exists in the document.
         misconception: Format constraints guarantee content correctness
@@ -557,7 +568,7 @@ items:
         why: Brings back parse failures, and the real defect is the schema's lack of an "absent" value, which can be fixed within constrained mode.
         misconception: Constrained output inherently makes models hallucinate
       - text: Add a second pass where a model re-reads each result and confirms the date is actually in the invoice
-        why: The second pass faces the same pressure to accept a date-shaped value and adds cost, while the schema keeps forcing fabrication.
+        why: A reviewer may catch some invented dates, but it adds a model call per invoice and leaves the cause in place, since the schema still demands a date when none exists.
         misconception: A model reviewer can fix a flaw in the schema
     explanation: |
       Schema-constrained decoding guarantees shape, not truth. When a field is mandatory the model must emit
@@ -794,25 +805,27 @@ items:
       exact, and keep payloads bounded.
 
   - id: D4-023
-    version: 1
+    version: 2
     type: multi
     subtopic: llm.structured-tools
     tags: [int.resilience]
     difficulty: 2
     level: apply
-    time_s: 100
+    time_s: 110
     stem: |
       A claims pipeline asks a model for JSON with `claim_type`, `amount` and `currency`, using schema-constrained
       output. Occasionally the result is well formed but wrong, for example an `amount` that disagrees with the
-      figure in the source text, or a `currency` that does not match the policy's country. Which practices
-      belong in the production handling of this step?
+      figure in the source text, or a `currency` that does not match the policy's country. In a pilot, about 2% of
+      20,000 daily claims failed such checks, and one retry with the error messages fixed four in five of them.
+      The review team can take about 150 claims a day, and policy does not require human review of a first
+      failure. Which practices belong in the production handling of this step?
     options:
       - text: Run application-side checks the schema cannot express, such as cross-field and source-consistency rules
         correct: true
         why: Schema validity says nothing about whether values are consistent with each other or with the document.
       - text: On failure, retry a bounded number of times, feeding the specific validation errors back to the model
         correct: true
-        why: Concrete error feedback lets the model correct itself, and a limit keeps cost and latency predictable.
+        why: In the pilot, error feedback repaired most failures, and a limit keeps cost and latency predictable; the retried output goes through the same checks.
       - text: When retries are exhausted, send the item to a review queue and record the failure for analysis
         correct: true
         why: Prevents bad data flowing downstream and creates examples for improving prompts and checks.
@@ -823,12 +836,14 @@ items:
         why: The guarantee covers syntax and schema shape, not consistency, so 95% of wrong-but-well-formed results would pass unchecked.
         misconception: Constrained decoding guarantees correct content
       - text: Route every failed validation straight to human review without retrying, to protect data quality
-        why: Safe but wasteful; most failures are fixed by one retry with the error message, so people end up reviewing items a model could have repaired.
+        why: About 400 failures a day would swamp a team that can take 150, while a retry repairs four in five, leaving about 80 for review; policy does not require review first.
         misconception: Any model failure needs a human before another attempt
     explanation: |
-      Treat model output as untrusted input. Validate structure and business rules, retry a limited number of
-      times with the errors included, and fail safe to a human path with logging. Silent defaults, guesses and
-      sampled validation trade visible failures for hidden ones.
+      Treat model output as untrusted input. Validate structure and business rules, and fail safe to a human path
+      with logging. Whether to retry before review depends on the numbers: here a retry with the errors included
+      repairs most failures and review capacity is limited, so retry a bounded number of times first. Where
+      failures are high-risk, retries rarely help, or policy requires it, send them straight to review. Silent
+      defaults, guesses and sampled validation trade visible failures for hidden ones.
 
   - id: D4-024
     version: 1
@@ -959,7 +974,7 @@ items:
       against the prompted baseline on held-out data.
 
   - id: D4-028
-    version: 1
+    version: 2
     type: single
     subtopic: llm.model-selection
     tags: [obs.slo, obs.cost]
@@ -970,13 +985,13 @@ items:
       A cascade sends every support request to a small model (about 0.8 s per call) and escalates the roughly 30%
       it cannot handle to a large model (about 2.2 s per call), called only after the small model has finished.
       Offline evaluation shows the quality target is met. The product requires 95% of full responses within
-      3 seconds, but production p95 is 3.6 seconds. Which change best meets the requirement while keeping most
-      of the cost saving?
+      3 seconds, but production p95 is 3.6 seconds. Which change is most likely to meet the requirement while
+      keeping most of the cost saving?
     options:
-      - text: Decide the route before calling any model, using a lightweight classifier on the request, so escalated requests skip the small-model attempt
+      - text: Route each request with a lightweight classifier before any model call, so escalated requests skip the small model
         correct: true
-        why: Escalated requests then pay only the large model's time, about 2.3 s, which fits the bound, and the 70% still use the cheap model.
-      - text: Raise the escalation threshold so fewer than 5% of requests reach the large model
+        why: Escalated requests skip the 0.8 s attempt, so a typical one takes about 2.2 s plus a fast router's time instead of 3.0 s, and the 70% still use the cheap model. Routing accuracy and the new p95 still have to be measured.
+      - text: Raise the escalation threshold so that fewer than 5% of all requests are passed on to the large model
         why: The p95 would then be set by the small-model path, but the quality target was met at 30% escalation and would be missed for the requests that no longer escalate.
         misconception: Cutting the escalation rate is a free way to fix tail latency
       - text: Call both models in parallel on every request and use the large model's answer when the small model's looks unreliable
@@ -989,10 +1004,11 @@ items:
       In a sequential cascade, escalated requests pay for both models, so the slowest path sets the tail latency
       whenever the escalation rate exceeds the percentile slack (here 30% versus 5%). Predicting difficulty before
       the first call removes the wasted attempt, at the price of a router that must itself be fast and accurate.
-      Measure misroutes of hard requests to the small model on held-out data before adopting it.
+      Typical call times suggest the change fits but do not establish the p95: measure misroutes of hard requests
+      to the small model on held-out data, then confirm the tail latency in production.
 
   - id: D4-029
-    version: 1
+    version: 2
     type: multi
     subtopic: llm.model-selection
     tags: [gov.audit-compliance, eval.datasets]
@@ -1017,16 +1033,17 @@ items:
         why: General benchmarks say little about performance on clinical shorthand and are weak evidence for this task.
         misconception: Public benchmark rank predicts performance on the client's task
       - text: Prefer the model with the largest advertised context window, to leave headroom for longer notes
-        why: Notes are short, so extra window adds cost without benefit, and it is not a selection criterion here.
+        why: Window size matters only if real notes approach a candidate's limit, which measuring their length would show; it says nothing about eligibility or summary quality, the open questions here.
         misconception: Bigger context window means a better model
       - text: Fine-tune each candidate on the hospital's notes first, so that every model is compared at its best
         why: Sends patient data to providers that are not yet cleared, and spends time and money on candidates that may be excluded on contract terms.
         misconception: Models should be compared only after adaptation to the client's data
     explanation: |
-      Selection is a staged filter: hard constraints first (data handling, residency, contracts), then measured
-      quality on the client's own style of data (de-identified or synthetic until compliance clears the
-      provider), then operational fit (latency, quotas), and price last. Public benchmarks and context-window
-      size are weak proxies for any particular workload.
+      Selection is a staged filter: hard constraints first (data handling, residency, contracts), because they can
+      rule a candidate out whatever its quality; then measured quality on the client's own style of data
+      (de-identified or synthetic until compliance clears the provider), operational fit (latency, quotas) and
+      cost, weighed against the use case. Public benchmarks and context-window size are weak proxies for any
+      particular workload.
 
   - id: D4-030
     version: 1
@@ -1063,7 +1080,7 @@ items:
       per-token fees.
 
   - id: D4-031
-    version: 1
+    version: 2
     type: single
     subtopic: llm.model-selection
     tags: [eval.gates]
@@ -1085,7 +1102,7 @@ items:
         why: Generic prompts forgo the tuning that gives quality, and still need testing on each model.
         misconception: A single universal prompt exists
       - text: Send every request to two providers in parallel and reconcile their answers before replying
-        why: Doubles cost and latency for an ongoing hedge, and when two providers disagree there is no tiebreaker.
+        why: Doubles model cost for an ongoing hedge, makes each reply wait for the slower provider plus reconciliation, and needs a rule for disagreements, while still not testing how prompts behave on a replacement.
         misconception: Running multiple providers is the way to avoid lock-in
     explanation: |
       Lock-in has two parts: code coupling and behavioral coupling. A thin adapter and configuration solve the
@@ -1093,7 +1110,7 @@ items:
       migration against a frozen regression set.
 
   - id: D4-032
-    version: 1
+    version: 2
     type: single
     subtopic: llm.model-selection
     tags: [rag.architecture, agents.tools-mcp]
@@ -1110,8 +1127,8 @@ items:
         correct: true
         why: Each gap gets a fix that matches its nature, and none of them needs retraining when policies change.
       - text: Fine-tune on the policy pages and past agent replies to cover policy and style, and look up the order live from the order system
-        why: Policy text baked into weights goes stale at each monthly revision and cannot be quoted with a link.
-        misconception: Fine-tuning is the way to add knowledge
+        why: Policy learned into weights goes stale at each monthly revision, and the model cannot reliably reproduce the current wording or show which page and revision an answer came from.
+        misconception: Fine-tuning is a good way to add frequently changing knowledge
       - text: Search the policy pages and style guide together, and sync order records into the same index every hour
         why: An hourly index lags orders placed minutes ago, so the assistant would report stale or missing status.
         misconception: One search index can serve every kind of external data
@@ -1127,7 +1144,7 @@ items:
   # ===================== llm.failure-modes =====================
 
   - id: D4-033
-    version: 1
+    version: 2
     type: multi
     subtopic: llm.failure-modes
     tags: [rag.retrieval, eval.rag-agent]
@@ -1140,7 +1157,7 @@ items:
     options:
       - text: Number each retrieved passage, require a passage number on every claim, and reject answers citing a number that was not supplied
         correct: true
-        why: Ties each statement to provided text and makes fabricated citations mechanically detectable.
+        why: Ties each statement to a supplied passage and makes citations to nonexistent passages mechanically detectable; a valid number shows the passage exists, not that it supports the claim.
       - text: Let the model reply that the sources do not cover the question, and test that it does so when retrieval returns nothing relevant
         correct: true
         why: Without a sanctioned way to decline, models tend to fill gaps with plausible content.
@@ -1154,13 +1171,16 @@ items:
         why: The reviewer cannot see the corpus, so it judges plausibility, and a well-formed invented case looks plausible.
         misconception: A model review without the source data detects fabrication
       - text: Set temperature to 0 with a fixed seed, so that each query returns the same citations on every run
-        why: This makes outputs repeatable, not true; a deterministic model can repeat the same invented case every time.
+        why: At best this makes outputs more repeatable (seeds are best-effort), not more accurate; the model can repeat the same invented case on every run.
         misconception: Lower temperature prevents hallucination
     explanation: |
       Hallucination comes from models producing plausible text without a reliable sense of what they know. The
       effective mitigations are structural: ground answers in supplied text, give the model a legitimate way to
-      say "not found", and verify citations outside the model. Measures that only change the model's weights,
-      sampling or a reviewer's view leave the citations unchecked against the corpus.
+      say "not found", and verify citations outside the model. A valid passage number proves only that the passage
+      was supplied; checking case names against the index, or checking support against the passage, goes further.
+      Measures that only change the model's weights, sampling or a reviewer's view leave the citations unchecked
+      against the corpus.
+    refs: [https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations]
 
   - id: D4-034
     version: 1
@@ -1195,7 +1215,7 @@ items:
       prompt prefix so they do not break caching.
 
   - id: D4-035
-    version: 1
+    version: 2
     type: multi
     subtopic: llm.failure-modes
     tags: [eval.methods, agents.tools-mcp]
@@ -1203,15 +1223,15 @@ items:
     level: evaluate
     time_s: 110
     stem: |
-      A finance-operations assistant reads supplier statements and writes a summary that states the total owed.
-      Statements have 30 to 80 line items, some with credits and mixed currencies. Reviewers find the stated total
-      wrong in about 5% of summaries, usually by a small amount, while the extracted line items are correct.
-      Which changes would make the stated totals dependable?
+      A finance-operations assistant reads supplier statements and writes a summary that states the total owed in
+      each currency, with no conversion. Statements have 30 to 80 line items, some with credits and several
+      currencies. Reviewers find a stated total wrong in about 5% of summaries, usually by a small amount, while
+      the extracted line items are correct. Which changes would make the stated totals dependable?
     options:
       - text: Have the model pass the extracted amounts to a calculator or code tool and report that tool's result
         correct: true
         why: Exact arithmetic is done by deterministic code, and the model only has to choose the operands.
-      - text: Recompute the total from the extracted line items in application code and flag any summary whose stated total differs
+      - text: Recompute each currency's total from the extracted line items in application code and flag any summary that differs
         correct: true
         why: A deterministic cross-check catches the fluent-but-wrong sums that read plausibly to reviewers.
       - text: Add statements with many items, credits and mixed currencies to the regression set and track total accuracy as its own metric
@@ -1227,10 +1247,10 @@ items:
         why: Larger models make fewer slips but still make fluent ones, and nothing in the pipeline would detect the ones that remain.
         misconception: Scale turns a language model into a calculator
     explanation: |
-      Language models generate plausible text; they do not compute. Long sums with credits and mixed currencies
-      are a classic place for small, fluent errors. Delegate exact arithmetic to code, verify results in the
-      application, and make sure the hard cases are in the evals. Prompting techniques lower the error rate but do
-      not give a guarantee.
+      Language models can do arithmetic, but not with the exactness a stated total needs: long sums with credits
+      and several currencies are a classic place for small, fluent errors. Delegate exact arithmetic to code,
+      verify results in the application, and make sure the hard cases are in the evals. Prompting techniques and
+      larger models lower the error rate but do not give a guarantee.
 
   - id: D4-036
     version: 1
@@ -1322,7 +1342,7 @@ items:
       The cascade pays off only if the escalation signal is reliable, which has to be measured.
 
   - id: D4-039
-    version: 1
+    version: 2
     type: code
     subtopic: llm.prompting
     tags: [llm.fundamentals, agents.state]
@@ -1341,7 +1361,7 @@ items:
         budget. Stop at the first message that does not fit; older messages are then dropped even if they
         would have fitted (the kept history must be an unbroken recent suffix).
       - Return the kept messages in their original order. If the system messages alone exceed the budget,
-        return only the system messages. Do not modify the input.
+        return only the system messages. Do not modify the input list or its messages.
     code:
       function: trim_history
       starter: |
@@ -1362,36 +1382,49 @@ items:
       examples:
         - args: [[{"role": "system", "content": "rules", "tokens": 100}, {"role": "user", "content": "q1", "tokens": 50}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}], 200]
           expected: [{"role": "system", "content": "rules", "tokens": 100}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}]
+          unchanged: true
         - args: [[{"role": "system", "content": "rules", "tokens": 100}, {"role": "user", "content": "q1", "tokens": 50}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}], 1000]
           expected: [{"role": "system", "content": "rules", "tokens": 100}, {"role": "user", "content": "q1", "tokens": 50}, {"role": "assistant", "content": "a1", "tokens": 60}, {"role": "user", "content": "q2", "tokens": 40}]
+          unchanged: true
       tests:
         - args: [[{"role": "system", "content": "system-100", "tokens": 100}, {"role": "user", "content": "user-50", "tokens": 50}, {"role": "assistant", "content": "assistant-60", "tokens": 60}, {"role": "user", "content": "user-40", "tokens": 40}], 249]
           expected: [{"role": "system", "content": "system-100", "tokens": 100}, {"role": "assistant", "content": "assistant-60", "tokens": 60}, {"role": "user", "content": "user-40", "tokens": 40}]
+          unchanged: true
         - args: [[{"role": "system", "content": "system-100", "tokens": 100}, {"role": "user", "content": "user-500", "tokens": 500}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-30", "tokens": 30}], 160]
           expected: [{"role": "system", "content": "system-100", "tokens": 100}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-30", "tokens": 30}]
+          unchanged: true
         - args: [[{"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-200", "tokens": 200}, {"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-10", "tokens": 10}], 30]
           expected: [{"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-10", "tokens": 10}]
+          unchanged: true
         - args: [[{"role": "system", "content": "system-300", "tokens": 300}, {"role": "user", "content": "user-10", "tokens": 10}], 200]
           expected: [{"role": "system", "content": "system-300", "tokens": 300}]
+          unchanged: true
         - args: [[], 100]
           expected: []
+          unchanged: true
         - args: [[{"role": "system", "content": "s1", "tokens": 50}, {"role": "user", "content": "user-20", "tokens": 20}, {"role": "system", "content": "s2", "tokens": 30}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-20", "tokens": 20}], 140]
           expected: [{"role": "system", "content": "s1", "tokens": 50}, {"role": "user", "content": "user-20", "tokens": 20}, {"role": "system", "content": "s2", "tokens": 30}, {"role": "assistant", "content": "assistant-20", "tokens": 20}, {"role": "user", "content": "user-20", "tokens": 20}]
+          unchanged: true
         - args: [[{"role": "user", "content": "user-10", "tokens": 10}, {"role": "assistant", "content": "assistant-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}], 20]
           expected: [{"role": "assistant", "content": "assistant-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}]
+          unchanged: true
         - args: [[{"role": "user", "content": "user-0", "tokens": 0}, {"role": "assistant", "content": "assistant-15", "tokens": 15}, {"role": "user", "content": "user-5", "tokens": 5}], 20]
           expected: [{"role": "user", "content": "user-0", "tokens": 0}, {"role": "assistant", "content": "assistant-15", "tokens": 15}, {"role": "user", "content": "user-5", "tokens": 5}]
+          unchanged: true
         - args: [[{"role": "system", "content": "system-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}], 20]
           expected: [{"role": "system", "content": "system-10", "tokens": 10}, {"role": "user", "content": "user-10", "tokens": 10}]
+          unchanged: true
       timeout_s: 5
     explanation: |
       Budgeting context is a deliberate policy: pin what must survive (system instructions), spend the rest on
-      the most recent turns, and never leave a gap in the middle of the conversation, which can leave replies
-      without the question they answer. Real systems also reserve room for the output and may summarize the
-      dropped turns instead of discarding them.
+      the most recent turns, and keep them as an unbroken suffix, so the model never sees later turns without the
+      ones between them. This simple policy can still start the kept history with a reply whose question was
+      dropped; production code often trims at whole-turn boundaries and keeps tool calls with their results. Real
+      systems also reserve room for the output and may summarize the dropped turns instead of discarding them.
+      Return a new list rather than trimming the caller's: the caller may still need the full history.
 
   - id: D4-040
-    version: 1
+    version: 2
     type: open
     subtopic: llm.model-selection
     tags: [comms.tradeoffs, rag.architecture]
@@ -1405,35 +1438,38 @@ items:
       business. Why are you proposing retrieval instead of fine-tuning?" The manuals are revised monthly, and
       some incident reports are restricted to the safety team.
 
-      Write your reply (about 150 to 250 words). She is senior and not an ML specialist.
+      Write your reply (about 150 to 250 words): your recommendation, why, and how you would confirm it. She is
+      senior and not an ML specialist.
     rubric:
-      - criterion: Bottom line first
+      - criterion: Clear recommendation first
         points: 2
-        guidance: "2 if the reply opens with the recommendation and the main reason; 1 if the recommendation appears but is buried or hedged; 0 if no clear position."
+        guidance: "2 if the reply leads with a clear, actionable recommendation and its main reason; a clear recommendation with a stated condition (for example, 'retrieval first, subject to confirming how report access is controlled') still earns 2; 1 if a recommendation is present but buried or poorly explained; 0 if there is no actionable recommendation."
       - criterion: Explains what each approach changes, in plain language
         points: 3
-        guidance: "3 if it explains that fine-tuning shapes behavior and style while retrieval supplies current, citable facts; 2 if the distinction is right but jargon-heavy or vague; 1 if only one side is explained; 0 if inaccurate (for example, claims fine-tuning reliably loads facts)."
-      - criterion: Ties the choice to her constraints
+        guidance: "3 if it explains, without jargon, that retrieval supplies selected current documents at question time while fine-tuning changes what the model has learned (behavior, style, some content), and why learned content is hard to keep current, trace to a source or restrict; 2 if the core distinction is right but with a meaningful omission or heavy jargon; 1 if only one approach is explained adequately; 0 if materially wrong (for example, claims fine-tuning reliably keeps facts current)."
+      - criterion: Uses her constraints
         points: 3
-        guidance: "3 if it addresses monthly revisions (re-index vs retrain), per-role access to restricted reports and citations for technicians; 2 if two of these; 1 if one; 0 if generic."
-      - criterion: Leaves room for fine-tuning and says how to decide
+        guidance: "3 if it concretely addresses both monthly revisions (updating the index rather than retraining) and restricted reports (checking who is asking before restricted content reaches the shared model), and says what each means for the recommendation; 2 if both are addressed but one stays generic; 1 if only one is meaningfully addressed; 0 if neither. Credit any equivalent access-control description; source links or citations may strengthen the answer but are not required."
+      - criterion: Proportionate next step, open to fine-tuning
         points: 2
-        guidance: "2 if it acknowledges cases where fine-tuning helps (house style, terse shorthand) and proposes testing on real questions with a held-out set; 1 if only one of the two; 0 if dismissive or purely assertive."
+        guidance: "2 if it proposes a bounded evaluation on representative real questions with expert answers and names a credible later role for fine-tuning if the measurements warrant it (for example shorthand or house style); 1 if it includes only one of these; 0 if neither, a purely assertive reply."
     model_answer: |
-      Short answer: retrieval first, because your manuals change monthly and some reports are restricted. Training
-      doesn't handle either well.
+      Short answer: retrieval first, because your manuals change monthly and some incident reports are
+      restricted, and retrieval handles both directly.
 
-      Think of it as two different jobs. Fine-tuning changes how the model behaves: its tone, format and how it
-      reads your shorthand. It is a poor way to store facts, because the model can only partly recall them,
-      cannot point to the page it learned something from, and has to be retrained whenever a manual is revised.
-      Retrieval looks up the relevant pages at question time, so the answer comes from the current manual and can
-      show the technician exactly which page it used.
+      The two approaches do different jobs. Fine-tuning changes what the model has learned: its tone, format, how
+      it reads your shorthand, and to some extent content. But it is not a dependable way to keep facts current:
+      the model recalls trained material only partly, cannot show which page an answer came from, and needs
+      retraining whenever a manual changes. Retrieval looks up the relevant pages when a question is asked, so
+      answers draw on the current manual and can point the technician to the page used. When a manual is
+      revised, we update the index rather than retrain.
 
-      Access matters too. With retrieval we filter by who is asking before the model sees anything, so the safety
-      team's reports stay with the safety team. Anything learned in training can't be restricted per person.
+      Access matters too. With retrieval we check who is asking before any document reaches the model, so the
+      safety team's reports reach only the safety team. A single shared model trained on those reports could
+      repeat them to anyone, and instructions alone would not reliably stop it.
 
-      I'm not ruling out fine-tuning. If we find the assistant struggles with your shorthand or house style even
-      with the right pages in front of it, a light fine-tune on top is a sensible second step. To decide, I'd
-      propose we take 100 real technician questions, compare both approaches against expert answers, and let the
-      results settle it. That takes about a week and costs far less than a training project.
+      I'm not ruling out fine-tuning. If the assistant still struggles with your shorthand or house style with the
+      right pages in front of it, a light fine-tune on top is a sensible second step. To confirm the choice, I'd
+      take about 100 real technician questions with expert answers, compare the approaches, and let the results
+      decide. I'll come back with an estimate of the effort for both.
     max_chars: 2000
