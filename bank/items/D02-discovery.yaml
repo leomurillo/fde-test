@@ -2,7 +2,7 @@ domain: D2
 items:
   # ===================== discovery.framing =====================
   - id: D2-001
-    version: 1
+    version: 2
     type: single
     subtopic: discovery.framing
     competencies: [x.decomposition]
@@ -16,23 +16,26 @@ items:
     options:
       - text: "Shadow nurses across several shifts and time each search from the moment of need to the item in hand"
         correct: true
-        why: "Observation shows where the time really goes. With accurate inventory data, the stated solution (a lookup chatbot) may not touch the cause."
+        why: "Timed observation covers the whole search, inside and outside the system, so it shows where the minutes go. With the data already accurate, a lookup chatbot may not touch the cause."
       - text: "Analyze the inventory system's search and pick logs to see which items and wards generate the most lookups"
-        why: "Logs record only what happens inside the system. With accurate data and locations, the delay likely sits where logs cannot see: walking, locked rooms, restocking."
+        why: "Useful later, but logs cover only the part of a search that happens in the system. The checks so far leave the rest of the journey unexplained: walking, locked rooms, empty bins."
         misconception: "System data shows the whole workflow"
       - text: "Build a thin chatbot over the inventory data and measure whether nurses use it over two weeks"
         why: "If searches are slow for reasons other than lookup, a lookup chatbot cannot help, and low usage would not tell you why."
         misconception: "Building the requested thing is the fastest way to learn"
       - text: "Interview a dozen nurses and their ward managers about why supplies are hard to find, and group the answers"
-        why: "People describe their work from memory and name the symptoms they notice; they rarely see how long each search takes or what causes it."
+        why: "Good for gathering complaints and leads, but recalled accounts rarely give the timed, step-by-step picture needed to locate where each search loses time."
         misconception: "Interviews are sufficient discovery"
     explanation: |
       The stated request is a solution, not a problem. Before building, find out what actually happens in the
-      workflow: watching real work surfaces causes that users, managers and system logs cannot reveal, and it can
-      overturn the assumed solution entirely.
+      workflow. Here the data checks have ruled out one cause without explaining the delay, so the gap is the
+      physical journey from need to item in hand, which timed observation measures directly. Interviews and system
+      logs remain useful complements: interviews point to where to look, and logs size what happens in the system.
+      Triangulating them with observation can overturn the assumed solution entirely.
+    refs: [https://www.gov.uk/service-manual/user-research/user-research-in-discovery]
 
   - id: D2-002
-    version: 1
+    version: 2
     type: single
     subtopic: discovery.framing
     competencies: [x.decomposition]
@@ -41,30 +44,34 @@ items:
     time_s: 75
     stem: |
       An online retailer's operations VP says returns take too long to process and wants AI to fix it. Returns
-      arrive by mail, at stores and through third-party marketplace partners. You are building an issue tree for
-      'where does the time go?'. Which first-level split is mutually exclusive and collectively exhaustive?
+      arrive by mail, at stores and through third-party marketplace partners. Whatever the channel, each return
+      goes through the same steps in order (receipt, inspection, disposition decision, refund, restocking), and the
+      system timestamps each step's completion. You are building an issue tree for 'where does the time go?'.
+      Which first-level split is mutually exclusive and collectively exhaustive?
     options:
-      - text: "Elapsed time per stage: receipt, inspection, disposition decision, refund, restocking"
+      - text: "Time between consecutive step timestamps, from receipt to restocking"
         correct: true
-        why: "Every hour of a return falls into exactly one stage, so the branches do not overlap and together cover the whole process."
+        why: "Consecutive intervals partition each return's elapsed time: every hour, including waiting and rework, falls into exactly one interval, and together they cover the whole process."
       - text: "Elapsed time per intake channel: mail-in returns and in-store returns"
         why: "Marketplace returns fall into neither branch, so the split is not collectively exhaustive."
         misconception: "A split along a natural dimension is automatically complete"
       - text: "Contributing causes: staffing, tooling, volume spikes, data quality and process design"
         why: "A brainstormed cause list overlaps (tooling and process design) and nothing proves it is complete."
         misconception: "A list of plausible causes is a decomposition"
-      - text: "Delay by product category and by warehouse site"
+      - text: "Delay broken down by product category and also by the warehouse site that handled it"
         why: "These are two different cuts of the same returns, so every return appears under both; they are not parts of one split."
         misconception: "Listing several useful dimensions makes a tree"
     explanation: |
-      MECE means each element belongs to exactly one branch and no element is left out. Splitting a process along its
-      flow is the dependable way to get this, and it yields branches you can measure with timestamps. Splits by
-      channel or site are only exhaustive if every value is listed; causes belong at the next level, as hypotheses
-      under the stage where time is actually lost.
+      MECE means each element belongs to exactly one branch and no element is left out. Splitting a process into
+      the intervals between consecutive timestamped milestones is a dependable way to get this for elapsed time:
+      waiting and rework land in the interval where they happen, and nothing is counted twice. Stage names alone
+      are not enough when steps can overlap or run in parallel; the boundaries have to be defined. Splits by channel
+      or site are only exhaustive if every value is listed; causes belong at the next level, as hypotheses under the
+      interval where time is actually lost.
     refs: [https://en.wikipedia.org/wiki/MECE_principle]
 
   - id: D2-003
-    version: 1
+    version: 2
     type: multi
     subtopic: discovery.framing
     tags: [comms.stakeholders]
@@ -82,9 +89,9 @@ items:
       - text: "Watch adjusters work live claims instead of relying on the VP's description of their day"
         correct: true
         why: "The people who will use the tool hold the workflow knowledge, and managers' accounts of it are secondhand."
-      - text: "Check that the CFO's measurable target and the adjusters' daily friction sit at the same workflow step"
+      - text: "Trace how the changes adjusters would actually adopt are expected to move the CFO's expense figure"
         correct: true
-        why: "If the savings come from a step adjusters do not struggle with, adoption will not produce the sponsor's outcome."
+        why: "If the sponsor's savings do not follow from work changes the users will take up, the tool can be adopted and still miss the sponsor's outcome."
       - text: "Ask the VP to nominate a few experienced adjusters to review the requirements list, then freeze it"
         why: "Nominees tend to be the manager's trusted voices, and reviewing a list is not seeing the work; friction nobody wrote down never surfaces."
         misconception: "A manager-picked sample counts as user research"
@@ -92,12 +99,12 @@ items:
         why: "A tool that hits the number on paper but that adjusters route around saves nothing; adoption and the sponsor's outcome must be examined together."
         misconception: "The sponsor's metric is the only one that matters"
       - text: "Run a workshop where adjusters vote on the features they want most, and build the top-voted ones"
-        why: "Stated wishes are not observed friction, and the top-voted features may not touch the step where the sponsor's savings come from."
+        why: "Stated wishes are not observed friction, and the top-voted features may have no link to where the sponsor's savings come from."
         misconception: "A voted wish list is discovery output"
     explanation: |
       Users, buyers and sponsors are often different people with different success measures. Good discovery keeps
-      them distinct, learns user needs first-hand, and checks that the sponsor's outcome and the users' pain point
-      at the same place in the workflow.
+      them distinct, learns user needs first-hand, and checks the causal link between them: the change in work that
+      users will adopt should be what produces the sponsor's outcome, even if the two show up at different steps.
 
   - id: D2-004
     version: 1
@@ -193,7 +200,7 @@ items:
       tenure cohorts, can redirect the whole project before any model is built.
 
   - id: D2-007
-    version: 1
+    version: 2
     type: multi
     subtopic: discovery.framing
     tags: [discovery.environment]
@@ -202,8 +209,9 @@ items:
     level: apply
     time_s: 100
     stem: |
-      It is Monday of an engagement that began with 'make our dispatchers more efficient'. Which activities belong
-      in the first week of discovery?
+      It is Monday of an engagement that began with 'make our dispatchers more efficient'. By Friday you are to show
+      the sponsor, with evidence, where this client's dispatchers lose time. Which activities belong in this first
+      week?
     options:
       - text: "Write two or three testable hypotheses about where dispatcher time is lost, each naming the data that would confirm it"
         correct: true
@@ -218,14 +226,15 @@ items:
         why: "It yields a wish list without evidence of where time is lost, and it favors whoever speaks most confidently."
         misconception: "Consolidated requirements are discovery output"
       - text: "Compare the client's dispatch metrics with published industry averages to find the biggest gap"
-        why: "Averages from other operations hide how this client's work differs, and a gap against them does not point to a cause."
+        why: "Useful context later, but a gap against other operations' averages does not show where in this client's workflow the time goes, which is what Friday needs."
         misconception: "External benchmarks locate the problem"
       - text: "Run a two-day workshop with all stakeholders to map the ideal future dispatch process"
         why: "Designing a future state before the current one is measured builds on assumptions; week one should produce evidence."
         misconception: "Future-state design is where discovery starts"
     explanation: |
-      Week one of discovery should produce evidence: hypotheses, a measured baseline, and direct observation of the
-      work. Consolidated requirements, benchmarks and future-state designs come after the problem is located.
+      When the first week's job is to locate the problem, it should produce client-specific evidence: hypotheses, a
+      measured baseline, and direct observation of the work. Consolidated requirements and future-state designs come
+      after the problem is located; external benchmarks can add context but do not locate it.
 
   # ===================== discovery.selection =====================
   - id: D2-008
@@ -331,7 +340,7 @@ items:
       already record, then check what the recorded clock leaves out by tracing a sample end to end.
 
   - id: D2-011
-    version: 1
+    version: 2
     type: multi
     subtopic: discovery.selection
     tags: [gov.identity]
@@ -339,7 +348,8 @@ items:
     level: evaluate
     time_s: 100
     stem: |
-      You are screening a candidate for the client's first AI project. Which findings should make you hesitate?
+      You are screening a candidate for the client's first AI project. Which findings, each on its own, should make
+      you hesitate to choose it?
     options:
       - text: "The person who would act on the outputs has not agreed to change how they work"
         correct: true
@@ -357,14 +367,15 @@ items:
         why: "A known error rate is a baseline to beat and is useful for setting an acceptance target."
         misconception: "Existing errors make the process too risky to automate"
       - text: "Most of the input is scanned documents and free text rather than database fields"
-        why: "Unstructured input is where language models help most; it adds parsing work but is not a reason to doubt the project's value."
+        why: "Unstructured input is a common fit for language models. Scan quality and parsing effort need checking, but the input type alone is not a reason to hesitate."
         misconception: "Messy inputs mean low feasibility"
     explanation: |
       Red flags are missing ownership, no way to measure, and blocked data. Manual, messy or error-prone processes
-      are often the best candidates because they supply the baseline and the headroom.
+      are often good candidates because they supply the baseline and the headroom, although messy inputs still need
+      a quick check of quality and parsing effort.
 
   - id: D2-012
-    version: 1
+    version: 2
     type: single
     subtopic: discovery.selection
     tags: [comms.stakeholders, discovery.environment]
@@ -378,9 +389,9 @@ items:
       regional spreadsheets whose definitions of 'discount' differ in ways nobody has quantified. Which approach is
       best?
     options:
-      - text: "Start the CEO's pricing project behind a two-week data check, with claims triage as the fallback"
+      - text: "Gate the pricing project on a two-week data check and secure an empowered owner for the claims fallback"
         correct: true
-        why: "It uses the sponsor's backing while testing the biggest risk cheaply, and the fallback means a failed check costs two weeks, not eight."
+        why: "It uses the sponsor's backing while testing the biggest risk cheaply. Securing someone who can approve workflow changes in parallel makes triage a real fallback, so a failed check costs two weeks, not eight."
       - text: "Choose claims triage, because data readiness predicts delivery better than executive enthusiasm does"
         why: "Without anyone able to approve workflow changes, a working triage tool stalls at adoption, however clean the data."
         misconception: "Technical feasibility outweighs organizational backing"
@@ -388,11 +399,14 @@ items:
         why: "Committing the whole timebox to data cleanup of unknown scope risks delivering a clean dataset and no optimizer."
         misconception: "Strong sponsorship overcomes poor data"
       - text: "Decline both for now and ask the client to name a claims sponsor and agree discount definitions first"
-        why: "Gatekeeping delays value; the engagement can test feasibility itself in a short time."
+        why: "Neither gap has to close before work starts: the engagement can test the pricing data itself in two weeks and pursue a claims owner in parallel."
         misconception: "Prerequisites must be complete before starting"
     explanation: |
       Sponsorship and feasibility both matter. When they are split across candidates, bound the risk of the
-      sponsored option with a short, explicit feasibility gate and keep a credible fallback ready.
+      sponsored option with a short feasibility gate that has an agreed pass condition. A fallback is only credible
+      if it is viable: here that means an owner who can change the adjusters' workflow, arranged while the gate
+      runs. If neither path clears its condition, recommending a stop or a change of scope is a legitimate outcome.
+    refs: [https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works]
 
   # ===================== discovery.environment =====================
   - id: D2-013
@@ -455,7 +469,7 @@ items:
       keep working on approved data. Real samples expose data surprises early; synthetic data hides them.
 
   - id: D2-015
-    version: 1
+    version: 2
     type: multi
     subtopic: discovery.environment
     tags: [gov.audit-compliance]
@@ -463,8 +477,8 @@ items:
     level: apply
     time_s: 80
     stem: |
-      Before designing a solution at a freight broker, you build an inventory of the data sources and access paths
-      it will depend on. What should you capture for each source?
+      Before choosing a use case at a freight broker, you build a first-pass inventory of the data sources and access
+      paths a solution might depend on, to inform scope and schedule. What belongs in it for each source?
     options:
       - text: "The owner, who approves access, and the typical approval lead time"
         correct: true
@@ -475,19 +489,19 @@ items:
       - text: "Its sensitivity classification and any handling restrictions"
         correct: true
         why: "Restrictions on personal or contractual data shape where the data may go, who may see it, and which models can touch it."
-      - text: "A column-level data dictionary for each source"
-        why: "Needed for the sources the design actually uses, but writing one for every source delays the start and mostly documents what is irrelevant."
+      - text: "A newly written column-level data dictionary wherever none exists"
+        why: "Link existing dictionaries where they exist; writing new ones for every source delays the start and mostly documents fields no use case will touch."
         misconception: "Completeness beats relevance in inventories"
-      - text: "The vendor, product version and installation date of each source system"
-        why: "Matters later for integration choices but does not decide feasibility or timeline now."
-        misconception: "Technology lineage is the key attribute"
+      - text: "A target schema that maps each source's fields into one unified model"
+        why: "That is design work; doing it for every source before the use case is chosen maps fields that will never be used."
+        misconception: "Integration design belongs in the inventory"
       - text: "A full data-quality profile of every source, with null rates per column"
         why: "Valuable for the one or two sources the first use case depends on; across all of them it is weeks of work before you know which matter."
         misconception: "Profile everything before choosing"
     explanation: |
-      A discovery inventory answers who owns the data, how fast access can be granted, how fresh it is and what
-      rules govern it. Those facts decide scope and schedule; exhaustive catalogues and profiles of every source do
-      not, and are better done for the sources the first use case needs.
+      A first-pass discovery inventory answers who owns the data, how fast access can be granted, how fresh it is
+      and what rules govern it. Those facts decide scope and schedule. Note existing documentation where it exists,
+      but new dictionaries, profiles and target models are better done for the sources the first use case needs.
 
   - id: D2-016
     version: 1
@@ -637,7 +651,7 @@ items:
       success criteria and date intact. Cut scope, not value, and never silently absorb.
 
   - id: D2-021
-    version: 1
+    version: 2
     type: multi
     subtopic: delivery.scoping
     tags: [comms.stakeholders]
@@ -646,7 +660,8 @@ items:
     time_s: 110
     stem: |
       A six-week pilot is meant to expose 40 real users from the start of week 4. At the end of week 2 the team has
-      finished about 40% of the planned work. Which responses are sound?
+      finished about 40% of the work planned for that launch and, at its current pace, would be ready at the end of
+      week 5. Engineers new to this codebase take about a week to become productive. Which responses are sound?
     options:
       - text: "Cut features that do not move the agreed success metric, and hold the date real users first touch it"
         correct: true
@@ -657,8 +672,8 @@ items:
       - text: "Tell the sponsor now which scope is at risk and what the options are"
         correct: true
         why: "Early, specific warning preserves trust and gives the sponsor a chance to decide the trade-offs."
-      - text: "Ask the sponsor for two more engineers for the remaining weeks so the full scope still fits"
-        why: "New people need onboarding and slow the existing team in the short run, and it avoids the prioritization the timebox is meant to force."
+      - text: "Ask the sponsor for two more engineers for week 3 so the full planned scope is ready on time"
+        why: "They would spend most of week 3 getting productive and take time from the existing team, so they cannot close the gap before week 4; it also skips the prioritization the timebox forces."
         misconception: "Adding people recovers schedule"
       - text: "Slip the real-user start to week 6 to finish the planned features, and keep the end date"
         why: "A week or so of real use cannot show adoption, edge cases or a trend in the metric; the evidence window is what to protect."
@@ -667,8 +682,9 @@ items:
         why: "Internal testers are not the real users doing real work, so the pilot stops producing evidence of value."
         misconception: "Substituting convenient users preserves the pilot's value"
     explanation: |
-      When behind, protect the elements that make the pilot informative: real users on a fixed date, a long enough
-      evidence window, and transparency with the sponsor. Everything else is negotiable scope.
+      When a forecast shows a milestone will be missed, protect the elements that make the pilot informative: real
+      users on a fixed date, a long enough evidence window, and transparency with the sponsor. Everything else is
+      negotiable scope. Extra people help only if they can be productive before the date that matters.
 
   - id: D2-022
     version: 1
@@ -725,7 +741,7 @@ items:
 
   # ===================== delivery.go-live =====================
   - id: D2-024
-    version: 1
+    version: 2
     type: single
     subtopic: delivery.go-live
     tags: [adoption.handoff]
@@ -738,21 +754,23 @@ items:
       runs in the vendor team's cloud account on a project budget that ends next quarter, and the client's IT group
       says nobody on their side is assigned to carry its pager. What should be addressed first?
     options:
-      - text: "Agree who owns and funds running it in the client's environment after go-live"
+      - text: "Agree who will own, fund and operate the service in production"
         correct: true
-        why: "Every technical gate is clear; the missing element is an owner with budget, without which no one will approve go-live."
+        why: "Every technical gate is clear; the missing element is an owner with budget and an agreed way of running it, without which no one will approve go-live."
       - text: "Move the service into the client's cloud account and security perimeter"
-        why: "Needed eventually, but with no owner and no budget there is nobody to accept, run or pay for it; the move alone unblocks nothing."
+        why: "Possibly part of the eventual operating model, but with no owner and no budget there is nobody to accept, run or pay for it; the move alone unblocks nothing."
         misconception: "Technical migration unblocks launch"
       - text: "Extend the pilot to more users to build a stronger evidence base"
         why: "The pilot already beat its targets, so more evidence extends the wait without removing the actual blocker."
         misconception: "More pilot data will unlock the decision"
-      - text: "Start a training and champions programme for the wider reviewer population so adoption is ready at launch"
+      - text: "Run training and a champions programme so reviewers are ready for launch"
         why: "Good for adoption, but launch cannot happen while nobody will run the service, and it spends effort ahead of the decision."
         misconception: "Adoption readiness is the missing step"
     explanation: |
       Pilots often stall after technical success because nobody owns production: budget, on-call, environment and
-      accountability. Resolve ownership explicitly, or a successful pilot becomes permanent.
+      accountability. Resolve ownership explicitly, or a successful pilot becomes permanent. Where it runs (the
+      client's environment, or a vendor-operated service under an agreed contract) is part of that decision, not a
+      substitute for it.
 
   - id: D2-025
     version: 1
@@ -789,7 +807,7 @@ items:
       runbook, and monitoring that catches quality and cost problems, not only crashes.
 
   - id: D2-026
-    version: 1
+    version: 2
     type: single
     subtopic: delivery.go-live
     tags: [eval.online]
@@ -799,28 +817,31 @@ items:
     stem: |
       An insurer's claims-routing model has run in shadow mode for four weeks on live traffic. It agrees with the
       human routing on 93% of claims, but only on 78% of claims within a week of a regulatory deadline, where a late
-      routing triggers penalties. The sponsor points out that two human routers agree with each other only 90% of
-      the time and wants to switch all routing to the model. What do you recommend?
+      routing triggers penalties. A misrouted claim outside that window is simply re-routed, at the cost of a day's
+      delay. The sponsor points out that two human routers agree with each other only 90% of the time overall and
+      wants to switch all routing to the model. What do you recommend?
     options:
-      - text: "Move non-urgent claims to model routing, keep all deadline-sensitive claims with humans, and investigate the gap"
+      - text: "Model-route non-urgent claims, keep all deadline-sensitive claims with humans, and adjudicate disagreements"
         correct: true
-        why: "The average hides a weak, high-consequence segment; gating by consequence captures most of the benefit without exposing penalty-bearing claims."
+        why: "Errors outside the deadline window are cheap to correct, so exposure there is low-risk; adjudicating the disagreements shows whether the model or the humans were wrong before urgent claims are considered."
       - text: "Switch everything over, since overall agreement already exceeds the agreement between two human routers"
-        why: "Aggregate agreement is dominated by routine claims; the urgent segment is where errors cost money and is clearly below the human benchmark."
+        why: "The aggregate is dominated by routine claims and hides the urgent segment, where errors cost money; an overall human figure is no benchmark for that segment, and agreement is not correctness."
         misconception: "An aggregate above the human benchmark is sufficient"
       - text: "Extend shadow mode another month on all claims to get a more precise overall agreement figure"
-        why: "More of the same: the data already shows where the model is weak, and a tighter average does not fix a known weak segment."
+        why: "More of the same: the data already points to a weak segment, and a tighter overall average neither explains the disagreements nor says who was right."
         misconception: "More shadow data resolves it"
       - text: "Keep all routing with humans until the model reaches 99% agreement overall on every claim type"
-        why: "An arbitrary bar not tied to consequences delays the benefit on the large share of claims where the model is already safe."
+        why: "An arbitrary bar not tied to consequences delays the benefit on the large share of claims where errors are cheap to correct."
         misconception: "Wait for near-perfect accuracy"
     explanation: |
-      Shadow mode compares the system with current practice on live traffic without consequences, but an overall
-      agreement rate can hide a weak segment. Decide exposure by the cost of errors in each segment: let the model act
-      where mistakes are cheap and keep people where they are not, then close the gap before widening.
+      Shadow mode compares the system with current practice on live traffic without consequences, but agreement is
+      not correctness: a model and a human can agree on the wrong queue, and a disagreement may be the model
+      correcting a human. An overall rate can also hide a weak segment, and an overall human-to-human figure is not
+      a benchmark for one segment. Decide exposure by the cost of errors in each segment, and adjudicate a sample of
+      disagreements by segment to measure actual error rates before widening.
 
   - id: D2-027
-    version: 1
+    version: 2
     type: single
     subtopic: delivery.go-live
     tags: [obs.slo, obs.cost]
@@ -840,15 +861,16 @@ items:
         why: "Meeting the letter of an incomplete gate ignores evidence that two other outcomes the sponsor cares about are off."
         misconception: "Passing the stated gate is sufficient"
       - text: "Roll back to 5% until latency and cost return to forecast, then restart the ramp from there"
-        why: "Latency is within the promised ceiling and quality is on target, so users are not being harmed at 25%; holding gives the same protection without losing ramp time."
+        why: "Latency is within the promised ceiling and quality is on target, so agents at 25% are not being harmed and the extra cost at that exposure is bounded; holding gives the same protection without losing ramp time."
         misconception: "Any gate miss requires a rollback"
       - text: "Proceed to 50% so the extra traffic shows whether the early-ramp latency and cost settle on their own"
-        why: "With per-token billing, cost per ticket does not fall as volume grows, and heavier load is more likely to worsen p95 than fix it; the gap needs a cause first."
+        why: "Per-token billing gives no volume discount that would pull cost per ticket back, and heavier load tends to worsen p95 rather than fix it; ramping doubles exposure before the deviation is explained."
         misconception: "Early-ramp deviations are noise that settles with volume"
     explanation: |
       Progressive rollout is only as good as its gates. Define quality, latency, cost and error thresholds up front;
-      when a step exposes a missing one, pause, agree it with the sponsor, and then continue. Rolling back is for
-      harm; holding is for an unexplained deviation.
+      when a step exposes a missing one, pause, agree it with the sponsor, and then continue. Roll back when the
+      current exposure is causing material harm; hold when a deviation is unexplained but tolerable at the current
+      step, and find its cause (traffic mix, prompt length, retries) before widening.
 
   - id: D2-028
     version: 1
@@ -907,7 +929,7 @@ items:
       maker, agreed before exposure begins rather than improvised during an incident.
 
   - id: D2-030
-    version: 1
+    version: 2
     type: single
     subtopic: delivery.go-live
     tags: [delivery.scoping]
@@ -915,28 +937,33 @@ items:
     level: evaluate
     time_s: 100
     stem: |
-      Your one-week proof of concept, a notebook calling a model with prompts pasted in and an API key hardcoded,
-      impressed the sponsor, who now says 'ship it next month'. What do you propose?
+      Your one-week proof of concept is a notebook: prompts pasted into cells, an API key hardcoded, and the current
+      conversation held in global variables, so it serves one person at a time when someone runs the cells in order.
+      It impressed the sponsor, who now says 'ship it next month' to 60 support agents, who would use it at the same
+      time from inside their CRM. What do you propose?
     options:
-      - text: "Keep the prompts and test cases as the learning, and rebuild the serving path properly"
+      - text: "Carry over the prompts, test cases and reusable logic, and build a multi-user service around them"
         correct: true
-        why: "Prompts and test cases carry the learning; the code was built for speed, not for secrets, retries, monitoring or support."
-      - text: "Harden the notebook step by step: move secrets out, add retries and logging, and schedule it as a job"
-        why: "Incremental hardening of a throwaway script yields a fragile system that is hard to test, observe and hand off."
-        misconception: "Production quality can be reached by patching a prototype"
-      - text: "Wrap the notebook logic in an API now and deploy it, then refactor once real users are on it"
-        why: "Deferring structure to after launch turns shortcuts into permanent debt, with real users depending on them."
+        why: "The prompts, cases and logic hold what the prototype proved; its single-user execution model and hardcoded secret are what must change to serve concurrent agents."
+      - text: "Harden the notebook step by step: move secrets out, add retries and logging, and run it on a schedule"
+        why: "Safer and more observable, but a scheduled notebook still runs one session at a time from shared global state, so it cannot serve 60 agents working concurrently from the CRM."
+        misconception: "Hardening a prototype fixes its execution model"
+      - text: "Wrap the notebook logic in an API as it is and deploy it, then refactor once agents are using it"
+        why: "Concurrent requests would share one set of global variables and mix agents' conversations, and the hardcoded key ships too; fixing that after launch puts real users on both."
         misconception: "Ship first, fix later"
       - text: "Run a design phase first: requirements, architecture and a full test plan, before any new code is written"
-        why: "Most of the requirements are already encoded in the validated prompts and cases, so a long design phase delays the sponsor with little new learning."
+        why: "With a month to deliver, designing from scratch re-derives what the validated prompts and cases already encode; design the service around what exists."
         misconception: "Prototype work does not reduce design effort"
     explanation: |
-      The first version is disposable, but what it taught you is not. Carry forward prompts, evaluation cases and
-      findings, and build the production path with proper secrets, error handling, observability and ownership.
+      A prototype cannot ship unchanged when its structure contradicts the production requirement: here, one user's
+      state in global variables against many concurrent users, plus a hardcoded secret. That does not make it all
+      disposable. Prompts, evaluation cases and reusable logic carry over, and the serving path is rebuilt with
+      secrets management, error handling, observability and an owner. When a prototype's structure already fits
+      the target workload, extracting and hardening it step by step can be the faster route; let the gaps decide.
 
   # ===================== open and audio decomposition cases =====================
   - id: D2-031
-    version: 1
+    version: 2
     type: open
     subtopic: discovery.framing
     tags: [discovery.selection]
@@ -953,9 +980,9 @@ items:
       - criterion: "Turns the vague request into a measurable problem"
         points: 2
         guidance: "2 if it defines waste in measurable terms (value or weight, by category and cause such as expiry, damage, over-ordering) and asks for a baseline; 1 if it mentions measuring but stays generic; 0 if it accepts 'waste' as is."
-      - criterion: "Structured, non-overlapping decomposition"
+      - criterion: "Structured decomposition with a rule against double counting"
         points: 3
-        guidance: "3 if it splits along the flow (forecasting and ordering, receiving and storage, display and markdown, store operations) or another clean MECE structure, with hypotheses per branch; 2 if the split is sensible but loose or lacks hypotheses; 1 if a flat list of ideas; 0 if it jumps to a solution."
+        guidance: "3 if it gives a coherent structure (for example where loss is recorded along the flow, then its causes such as over-ordering, handling or late markdown; or another defensible split), says how each loss is attributed so nothing is counted twice, and gives testable hypotheses per branch; 2 if the structure is sensible but attribution is loose or hypotheses are missing; 1 if a flat list of ideas; 0 if it jumps to a solution. Do not require any particular set of categories."
       - criterion: "Evidence plan in the field and in data"
         points: 2
         guidance: "2 if it includes store visits or observation plus specific data pulls (waste logs, orders, sales, shrink) with who to ask; 1 if only one of the two; 0 if neither."
@@ -970,10 +997,11 @@ items:
       the largest loss point, which may turn out to be ordering accuracy or markdown timing rather than something
       exotic.
 
-      How I'd break it down: follow the food. Loss happens at forecasting and ordering (too much arrives), receiving
-      and storage (spoilage or damage in the back), display and markdown (items expire on shelf), and store
-      execution (rotation, handling). Each branch has a hypothesis, for example 'bakery and produce losses come
-      mostly from over-ordering on low-sales days', and I'd also cut waste by category and by store cluster.
+      How I'd break it down: follow the food, and count each discarded item once, where it is thrown out: in the
+      back room (damaged or spoiled before display) or from the shelf (expired or unsold). Then attribute each loss
+      to a primary cause: over-ordering, handling and rotation, or late markdown, with a rule for mixed cases so
+      nothing is counted twice. Each cause has a hypothesis, for example 'bakery and produce losses come mostly
+      from over-ordering on low-sales days', and I'd also cut waste by category and by store cluster.
 
       First checks: ask for 12 months of waste logs, orders and sales by category and store; the baseline is waste
       as a percentage of sales, by cause. In parallel I'd spend two days in three stores of different sizes
@@ -987,7 +1015,7 @@ items:
     max_chars: 2500
 
   - id: D2-032
-    version: 1
+    version: 2
     type: open
     subtopic: delivery.scoping
     tags: [discovery.framing, comms.tradeoffs]
@@ -1006,13 +1034,13 @@ items:
         guidance: "2 if it leads with a proposed first deliverable that can credibly be shown in the quarter and names the risk to the board's expectation; 1 if the position is vague or buried; 0 if it simply agrees to deliver 'an AI solution'."
       - criterion: "First-two-weeks discovery plan"
         points: 2
-        guidance: "2 if it covers mapping the onboarding steps with real elapsed times, observing staff, and checking data and access constraints; 1 if only one; 0 if none."
+        guidance: "2 if it covers mapping the onboarding steps with real elapsed times, observing staff, and checking data and access constraints; 1 if it covers one or two of these; 0 if none."
       - criterion: "Scoped first deliverable (pilot-sized, real conditions)"
         points: 3
         guidance: "3 if it proposes a narrow slice (for example document intake and checklist completeness for one loan type) with real users, real documents and the real workflow; 2 if narrow but missing a real-conditions element; 1 if a broad platform; 0 if none."
       - criterion: "Success metrics agreed before building"
         points: 2
-        guidance: "2 if it names a baseline-based outcome (for example cycle time, rework rate) plus a quality guardrail and a threshold; 1 if metrics without baseline or guardrail; 0 if none."
+        guidance: "2 if it names a baseline-based outcome (for example cycle time, rework rate) plus a quality guardrail, and either a target or how and with whom the target will be agreed once the baseline is measured; 1 if metrics without baseline or guardrail; 0 if none. An invented number is not better than a credible way to set one."
       - criterion: "Explicit exclusions and risks"
         points: 1
         guidance: "1 if it names what is out of scope and at least one dependency or risk (data access, compliance review); 0 if not."
@@ -1025,10 +1053,10 @@ items:
       which documents, systems and approvals are involved. In parallel we start data-access and compliance
       requests, since those are the longest lead times.
 
-      First deliverable: most delay in these processes sits in document collection and completeness checking. If the
-      data confirms that, I'd scope an assistant that classifies incoming documents, extracts the key fields, and
-      flags missing items for one loan type, used by one team of analysts on live applications, with a human
-      confirming each result.
+      First deliverable: my working hypothesis is that much of the delay sits in document collection and
+      completeness checking. If the data confirms that, I'd scope an assistant that classifies incoming documents,
+      extracts the key fields, and flags missing items for one loan type, used by one team of analysts on live
+      applications, with a human confirming each result.
 
       Success, agreed before we build: median days from application to credit-ready file, down from today's
       measured baseline by an agreed amount; rework rate no worse than now; analysts accept most extractions
@@ -1039,7 +1067,7 @@ items:
     max_chars: 2500
 
   - id: D2-033
-    version: 1
+    version: 2
     type: open
     subtopic: delivery.go-live
     tags: [adoption.change, eval.online]
@@ -1061,10 +1089,10 @@ items:
         guidance: "3 if it covers ownership and on-call, a runbook, a tested rollback, monitoring of quality and cost, and security or compliance sign-off; 2 if three or four; 1 if one or two; 0 if none."
       - criterion: "Progressive rollout with explicit gates"
         points: 3
-        guidance: "3 if it describes shadow or limited cohorts and percentage steps with numeric thresholds for quality, latency and cost and a named decider; 2 if steps but vague gates; 1 if a big-bang with extra support; 0 if none."
+        guidance: "3 if it describes a limited initial exposure (shadow mode, a first cohort or a small percentage) and evidence-based expansion, names the quality, latency and cost guardrails, says who sets and who decides them, and states what pauses or reverses the rollout; thresholds may be agreed before exposure rather than invented, and cohort steps earn the same credit as percentages; 2 if a credible staged rollout with relevant gates but a material decision, evidence or recovery detail is vague; 1 if a big-bang launch with extra support or only generic monitoring; 0 if no meaningful rollout control."
       - criterion: "Pilot-to-production gap addressed"
         points: 2
-        guidance: "2 if it notes that 20 volunteers differ from 600 (case mix, load, resistance) and plans for it, for example by sampling harder cases and measuring adoption; 1 if mentioned without a plan; 0 if not."
+        guidance: "2 if it notes that the 20 pilot underwriters and their cases may not represent all 600 (case mix, load, attitudes), and plans to check it, for example by comparing case mix, re-testing on harder cases and measuring adoption; 1 if mentioned without a plan; 0 if not."
       - criterion: "Post-launch ownership and handoff"
         points: 1
         guidance: "1 if it names who owns operation after the engagement and how knowledge transfers; 0 if not."
@@ -1076,9 +1104,9 @@ items:
       the likely failures; a rollback tested in staging; dashboards and alerts for edit rate, latency, cost per case
       and error rates; and sign-off from security and model-risk, which I'd start today since they have lead times.
 
-      Why not copy the pilot: 20 volunteers are early adopters working typical cases. At 600 we get harder case mix,
-      more load and some sceptics. I'd re-test on a sample of difficult historical cases and add them to the
-      regression set.
+      Why not copy the pilot: we don't yet know whether the 20 pilot underwriters and their cases represent all 600.
+      At full scale we also get more load, a wider case mix and some sceptics. I'd compare the pilot's case mix
+      with the whole book, re-test on a sample of difficult historical cases and add them to the regression set.
 
       Ramp: week 2, shadow mode alongside the existing process on live cases, comparing outputs; week 3, 10% of
       underwriters; week 4, 30%; week 5, 60%; week 6, 100%. Each step requires edit rate and referral accuracy
@@ -1143,7 +1171,7 @@ items:
     max_chars: 2500
 
   - id: D2-035
-    version: 1
+    version: 2
     type: audio
     subtopic: discovery.framing
     tags: [delivery.scoping]
@@ -1155,7 +1183,8 @@ items:
     max_s: 120
     stem: |
       An elevator-maintenance company tells you: 'Help our field technicians fix equipment faster with AI.' Out
-      loud: how do you break this down, and what is the first thing you would go and find out?
+      loud: how do you break this down, what is the first thing you would go and find out, and how would the answer
+      shape what you do next?
     rubric:
       - criterion: "States an approach before details"
         points: 2
@@ -1165,10 +1194,10 @@ items:
         guidance: "3 if it splits the technician's work into clear stages (for example dispatch and travel, diagnosis, parts, repair, documentation) with a metric for time or repeat visits; 2 if reasonable but overlapping or missing a metric; 1 if a list of AI ideas; 0 if none."
       - criterion: "Concrete first discovery action"
         points: 2
-        guidance: "2 if it names ride-alongs or observation plus a data pull (work orders, timestamps, repeat-visit rates); 1 if only interviews or only data; 0 if neither."
-      - criterion: "What might be built first and why"
+        guidance: "2 if it names a concrete first action that would show where technician time goes (for example ride-alongs, a pull of work-order timestamps and repeat-visit rates, or both) and says what it would reveal; 1 if the action is generic (for example 'talk to technicians') or unjustified; 0 if none."
+      - criterion: "How the findings decide the next step"
         points: 2
-        guidance: "2 if it links the likely first build to the biggest measured loss, with a baseline, and notes it may not need AI; 1 if it picks a tool without criteria; 0 if no choice."
+        guidance: "2 if it says which findings would point to which kind of intervention (for example slow diagnosis to diagnostic help, missing parts to stocking, travel to scheduling), ties the choice to the largest measured loss against a baseline, and allows that it may not need AI; 1 if it names a next step or tool without saying what evidence would decide it; 0 if no link from discovery to a decision. Deferring the build choice until the evidence is in earns full credit."
     model_answer: |
       I'd start by finding out where technician time actually goes, before choosing any AI. 'Fix faster' is vague,
       so I'd split a service call into stages: dispatch and travel, diagnosis on site, getting parts, the repair
@@ -1185,7 +1214,7 @@ items:
       stocking rules, no AI needed. Either way, I'd agree the target and baseline with the operations lead first.
 
   - id: D2-036
-    version: 1
+    version: 2
     type: audio
     subtopic: discovery.selection
     tags: [delivery.scoping, comms.tradeoffs]
@@ -1203,9 +1232,9 @@ items:
       - criterion: "Leads with a position"
         points: 2
         guidance: "2 if it starts with a clear answer (for example 'find where lateness comes from, then pick the cause we can change'); 1 if the position comes late; 0 if absent."
-      - criterion: "Decomposes the problem into non-overlapping causes"
+      - criterion: "Decomposes lateness so it can be measured without double counting"
         points: 3
-        guidance: "3 if it separates causes along a clean structure (for example scheduling and timetable design, road conditions and traffic, vehicle availability and breakdowns, dwell time at stops, driver and depot operations) and says how to size each from existing data; 2 if sensible but overlapping or unsized; 1 if a list of AI features; 0 if none."
+        guidance: "3 if it gives a coherent structure (for example where delay accrues: late pull-out, running time between stops, dwell at stops; or causes such as timetable realism, traffic, vehicle availability and depot operations), says how measured delay is attributed so interacting causes are not counted twice, and how each part would be sized from data the agency has or can collect; 2 if sensible but attribution or sizing is loose; 1 if a list of AI features; 0 if none. Credit any defensible structure; listing these example categories earns nothing by itself."
       - criterion: "Explicit criteria for choosing the first target"
         points: 2
         guidance: "2 if it uses criteria such as size of the effect, data available, who owns the lever, and whether AI is needed; 1 if it picks one without criteria; 0 if none."
@@ -1219,10 +1248,11 @@ items:
       My answer is that I'd first find out why buses are late and then work on the cause the agency can change,
       which may not need AI at all.
 
-      I'd split lateness into causes that don't overlap: timetable design that's unrealistic for the road, traffic and
-      incidents, vehicle availability and breakdowns, time spent at stops, and depot or driver operations such as
-      late pull-outs. The agency already has GPS and schedule data, so within a few weeks I could size each cause as
-      minutes of delay by route and time of day.
+      I'd split each late trip's delay by where it builds up: leaving the depot late, running time between stops,
+      and time spent at stops. Then I'd attribute each piece to one main cause, such as a timetable that's
+      unrealistic for the road, traffic and incidents, breakdowns, or depot operations, so no minute is counted
+      twice. If the agency has bus GPS and schedule data, which I'd confirm first, I could size each within a few
+      weeks as minutes of delay by route and time of day.
 
       To choose, I'd weigh four things: how much delay the cause explains, whether the data is there, whether
       someone at the agency owns the lever, and whether a model is even needed. For example, if the timetable runs
