@@ -231,7 +231,8 @@ a.dot:hover { border-color: var(--accent); }
 .prose pre, pre.code { background: var(--surface-2); padding: .75rem .9rem; border-radius: var(--radius-sm); overflow-x: auto; font-size: .87rem; line-height: 1.45; white-space: pre; }
 pre.code.error { color: var(--bad); white-space: pre-wrap; }
 .prose pre code { background: none; padding: 0; }
-.prose blockquote, .answer-quote { margin: 0 0 .75rem; padding: .5rem .9rem; border-left: 3px solid var(--border-strong); color: var(--text); background: var(--surface-2); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; white-space: pre-wrap; }
+.prose blockquote, .answer-quote { margin: 0 0 .75rem; padding: .5rem .9rem; border-left: 3px solid var(--border-strong); color: var(--text); background: var(--surface-2); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.answer-quote { white-space: pre-wrap; }
 .table-wrap { overflow-x: auto; max-width: 100%; }
 table { border-collapse: collapse; width: 100%; font-size: .92rem; }
 th, td { text-align: left; padding: .4rem .55rem; border-bottom: 1px solid var(--border); vertical-align: top; }

@@ -38,7 +38,8 @@ options can be eliminated without domain knowledge, the item is worthless. Every
 - No trivia on version numbers, prices, or release dates that will rot. Arithmetic items supply their own numbers.
 - `multi`: 2–3 correct out of 4–6. Incorrect options must be as tempting as for `single`.
 - Be technically correct as of 2026. When unsure of a fact, don't write the item.
-- English, concise, no filler. Markdown allowed (code spans, short code blocks, lists).
+- English, concise, no filler. Markdown allowed (code spans, short code blocks, lists). Source line wraps render as
+  spaces; use a blank line or a trailing `\` when a break must show (see SCHEMA.md).
 
 ## Open-text and audio items
 - A realistic prompt with constraints (time pressure, a skeptical stakeholder, conflicting goals).

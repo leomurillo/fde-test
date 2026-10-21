@@ -722,7 +722,7 @@ items:
       integration code, and it lets field learnings flow back into the product.
 
   - id: D9-024
-    version: 1
+    version: 2
     type: numeric
     subtopic: int.async
     tags: [int.resilience, obs.cost]
@@ -737,17 +737,17 @@ items:
       will it take the workers to drain the queue at the maximum allowed rate?
     answer: {value: 65, tolerance: 1, tolerance_type: abs, unit: "minutes"}
     work: |
-      Capacity available to batch work: 75% of each limit.
-      Token limit: 0.75 * 1,200,000 = 900,000 tokens per minute, which is 900,000 / 6,500 = 138.5 jobs per minute.
-      Request limit: 0.75 * 500 = 375 jobs per minute.
-      The token limit binds (138.5 < 375), so the rate is 138.46 jobs per minute.
+      Capacity available to batch work: 75% of each limit.\
+      Token limit: 0.75 * 1,200,000 = 900,000 tokens per minute, which is 900,000 / 6,500 = 138.5 jobs per minute.\
+      Request limit: 0.75 * 500 = 375 jobs per minute.\
+      The token limit binds (138.5 < 375), so the rate is 138.46 jobs per minute.\
       Total tokens = 9,000 * 6,500 = 58,500,000. Time = 58,500,000 / 900,000 = 65 minutes.
     explanation: |
       Common mistakes: using the request limit (9,000 / 375 = 24 minutes), forgetting the interactive reserve
       (48.75 minutes), or applying the reserve to only one limit. Find the binding constraint first, then divide.
 
   - id: D9-025
-    version: 1
+    version: 2
     type: numeric
     subtopic: int.resilience
     competencies: [x.estimation]
@@ -761,8 +761,8 @@ items:
       sleeping, in seconds?
     answer: {value: 11.75, tolerance: 0.1, tolerance_type: abs, unit: "seconds"}
     work: |
-      Upper bounds for retries 1 to 6: 0.5, 1, 2, 4, 8 (0.5 * 2^4), and min(8, 16) = 8 for the sixth.
-      Sum of bounds = 0.5 + 1 + 2 + 4 + 8 + 8 = 23.5 seconds.
+      Upper bounds for retries 1 to 6: 0.5, 1, 2, 4, 8 (0.5 * 2^4), and min(8, 16) = 8 for the sixth.\
+      Sum of bounds = 0.5 + 1 + 2 + 4 + 8 + 8 = 23.5 seconds.\
       A uniform random value on [0, b] has mean b/2, so the expected total is 23.5 / 2 = 11.75 seconds.
     explanation: |
       Common mistakes: reporting the worst case (23.5 s), forgetting the cap on retry 6 (giving 31.5 / 2 = 15.75), or

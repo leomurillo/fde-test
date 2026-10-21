@@ -36,6 +36,11 @@ items:
 | `explanation` | ✓* | (*optional for open/audio) Markdown teaching note shown after answering: the principle, why the right answer wins. |
 | `refs` | | List of URLs to primary/mainstream sources. Only URLs you are confident exist. |
 
+**Line breaks in Markdown fields** (`stem`, `explanation`, `work`, `model_answer`) follow CommonMark. Wrap source
+lines wherever you like (about 110 columns): a single newline is a soft wrap and renders as a space. Leave a blank
+line to start a new paragraph, or end a line with `\` to force a line break, e.g. one calculation step per line
+in `work`.
+
 ## Type-specific fields
 
 ### `single` — exactly one correct option, 4 or 5 options

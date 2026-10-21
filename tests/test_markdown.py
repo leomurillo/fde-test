@@ -24,3 +24,17 @@ def test_blocks():
 def test_excerpt():
     assert plain_excerpt("**Hello** `x`", 100) == "Hello x"
     assert plain_excerpt("a" * 300, 10).endswith("…")
+
+
+def test_soft_wraps_render_as_spaces():
+    # Item YAML is hard-wrapped at ~110 columns; those newlines must not reach the screen.
+    out = render("A Slack slash command `/summarize-incident` triggers an agent. Users\nsee a timeout. What is the\ncorrect way?")
+    assert out == "<p>A Slack slash command <code>/summarize-incident</code> triggers an agent. Users see a timeout. What is the correct way?</p>"
+    assert render("**bold\nacross** a wrap") == "<p><strong>bold across</strong> a wrap</p>"
+
+
+def test_hard_breaks():
+    assert render("Step 1 = 2.\\\nStep 2 = 3.") == "<p>Step 1 = 2.<br>\nStep 2 = 3.</p>"
+    assert render("Step 1 = 2.  \nStep 2 = 3.") == "<p>Step 1 = 2.<br>\nStep 2 = 3.</p>"
+    assert render("ends with a backslash\\") == "<p>ends with a backslash\\</p>"
+    assert render("one\n\ntwo") == "<p>one</p>\n<p>two</p>"

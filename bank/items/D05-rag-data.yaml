@@ -915,7 +915,7 @@ items:
       forgetting the overlap altogether (24 million). Overlap adds about 14% to embedding cost here.
 
   - id: D5-029
-    version: 1
+    version: 2
     type: numeric
     subtopic: rag.retrieval
     tags: [deploy.compute, obs.cost]
@@ -930,8 +930,8 @@ items:
       Use 1 GiB = 2^30 bytes and give the answer in GiB.
     answer: {value: 34.33, tolerance: 0.3, tolerance_type: abs, unit: "GiB"}
     work: |
-      Float32: 12,000,000 * 1,024 * 4 bytes = 49,152,000,000 bytes = 45.78 GiB.
-      Int8: 12,000,000 * 1,024 * 1 byte = 12,288,000,000 bytes = 11.44 GiB.
+      Float32: 12,000,000 * 1,024 * 4 bytes = 49,152,000,000 bytes = 45.78 GiB.\
+      Int8: 12,000,000 * 1,024 * 1 byte = 12,288,000,000 bytes = 11.44 GiB.\
       Saving = 45.78 - 11.44 = 34.33 GiB (75%).
     explanation: |
       Common mistakes: reporting the quantised size (11.44 GiB) instead of the saving, using 1 GB = 10^9 bytes

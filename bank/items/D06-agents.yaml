@@ -1307,7 +1307,7 @@ items:
 
   # ------------------------------------------------------- other formats (D6)
   - id: D6-042
-    version: 1
+    version: 2
     type: numeric
     subtopic: agents.patterns
     tags: [obs.cost]
@@ -1328,9 +1328,9 @@ items:
       the nearest cent.
     answer: {value: 57.72, tolerance: 0.5, tolerance_type: abs, unit: "USD"}
     work: |
-      Generator input: 1,200 + 1,820 + 1,820 = 4,840 tokens; generator output: 3 × 500 = 1,500 tokens.
-      Evaluator input: 3 × 1,700 = 5,100 tokens; evaluator output: 3 × 120 = 360 tokens.
-      Input total 9,940 tokens × $3 / 1M = $0.02982. Output total 1,860 tokens × $15 / 1M = $0.0279.
+      Generator input: 1,200 + 1,820 + 1,820 = 4,840 tokens; generator output: 3 × 500 = 1,500 tokens.\
+      Evaluator input: 3 × 1,700 = 5,100 tokens; evaluator output: 3 × 120 = 360 tokens.\
+      Input total 9,940 tokens × $3 / 1M = $0.02982. Output total 1,860 tokens × $15 / 1M = $0.0279.\
       Per run $0.05772, so 1,000 runs cost $57.72.
     explanation: |
       Common wrong methods: counting only the generator calls ($37.02), or ignoring that revision calls re-send the previous draft and

@@ -584,7 +584,7 @@ items:
 
   # ---------------------------------------------------------------- numeric
   - id: D1-020
-    version: 1
+    version: 2
     type: numeric
     subtopic: role.economics
     tags: [obs.cost]
@@ -599,8 +599,8 @@ items:
       savings against the current process, in US dollars?
     answer: {value: 102800, tolerance: 0.01, tolerance_type: rel, unit: "USD"}
     work: |
-      Current cost: 40,000 × 4.20 = $168,000.
-      New cost: pipeline 40,000 × 0.55 = $22,000; exceptions 0.18 × 40,000 = 7,200 claims × 6.00 = $43,200.
+      Current cost: 40,000 × 4.20 = $168,000.\
+      New cost: pipeline 40,000 × 0.55 = $22,000; exceptions 0.18 × 40,000 = 7,200 claims × 6.00 = $43,200.\
       Total $65,200. Savings = 168,000 − 65,200 = $102,800.
     explanation: |
       Compare against the real baseline and include the human work that remains. Common errors: forgetting the exception

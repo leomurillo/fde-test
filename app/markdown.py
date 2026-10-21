@@ -1,7 +1,10 @@
 """Tiny, safe Markdown subset renderer (no third-party deps, no raw HTML passthrough).
 
-Supports: paragraphs, line breaks inside paragraphs, # headings, fenced code blocks, - / * / 1. lists,
-pipe tables, > blockquotes, `code`, **bold**, *italic* / _italic_, [text](http...) links and bare URLs.
+Supports: paragraphs, # headings, fenced code blocks, - / * / 1. lists, pipe tables, > blockquotes,
+`code`, **bold**, *italic* / _italic_, [text](http...) links and bare URLs.
+Line breaks follow CommonMark: a single newline inside a paragraph is a soft wrap and renders as a space
+(item YAML is hard-wrapped for the source, not for the screen); end a line with a backslash or two spaces
+to force a line break, or leave a blank line to start a new paragraph.
 Everything is HTML-escaped first, so item text can never inject markup.
 """
 
@@ -59,7 +62,17 @@ def render(text: str | None) -> str:
 
     def flush_para():
         if para:
-            out.append("<p>" + "<br>\n".join(inline(p) for p in para) + "</p>")
+            # Soft wraps join with a space; a trailing backslash or two spaces ends a visual line.
+            lines_out: list[list[str]] = [[]]
+            for n, raw in enumerate(para):
+                seg = raw.rstrip()
+                hard = n < len(para) - 1 and (raw.endswith("  ") or seg.endswith("\\"))
+                if hard and seg.endswith("\\"):
+                    seg = seg[:-1].rstrip()
+                lines_out[-1].append(seg)
+                if hard:
+                    lines_out.append([])
+            out.append("<p>" + "<br>\n".join(inline(" ".join(ln)) for ln in lines_out) + "</p>")
             para.clear()
 
     while i < len(lines):
@@ -129,7 +142,7 @@ def render(text: str | None) -> str:
                     break
             out.append(f"<{tag}>" + "".join(f"<li>{inline(x)}</li>" for x in items) + f"</{tag}>")
             continue
-        para.append(stripped)
+        para.append(line.lstrip())  # keep trailing spaces: two of them mark a hard break
         i += 1
     flush_para()
     return "\n".join(out)
