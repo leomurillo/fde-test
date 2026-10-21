@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import abandon_form %}
 {% block title %}Finish test{% endblock %}
 {% block content %}
 <section class="card narrow">
@@ -16,7 +17,7 @@
   <p class="muted small">Unanswered and skipped items score zero. {% if session.mode == 'end' %}Answers and explanations are shown after you finish.{% endif %}</p>
   <div class="row">
     <form method="post" action="/s/{{ session.session_id }}/finish"><button class="btn primary" type="submit" id="finish-btn">Finish and see results</button></form>
-    <form method="post" action="/s/{{ session.session_id }}/abandon" onsubmit="return confirm('Abandon this test? Answers so far are kept.')"><button class="btn ghost" type="submit">Abandon</button></form>
+    {{ abandon_form(session.session_id, 'Abandon', 'btn ghost') }}
   </div>
 </section>
 {% endblock %}

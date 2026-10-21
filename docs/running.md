@@ -27,6 +27,12 @@ Runner shortcuts: `1`–`6` select options, `Enter` submits (and goes to the nex
 `F` flags, `Ctrl+Enter` submits from a text box, `Ctrl+'` runs SQL/code. You can skip items and come back to
 them before finishing; reopening a test resumes at the first item you have not reached.
 
+**Ending a test.** The runner header has an **End test** menu with *Finish and see results* (it asks first if
+items are unanswered, which score zero) and *Abandon test*. The dashboard shows a **Test in progress** card
+with *Resume test* and *Abandon*. Abandoning asks for confirmation and closes the test without a results
+page. Answers already given are kept: the test stays under Recent tests marked *Abandoned*, you can still open
+its review, and its answers keep counting in Progress and in exports. Only unanswered items are dropped.
+
 Spoken items emulate CandiTech's "Video" questions: a preparation countdown, then one take recorded with
 the microphone that stops automatically at the time limit. Without a microphone you get a timed text box
 in which you cannot edit what you already wrote.
@@ -88,6 +94,13 @@ From **Export** (or **Feedback**):
 - Every response stores `(item_id, item_version)`, and all rendering, grading and review uses the stored
   snapshot for that version, so old answers stay interpretable after the bank changes. If a file changes
   an already-stored version without a bump, the app logs a loud warning and keeps the stored snapshot.
+- A test pins `(item_id, version)` for every position when it is created, and never swaps them. After a
+  bank revision, an in-progress test therefore keeps serving the old versions of items you have not opened
+  yet. When that happens the runner and the dashboard's *Test in progress* card show "N unopened items have
+  newer versions. Abandon and start a new test to get them." with an *Abandon* button. The count covers
+  positions you have not opened or answered whose pinned version is older than the bank's current one
+  (`items.current_version`). Swapping versions in place would break reproducibility, so abandoning and starting
+  a new test is the way to get the revised items; the answers you already gave stay tied to the version you saw.
 - Each session also records the app version, the bank fingerprint (sha256 over every `id@version:hash`),
   the taxonomy version, the assembler version and the random seed, so a test can be reproduced.
 - Every row id is a UUIDv4 and each installation has an anonymous `installation_id`, so exports from
@@ -103,6 +116,8 @@ re-selections for single choice, de-selections for multiple select, and editing 
 `visibility`, `run_sql`, `audio_start`, `reveal`, …) are batched to the `events` table every 5 s.
 
 ## Progress
+
+Answers from abandoned tests count here like any other.
 
 **Progress** shows, per domain and subtopic, the items in the bank, seen / never seen, last result right
 or wrong, accuracy and median time. Below that is an item browser grouped by domain: domains are collapsed,

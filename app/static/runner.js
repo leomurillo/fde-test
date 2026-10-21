@@ -79,6 +79,7 @@
   if (C.answered) {
     // already answered (real-time mode, revisiting): read-only view with reveal
     document.addEventListener("keydown", (e) => {
+      if (inEndMenu(e.target)) return;
       if (e.key === "Enter" && !FDE.dialogOpen() && !isTyping(e.target)) { e.preventDefault(); nextBtn.click(); }
     });
     return;
@@ -336,13 +337,16 @@
   });
 
   // ---------------------------------------------------------------- keyboard
+  function inEndMenu(el) {
+    return !!(el && el.closest && el.closest(".end-menu"));
+  }
   function isTyping(el) {
     if (!el) return false;
     const tag = el.tagName;
     return tag === "TEXTAREA" || tag === "SELECT" || (tag === "INPUT" && !["radio", "checkbox"].includes(el.type));
   }
   document.addEventListener("keydown", (e) => {
-    if (FDE.dialogOpen() || e.altKey) return;
+    if (FDE.dialogOpen() || e.altKey || inEndMenu(e.target)) return;
     const typing = isTyping(e.target);
     if (e.key === "Enter") {
       if (!nextBar.hidden) { e.preventDefault(); nextBtn.click(); return; }

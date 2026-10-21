@@ -240,7 +240,9 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
         with ctx.conn() as c:
             prog = store.progress(c)
             recent = store.recent_sessions(c, 10)
-        resume = next((s for s in recent if s["status"] == "in_progress"), None)
+            resume = next((s for s in recent if s["status"] == "in_progress"), None)
+            if resume:
+                resume["stale"] = store.stale_unopened_count(c, resume["session_id"])
         prog.pop("status")
         return page(request, "dashboard.html", nav="home", prog=prog, recent=recent, resume=resume)
 
@@ -367,8 +369,10 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                     if not att["interrupted_at"]:
                         store.add_server_event(c, sid, pos, si, "audio_attempt_interrupted", {"token": att["token"]})
             states = store.position_states(items, responses)
+            stale = store.stale_unopened_count(c, sid)
+        unanswered = sum(1 for st in states.values() if st != "answered")
         strip = [{"pos": x["position"], "state": states[x["position"]], "section": x["section"]} for x in items]
-        sections = [sec for sec in SECTION_ORDER if any(x["section"] == sec for x in items)]
+        sections =[sec for sec in SECTION_ORDER if any(x["section"] == sec for x in items)]
         config = {
             "sessionId": sid, "position": pos, "total": len(items), "type": pub["type"], "mode": s["mode"],
             "answered": answered, "nOptions": len(pub.get("options") or []), "nCorrect": pub.get("n_correct"),
@@ -378,7 +382,7 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
         }
         return page(request, "runner.html", nav="run", session=s, si=si, item=pub, pos=pos, total=len(items),
                     strip=strip, sections=sections, resp=resp if answered else None, reveal_html=reveal_html,
-                    config=config, attempt_used=attempt_used)
+                    config=config, attempt_used=attempt_used, stale=stale, unanswered=unanswered)
 
     def _telemetry(payload: dict) -> dict:
         tel = payload.get("telemetry") or {}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import feedback_button %}
+{% from "_macros.html" import feedback_button, abandon_form, stale_notice %}
 {% block title %}Item {{ pos }} of {{ total }}{% endblock %}
 {% block body_class %}runner-page{% endblock %}
 {% block main_class %}container runner-container{% endblock %}
@@ -19,8 +19,16 @@
     </button>
     {% endif %}
     {{ feedback_button(si.item_id, si.item_version, session.session_id, pos) }}
+    <details class="end-menu">
+      <summary class="btn ghost small" aria-haspopup="menu">End test</summary>
+      <div class="menu-panel" role="menu">
+        <form method="post" action="/s/{{ session.session_id }}/finish" class="inline-form"{% if unanswered %} onsubmit="return confirm('{{ unanswered }} item{{ '' if unanswered == 1 else 's' }} not answered will score zero. Finish now?')"{% endif %}><button class="btn ghost small" type="submit" role="menuitem">Finish and see results</button></form>
+        {{ abandon_form(session.session_id, 'Abandon test') }}
+      </div>
+    </details>
   </div>
 </header>
+{{ stale_notice(session.session_id, stale) }}
 
 <nav class="pos-strip" aria-label="Items in this test">
   {% for x in strip %}

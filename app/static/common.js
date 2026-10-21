@@ -112,6 +112,16 @@
     });
   }
 
+  // ------------------------------------------------------------------ "End test" menu (runner header)
+  document.addEventListener("click", (e) => {
+    const menu = document.querySelector(".end-menu");
+    if (menu && menu.open && !menu.contains(e.target)) menu.open = false;
+  });
+  document.addEventListener("keydown", (e) => {
+    const menu = document.querySelector(".end-menu");
+    if (e.key === "Escape" && menu && menu.open) { menu.open = false; menu.querySelector("summary").focus(); }
+  });
+
   FDE.escape = function (s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   };

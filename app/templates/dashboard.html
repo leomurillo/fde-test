@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import meter %}
+{% from "_macros.html" import meter, abandon_form, stale_notice %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -8,13 +8,25 @@
     <p class="muted">Practice for the Forward Deployed Engineer assessment. Every answer is tracked by item version.</p>
   </div>
   <div class="row">
-    {% if resume %}<a class="btn" href="/s/{{ resume.session_id }}">Resume test</a>{% endif %}
     <a class="btn primary" href="/new">Start a new test</a>
   </div>
 </div>
 
 {% if bank.loaded == 0 %}
 <div class="notice warn">The item bank is empty or could not be loaded{% if bank.errors %} ({{ bank.errors|length }} problems){% endif %}. See <a href="/settings#bank">Settings</a>.</div>
+{% endif %}
+
+{% if resume %}
+{% set rm = resume.summary %}
+<section class="card resume-card" aria-label="Test in progress">
+  <div class="card-head"><h2>Test in progress</h2></div>
+  <p>{{ resume.scope.preset or 'Custom scope' }} · {{ rm.answered + rm.skipped }}/{{ rm.n }} done · started {{ resume.created_at|dt }}</p>
+  {{ stale_notice(resume.session_id, resume.stale) }}
+  <div class="row">
+    <a class="btn primary" href="/s/{{ resume.session_id }}">Resume test</a>
+    {% if not resume.stale %}{{ abandon_form(resume.session_id) }}{% endif %}
+  </div>
+</section>
 {% endif %}
 
 {% set t = prog.totals %}

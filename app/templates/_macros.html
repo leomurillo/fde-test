@@ -40,3 +40,16 @@
 <p class="muted small">{{ res.rows|length }} row{{ '' if res.rows|length == 1 else 's' }}</p>
 {% endif %}
 {%- endmacro %}
+
+{% macro abandon_form(sid, label='Abandon', cls='btn ghost small') -%}
+<form method="post" action="/s/{{ sid }}/abandon" class="inline-form" onsubmit="return confirm('Abandon this test? Answers already given are kept and still count in Progress.')"><button class="{{ cls }}" type="submit">{{ label }}</button></form>
+{%- endmacro %}
+
+{% macro stale_notice(sid, n) -%}
+{% if n %}
+<div class="notice warn with-action" role="status">
+  <span>{{ n }} unopened item{{ '' if n == 1 else 's' }} {{ 'has a newer version' if n == 1 else 'have newer versions' }}. Abandon and start a new test to get {{ 'it' if n == 1 else 'them' }}.</span>
+  {{ abandon_form(sid, 'Abandon', 'btn small') }}
+</div>
+{% endif %}
+{%- endmacro %}

@@ -217,6 +217,19 @@ def finish_session(conn: sqlite3.Connection, sid: str, status: str = "finished")
     conn.commit()
 
 
+def stale_unopened_count(conn: sqlite3.Connection, sid: str) -> int:
+    """Positions never opened and not answered that are pinned to a version older than the bank's current one.
+
+    Sessions pin (item_id, version) at creation, so a bank revision never changes what an existing test serves;
+    this only counts the positions that would serve an outdated version.
+    """
+    return conn.execute("""
+        SELECT COUNT(*) FROM session_items si JOIN items i ON i.item_id = si.item_id
+        WHERE si.session_id = ? AND si.presented_at IS NULL AND si.item_version < i.current_version
+          AND NOT EXISTS (SELECT 1 FROM responses r WHERE r.session_id = si.session_id
+                          AND r.position = si.position AND r.superseded = 0)""", (sid,)).fetchone()[0]
+
+
 def session_summary(conn: sqlite3.Connection, sid: str, items: list[dict] | None = None,
                     responses: dict[int, dict] | None = None) -> dict:
     items = items if items is not None else session_items(conn, sid)

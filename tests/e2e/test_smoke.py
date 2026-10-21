@@ -185,3 +185,36 @@ def test_progress_domains_load_lazily(server, page):
     page.set_viewport_size({"width": 390, "height": 844})
     assert page.evaluate("document.documentElement.scrollWidth") <= 390
     assert page.errors == []
+
+
+def test_end_test_menu_abandons_from_runner_and_dashboard(server, page):
+    base, app = server
+    sid = new_session(base, "realtime", formats=["single"], length=3)
+    messages = []
+    page.on("dialog", lambda d: (messages.append(d.message), d.accept()))
+
+    page.goto(f"{base}/s/{sid}/item/1")
+    page.click(".end-menu > summary")
+    assert page.is_visible("text=Finish and see results") and page.is_visible("text=Abandon test")
+    page.keyboard.press("Escape")
+    assert not page.is_visible("text=Abandon test")
+    page.click(".end-menu > summary")
+    page.focus(".end-menu > summary")
+    page.keyboard.press("Enter")  # toggles the menu; must not trigger the runner's own Enter shortcut
+    assert not page.is_visible("text=Abandon test") and page.url.endswith("/item/1")
+    page.keyboard.press("Enter")
+    page.click("text=Abandon test")
+    page.wait_for_url(f"{base}/")
+    assert "still count in Progress" in messages[-1]
+    assert page.is_visible(".session-list .badge:has-text('Abandoned')") and page.locator("text=Resume test").count() == 0
+
+    sid2 = new_session(base, "realtime", formats=["single"], length=3)
+    page.goto(f"{base}/")
+    assert page.is_visible("text=Resume test")
+    page.click(".resume-card >> text=Abandon")
+    page.wait_for_load_state()
+    assert page.locator("text=Resume test").count() == 0
+    with db(app) as c:
+        assert {r[0]: r[1] for r in c.execute("SELECT session_id, status FROM sessions")} == {
+            sid: "abandoned", sid2: "abandoned"}
+    assert page.errors == []
