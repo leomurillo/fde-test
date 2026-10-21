@@ -66,34 +66,41 @@ items:
       against provider retries.
 
   - id: D9-003
-    version: 1
+    version: 2
     type: single
     subtopic: int.apis
     tags: [rag.ingestion]
-    difficulty: 2
+    difficulty: 3
     level: analyze
-    time_s: 90
+    time_s: 100
     stem: |
       A nightly job exports about 300,000 tickets from a vendor API using `?offset=N&limit=100`, sorted by
-      `updated_at` descending. Tickets are edited while the job runs, and the resulting export contains duplicates
-      and misses tickets that the vendor's own UI shows. What is the best remedy?
+      `updated_at` descending. While it runs, tickets are edited and some are merged into others (deleted). The
+      export contains duplicates and misses tickets that still exist. The goal is every ticket that exists for the
+      whole run, once each; a point-in-time snapshot of every field is not required. The API can sort by `id` or
+      `updated_at` and can return only rows after a given sort-key value. What is the best remedy?
     options:
-      - text: "Page with an opaque cursor (or keyset on updated_at and id) and checkpoint it after each page"
+      - text: "Page by keyset on `id`, asking for rows after the last id seen, and checkpoint after each page"
         correct: true
-        why: A cursor anchors the position to a stable key rather than a row count, so edits no longer shift pages.
+        why: Ids never change, so edits do not move a ticket and deletions do not shift later pages; each surviving ticket is fetched once.
+      - text: "Keep `updated_at` descending but page by keyset on (`updated_at`, `id`) after the last pair seen"
+        why: An edit moves a ticket to the top, behind the cursor, so a ticket edited before its page is reached is missed.
+        misconception: Any keyset cursor is stable, whatever the sort key
+      - text: "Sort by `created_at` ascending, where new tickets land at the end, and keep using offsets"
+        why: Edits no longer reorder rows, but each merged ticket on an earlier page shifts later rows back, so one is skipped.
+        misconception: An insert-only ordering makes offset paging safe
       - text: Raise the limit to the maximum page size so that fewer pages are fetched while the data moves
         why: Fewer pages shrink the exposure window, but every offset boundary can still shift when rows change.
         misconception: Bigger pages remove the offset drift problem
-      - text: "Sort by `created_at` ascending, where new tickets land at the end, and keep using offsets"
-        why: Inserts then land at the end, but deleted or re-sorted rows still shift offsets, and edits to older tickets are missed.
-        misconception: An insert-only ordering makes offset paging safe
-      - text: "Schedule the export for the quietest hour of the night and keep using offset paging"
-        why: A quiet window lowers the error rate without removing it, and it breaks when volumes grow or time zones overlap.
-        misconception: Low traffic makes offset paging reliable
     explanation: |
-      Offset pagination is unstable when the underlying set changes between requests. Cursor or keyset pagination
-      uses the last seen position (with a unique tiebreaker such as `id`), and persisting it lets a failed job resume.
-      Prefer a provider's `updated_since` filter for incremental syncs where available.
+      Offset pagination is unstable when rows are deleted or reordered between requests. Keyset pagination on an
+      immutable, unique key fetches each ticket that survives the run exactly once, and a checkpointed key lets a
+      failed job resume. It is not a snapshot: field values come from different moments, which this goal allows.
+      A keyset on a mutable key such as `updated_at` is only as stable as that key: in descending order an edited
+      ticket jumps behind the cursor and is missed. (Ascending `updated_at` with an `id` tie-breaker is the usual
+      incremental-sync pattern, because edits reappear later and are upserted by id.) If the export must reflect one
+      moment, use a snapshot or point-in-time export that the provider documents as such.
+    refs: [https://use-the-index-luke.com/no-offset, https://www.elastic.co/docs/reference/elasticsearch/rest-apis/paginate-search-results]
 
   - id: D9-004
     version: 1
@@ -313,7 +320,7 @@ items:
       make every step and every compensation idempotent so they can be retried safely.
 
   - id: D9-011
-    version: 1
+    version: 2
     type: multi
     subtopic: int.async
     tags: [int.resilience, int.enterprise-devex]
@@ -326,9 +333,9 @@ items:
       During bulk loads the queue grows, 429 errors rise, and workers autoscaled by queue depth make it worse. Which
       measures help?
     options:
-      - text: Cap worker concurrency with a limiter shared by all workers and sized from the request quota
+      - text: Send every worker's calls through one shared rate limiter sized from the per-minute quota
         correct: true
-        why: Total call rate is held under the vendor's limit regardless of how many workers exist, so 429s fall.
+        why: The workers' combined request rate stays within their share of the quota however many of them run, so 429s fall and extra workers simply wait.
       - text: Reserve part of the quota for search traffic and run bulk jobs at lower priority
         correct: true
         why: Search stays responsive during loads, and bulk work uses whatever capacity remains.
@@ -339,15 +346,17 @@ items:
         why: More workers send more requests into the same rate limit, which multiplies the 429s and retries.
         misconception: More consumers drain a queue faster whatever the downstream limit is
       - text: "Discard the oldest messages once the queue passes a fixed length to bound the backlog"
-        why: Dropped summaries are lost work, and the same customers submit them again, adding load.
+        why: Dropped parsing jobs are lost work, and the same documents get submitted again, adding load.
         misconception: Shedding queued work is free for batch jobs
       - text: "Remove retries from the workers so that failed calls stop adding more load"
         why: Transient errors then become permanent failures, and the lost jobs need manual replay.
         misconception: Turning off retries is the right response to rate limiting
     explanation: |
-      Backpressure should hold the system under the scarcest downstream limit. Control concurrency with that limit
-      in mind, make rate-limit signals slow every worker and not just the one that was rejected, protect
-      latency-sensitive traffic with reserved capacity and priorities, and use the queue as a buffer.
+      Backpressure should hold the system under the scarcest downstream limit. Enforce that limit in its own units
+      with a limiter shared by every caller: a cap on in-flight calls bounds concurrency, not requests per minute,
+      so it can complement a rate limiter but not replace it. Make a rate-limit signal pause every caller of that
+      quota, not just the one that was rejected, protect latency-sensitive traffic with reserved capacity and
+      priorities, and let the queue absorb the backlog.
 
   - id: D9-012
     version: 1
@@ -443,7 +452,7 @@ items:
     refs: [https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/]
 
   - id: D9-015
-    version: 1
+    version: 2
     type: single
     subtopic: int.resilience
     tags: [llm.model-selection, deploy.compute]
@@ -453,13 +462,14 @@ items:
     stem: |
       A support copilot calls one LLM provider with a 60-second timeout. During a provider incident, every request
       hangs until timeout, the service's request threads are exhausted, and even the health-check and FAQ pages stop
-      responding. The business wants customers to still get some help during provider outages. What pattern fits?
+      responding. The business wants customers who ask the copilot a question during a provider outage to still get
+      a useful response, not only a working FAQ page. What pattern fits?
     options:
       - text: "A circuit breaker that fails fast after repeated errors, with a fallback path"
         correct: true
-        why: Threads are freed immediately, and the fallback (backup model, cached answer, or handoff to a human) keeps serving users.
+        why: Once it opens, new copilot calls stop waiting on the provider, and the fallback (backup model, cached answer, or handoff to a human) still answers users.
       - text: "Cut the timeout to 5 seconds and give the LLM calls their own bounded thread pool"
-        why: Health checks and FAQ pages stay up, but every customer request still waits five seconds and then fails, so no help is given during the outage.
+        why: Health checks and FAQ pages stay up, but every copilot question still waits five seconds and then fails, so the copilot gives no useful response.
         misconception: Isolation and shorter timeouts alone make a service resilient
       - text: "After each 60-second timeout, send that request to a second provider instead"
         why: Every request still waits the full minute on the failing provider first, so threads stay exhausted; a fallback without fail-fast only moves the delay.
@@ -469,11 +479,13 @@ items:
         misconception: Scaling out compensates for a failing dependency
     explanation: |
       A circuit breaker stops calling a dependency that is failing, which protects the caller's resources and gives
-      fast, predictable behaviour. Pair it with a fallback and a half-open state that tests recovery. Bulkheads
-      (separate pools) keep unrelated endpoints responsive.
+      fast, predictable behaviour. Pair it with a fallback and a half-open state that tests recovery. Opening the
+      breaker affects new calls only: requests already in flight still wait for their timeout, so a shorter timeout
+      and bulkheads (separate pools, which keep unrelated endpoints such as the FAQ responsive) complement it.
+    refs: [https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker]
 
   - id: D9-016
-    version: 1
+    version: 2
     type: multi
     subtopic: int.resilience
     tags: [obs.troubleshooting]
@@ -482,31 +494,35 @@ items:
     time_s: 110
     stem: |
       A request passes through an API gateway, an orchestration service and an LLM SDK, and each layer retries
-      timeouts up to 3 times. When the model backend slows down, traffic to it jumps by more than 20 times and
-      recovery takes hours. Which changes reduce this retry amplification?
+      timeouts up to 3 times. When the model backend slows down, most calls to it time out, traffic to it jumps by
+      more than 20 times and recovery takes hours. Which changes reduce the number of attempts that reach the
+      backend while it is degraded?
     options:
       - text: Retry at a single layer, closest to the failing call, and let the others fail fast
         correct: true
         why: Multiplied retry counts across layers become one bounded count.
       - text: Propagate a deadline so that no layer retries once the caller's remaining time is spent
         correct: true
-        why: Work that the caller has already abandoned is not retried, which removes a large share of the surplus load.
+        why: Attempts on behalf of a caller that has already given up are no longer made, which cuts retries that could not help.
       - text: Limit retries to a small fraction of recent calls with a shared budget
         correct: true
         why: Retry traffic stays proportional to normal traffic and cannot grow into a storm during a degradation.
       - text: Raise each layer's backoff delay so that its retries are spread more thinly
-        why: Delays spread retries over time but the total number of attempts remains multiplicative.
+        why: While calls keep timing out, each layer still makes all of its retries; longer delays change when they arrive, not how many.
         misconception: Slower retries are fewer retries
       - text: Add random jitter to the backoff in every layer so that retries do not arrive together
-        why: Jitter spreads attempts over time, but each layer still retries three times, so the multiplied attempt count is unchanged.
+        why: Jitter de-synchronises attempts, but while calls keep timing out each layer still retries three times, so the count is unchanged.
         misconception: Jitter reduces the number of retries
     explanation: |
       Layered retries multiply: three layers with three retries each can issue up to 4 x 4 x 4 = 64 attempts per
-      user call. Keep retries at one layer, propagate deadlines, and cap retry volume with a budget.
-    refs: [https://sre.google/sre-book/handling-overload/]
+      user call. Keep retries at one layer, propagate deadlines, and cap retry volume with a budget. Backoff and
+      jitter are still worth having: they spread retries out, avoid synchronised waves and give the backend time
+      between attempts. But when nearly every attempt fails, they change the timing of the multiplied attempts, not
+      their number.
+    refs: [https://sre.google/sre-book/handling-overload/, https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/]
 
   - id: D9-017
-    version: 1
+    version: 2
     type: single
     subtopic: int.resilience
     tags: [llm.fundamentals, obs.cost]
@@ -519,9 +535,9 @@ items:
       1,000 requests per minute still triggers frequent 429 errors whenever large requests cluster. How should the
       limiter be changed?
     options:
-      - text: "A token bucket charged by estimated tokens, shared across workers and reconciled with actual usage"
+      - text: "Add a shared token bucket charged by estimated tokens alongside the request limit, reconciled with usage"
         correct: true
-        why: The binding constraint is tokens, so cost-weighted admission keeps the total under the limit however sizes vary.
+        why: Tokens bind when large requests cluster, so cost-weighted admission keeps them under 2 million while the request limit still caps the count.
       - text: Keep the request-count limiter and lower it to 300 per minute, which leaves ample slack for large requests
         why: It wastes capacity for small requests and still fails if enough large requests arrive in the same minute.
         misconception: A lower request cap is a safe proxy for a token limit
@@ -532,12 +548,14 @@ items:
         why: It works eventually but wastes calls, adds latency, and rate-limit errors can also affect interactive traffic on the same account.
         misconception: Reactive backoff is as good as admission control
     explanation: |
-      When a provider limits several dimensions (requests and tokens), enforce each of them on the client, charging
-      requests by their estimated cost and correcting with actual usage. Share the limiter across workers, or the
-      per-process limits add up to more than the account's limit.
+      When a provider limits several dimensions (requests and tokens), enforce each of them on the client; whichever
+      is reached first causes the 429. Charge requests by their estimated cost the way the provider counts it (some
+      count the requested maximum output at admission) and correct with actual usage. Share the limiter across
+      workers, or the per-process limits add up to more than the account's limit.
+    refs: [https://developers.openai.com/api/docs/guides/rate-limits]
 
   - id: D9-018
-    version: 1
+    version: 2
     type: single
     subtopic: int.resilience
     tags: [int.enterprise-devex, agents.state]
@@ -551,7 +569,7 @@ items:
     options:
       - text: "Invalidate on Jira webhook events and re-read with a version check before any write"
         correct: true
-        why: Reads stay cheap while writes are protected by fresh state, so the agent cannot act on a stale view.
+        why: Reads stay cheap, and each write is checked against current source state instead of resting on a cached view up to an hour old.
       - text: "Lengthen the cache lifetime to 24 hours to cut Jira API calls further"
         why: It lowers API usage further but makes the stale reads, and the risk of acting on them, much worse.
         misconception: Rate-limit pressure justifies longer staleness
@@ -563,11 +581,13 @@ items:
         misconception: Disclosing staleness makes stale data safe to act on
     explanation: |
       Match consistency to the use. Reads can tolerate bounded staleness, so cache them and invalidate on change
-      events; writes and decisions that depend on current state should re-check at the source, ideally with an
-      optimistic concurrency token (ETag or version) so a conflicting change is detected.
+      events, keeping a TTL as a backstop for missed events. Writes and decisions that depend on current state
+      should re-check at the source. Where the API supports a conditional write (an ETag or expected version), the
+      write itself fails on a conflicting change; otherwise a re-read just before the write narrows the window but
+      cannot close it, so handle conflicts when they surface and keep the write safe to retry.
 
   - id: D9-019
-    version: 1
+    version: 2
     type: single
     subtopic: int.enterprise-devex
     tags: [gov.identity]
@@ -586,16 +606,20 @@ items:
         why: The token is long-lived, over-privileged, consumes a seat, and shares one user's rate limit.
         misconception: A shared bot user is equivalent to a purpose-built integration identity
       - text: An OAuth app that acts as each developer who signs in, with each person's own token
-        why: This fits actions taken on behalf of a user, but this is a background service that needs to act without anyone present.
+        why: Comments post as individuals, each token needs the broad repo scope to reach pull requests, and access depends on each person staying in the org.
         misconception: User-delegated OAuth suits every integration
       - text: A deploy key on each repository, used for both git operations and API calls
         why: Deploy keys authorise git access to one repository only and cannot call the REST API for comments.
         misconception: SSH deploy keys are general API credentials
     explanation: |
       For background integrations with an organisation, prefer a GitHub App: fine-grained permissions chosen by the
-      installer, short-lived installation tokens, webhooks, and rate limits that scale with the installation. Use
-      user-to-server tokens only when an action must be attributed to, and limited by, a specific user.
-    refs: [https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/about-creating-github-apps]
+      installer, short-lived installation tokens, webhooks, an identity that survives staff changes, and rate limits
+      that scale with the installation. The service still needs to handle rate limits. Use user access tokens only
+      when an action must be attributed to, and limited by, a specific user.
+    refs:
+      - https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/about-creating-github-apps
+      - https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps
+      - https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/rate-limits-for-github-apps
 
   - id: D9-020
     version: 1
@@ -770,7 +794,7 @@ items:
       clients out, but the worst case remains the sum of the capped bounds.
 
   - id: D9-026
-    version: 1
+    version: 2
     type: open
     subtopic: int.async
     tags: [int.apis, comms.stakeholders]
@@ -779,46 +803,50 @@ items:
     level: evaluate
     time_s: 540
     stem: |
-      Last night your Jira-integration service created 214 duplicate tickets for a customer's support team. The
-      customer's engineering manager has written: "This is the second integration bug this quarter. Explain exactly
-      what happened and why I should trust the fix." Your investigation shows that Jira's webhook delivery timed
-      out because your endpoint called the LLM before responding, Jira retried the delivery, and your handler
-      created a ticket for each delivery. Write your reply.
+      Last night your Jira-integration service created 214 duplicate tickets for a customer's support team, and they
+      are still open in the customer's project. The customer's engineering manager has written: "This is the second
+      integration bug this quarter. Explain exactly what happened and why I should trust the fix." Your
+      investigation shows that Jira's webhook delivery timed out because your endpoint called the LLM before
+      responding, Jira retried the delivery, and your handler created a ticket for each delivery. No fix has shipped
+      yet. Write your reply.
     rubric:
-      - criterion: Direct, accountable opening
+      - criterion: Direct, accountable, factual opening
         points: 2
-        guidance: 2 if it opens with a plain statement of impact and ownership (what happened, that it was the service's fault, current state) without blaming the vendor; 1 if accountable but buried or vague; 0 if defensive or blames Jira.
+        guidance: 2 if it opens with a plain statement of impact and ownership (what happened, that it was the service's fault) and states the current status accurately (duplicates still open, fix not yet live, or what is still being confirmed) without blaming the vendor; 1 if accountable but buried or vague; 0 if defensive, blames Jira, or claims remediation the facts do not support (for example that the fix is live or the duplicates are already closed).
       - criterion: Accurate root cause in plain language
         points: 3
         guidance: 3 if it explains that slow processing before acknowledging caused redelivery and that the handler was not safe to run twice, in terms a manager can follow; 2 if only one of the two causes; 1 if generic; 0 if wrong or absent.
       - criterion: Fix addresses both layers and is verifiable
         points: 3
-        guidance: 3 if it proposes acknowledging quickly and processing from a queue, and de-duplication by event id or an idempotency key, with a named verification (replay test with duplicate deliveries, load test); 2 if it covers one layer well; 1 if generic; 0 if only more monitoring or apology.
+        guidance: "3 if it proposes saving the event durably before acknowledging and doing the model work afterwards, plus ticket creation that is safe to repeat even when a crash follows the create (for example the delivery's event id stamped on the ticket and checked before creating, or reconciliation of uncertain creates), with a named verification such as replaying duplicate deliveries with a slow model or a crash after creation; 2 if both layers are credible but verification is weak or missing, or the de-duplication only records the id locally after creating, or one layer is explained well with a verification; 1 if generic; 0 if only more monitoring or apology. Credit equivalent mechanisms in any wording."
       - criterion: Customer remediation and trust-building
         points: 2
-        guidance: 2 if it offers concrete cleanup of the 214 tickets, an alert for duplicate rate, and a time-bound follow-up or review; 1 if one of these; 0 if none.
+        guidance: 2 if it offers both a concrete cleanup of the 214 tickets that the customer can review (for example close rather than delete, with a list to confirm) and a time-bound verification or follow-up (shared test results, a written review, a call); an alert on duplicates themselves, such as one event producing two tickets, supports full credit but is not required; 1 if only one of cleanup or time-bound follow-up; 0 if neither.
     model_answer: |
       You are right to be frustrated, and this one is on us. Last night our service created 214 duplicate tickets
-      in your support project. I have already closed the duplicates (nothing was deleted), and I will send you the list by noon so
-      your team can confirm nothing legitimate was removed.
+      in your support project, and they are still open. I will send you the list by noon; once your team confirms
+      none of them is legitimate, we will close them (not delete them).
 
       What happened: when Jira sends us an event, it expects an answer within a few seconds. Our endpoint was calling
       the language model before answering, so Jira treated the delivery as failed and sent it again. Our code then
-      created a new ticket for every delivery instead of recognising that it had already handled the event. Two
-      weaknesses combined: we answered too slowly, and we were not safe against being told the same thing twice.
+      created a new ticket for every delivery instead of recognising an event it had already handled. Two weaknesses
+      combined: we answered too slowly, and we were not safe against being told the same thing twice.
 
-      The fix has two parts. First, the endpoint will acknowledge immediately and put the event on a queue; the model
-      work happens afterwards. Second, every event carries an identifier, and we will record it with the ticket so a
-      repeat delivery does nothing. Both are standard for webhook receivers and each protects against the other failing.
+      The fix has two parts. First, the endpoint will only save the event safely and then answer Jira straight away;
+      the model work happens afterwards. If the save fails, we return an error so that Jira retries. Second, Jira
+      gives every event an identifier that stays the same across retries. We will stamp it on the ticket we create
+      and check for it first, so a repeated delivery finds the existing ticket even if our service failed halfway
+      through. Each part protects against the other failing.
 
-      To let you verify it rather than trust me: before Friday I will run a test that sends each event three times and
-      slows the model down, and we will share the result. We are also adding an alert when more than a handful of
-      tickets are created in a minute. I would like to walk you through this on a 20-minute call this week, and I will
-      follow up with a written review of the quarter's two incidents.
+      To let you verify it rather than trust me: before Friday we will run a test that sends each event three times,
+      slows the model down and stops the service right after a ticket is created, and we will share the results. We
+      are also adding an alert for any event that produces more than one ticket. I would like to walk you through
+      this on a 20-minute call this week, and I will follow up with a written review of both incidents this quarter.
     max_chars: 2500
+    refs: [https://developer.atlassian.com/cloud/jira/platform/webhooks/]
 
   - id: D9-027
-    version: 1
+    version: 2
     type: code
     subtopic: int.apis
     tags: [gov.guardrails, int.async]
@@ -873,19 +901,24 @@ items:
       examples:
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000100]
           expected: true
+          must_call: hmac.compare_digest
       tests:
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"closed\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000100]
           expected: false
+          must_call: hmac.compare_digest
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=b7b647432d3f213e729d02b983463892e1795a33703adf73a043f0816a9245ff", 1700000100]
           expected: false
+          must_call: hmac.compare_digest
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000300]
           expected: true
+          must_call: hmac.compare_digest
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000301]
           expected: false
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1699999600]
           expected: false
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v1=b7b647432d3f213e729d02b983463892e1795a33703adf73a043f0816a9245ff, v1=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000050]
           expected: true
+          must_call: hmac.compare_digest
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "v0=21d5d8cbc2bc45f4de792b3b6b0645cf50e6ebfd7fb968b4ef06ff7b016d9637", 1700000050]
           expected: false
         - args: ["whsec_test", "1700000000", "{\"id\":\"evt_1\",\"action\":\"opened\"}", "", 1700000050]
@@ -894,8 +927,10 @@ items:
           expected: false
         - args: ["whsec_test", "1700000000", "{\"msg\":\"café\"}", "v1=fca219104ddc9ed3beb1648f545bfafdaf8eb504a4f3e5d47eb17c64b3b367ef", 1700000010]
           expected: true
+          must_call: hmac.compare_digest
         - args: ["whsec_test", "1700000000", "", "v1=5967f3c560522fa40cf2876ebc3c3a08551dd6959aaade3b413460591895bdcc", 1700000010]
           expected: true
+          must_call: hmac.compare_digest
         - kwargs: {secret: "whsec_test", timestamp: "1700000000", body: "", signature_header: "v1=5967f3c560522fa40cf2876ebc3c3a08551dd6959aaade3b413460591895bdcc", now: 1700000011, tolerance_s: 10}
           expected: false
       timeout_s: 5
@@ -904,6 +939,9 @@ items:
       signed string), and compares digests with `hmac.compare_digest` to avoid timing leaks. Accepting several
       `v1=` entries allows secret rotation without downtime. Combine this with a record of seen delivery ids to stop
       replays inside the window.
+
+      The tests check that `hmac.compare_digest` is called whenever a signature has to be compared, because return
+      values alone cannot tell it from a plain `==`, which can leak timing.
     refs: [https://docs.python.org/3/library/hmac.html]
 
   - id: D9-028
