@@ -130,7 +130,7 @@ items:
       candour about weaknesses do more for credibility than breadth or polish.
 
   - id: D3-005
-    version: 1
+    version: 2
     type: single
     subtopic: comms.tradeoffs
     tags: [eval.gates, delivery.go-live]
@@ -139,25 +139,29 @@ items:
     level: analyze
     time_s: 100
     stem: |
-      A pilot's evaluation shows 87% field-level accuracy against an agreed 95% target. The sponsor, under pressure
-      from her own boss, wants to go live next week. Most remaining errors come from low-quality scans. How should the FDE
+      A pilot's evaluation shows 87% field-level accuracy against an agreed 95% target. Most remaining errors come
+      from low-quality scans, which an image-quality check at intake flags reliably; on the other documents, accuracy
+      is 96%. The sponsor, under pressure from her own boss, wants to go live next week. How should the FDE
       communicate this?
     options:
-      - text: "State 87% against the agreed 95% with the error breakdown, and recommend a limited launch with human review of uncertain cases"
+      - text: "Report 87% against the agreed 95% and its cause, and recommend launching next week on clean scans only, keeping flagged ones manual"
         correct: true
-        why: "Honest about the gap, offers a path that respects her deadline, and gives her something to decide, not just a problem."
+        why: "Honest about the miss, and the recommended scope meets the agreed bar on the documents it covers, so she can keep her date without lowering the standard. The scope change is still hers to approve."
       - text: "Open with the improvement since the last evaluation, 71% to 87%, then state the gap to 95% and how it could be closed"
         why: "The trend is true and worth including, but leading with it softens the miss, and without a recommendation she cannot brief her boss."
         misconception: "Lead with progress to keep momentum"
       - text: "Present the shortfall and the possible paths, then ask the sponsor to choose between them, since the launch decision is hers to make"
         why: "The decision is hers but she needs a recommendation. Handing back options leaves her to decide on technical grounds."
         misconception: "Neutrality is the safest stance for an advisor"
-      - text: "Hold the launch date unchanged while the team works to close the gap, and report once 95% is reached"
+      - text: "Keep the launch date unchanged while the team works to close the gap, and report the result once 95% is reached"
         why: "Surprises the sponsor if the date slips and leaves her unable to manage her own boss."
         misconception: "Do not raise a problem until it is fixed"
     explanation: |
-      Communicating uncertainty means stating the measured result against the agreed bar, explaining the cause, and
-      recommending a course with a date. Softening, withholding and neutrality each fail the sponsor in a different way.
+      Communicating a miss means stating the measured result against the agreed bar, explaining the cause, and
+      recommending a course. A limited launch is an honest recommendation when the restricted scope meets the agreed
+      bar and the excluded cases can be identified reliably, as here; otherwise the honest recommendation is a later
+      date or explicitly revised acceptance criteria. Softening, withholding and neutrality each fail the sponsor in a
+      different way.
 
   - id: D3-006
     version: 1
@@ -281,7 +285,7 @@ items:
       date, what the rest costs, and what would have to give. It keeps authority and information together.
 
   - id: D3-010
-    version: 1
+    version: 2
     type: single
     subtopic: comms.stakeholders
     tags: [comms.tradeoffs]
@@ -290,13 +294,14 @@ items:
     time_s: 90
     stem: |
       At a steering meeting, the sponsor tells the group the assistant "will cut handling time by half". Pilot data show
-      20 to 25%. The next steering meeting is in two weeks, and the sponsor has been a strong ally. What should the FDE do?
+      20 to 25%. No budget or rollout decision depends on the figure before the next steering meeting in two weeks, and
+      the sponsor has been a strong ally. What should the FDE do?
     options:
-      - text: "Meet the sponsor before the next steering meeting, share the pilot data, and agree a claim you can both stand behind"
+      - text: "Meet the sponsor before the next steering meeting, share the pilot data, and agree how the figure is restated to the group"
         correct: true
-        why: "Protects the sponsor's standing and resets the expectation before it hardens, using evidence."
+        why: "Corrects the expectation with evidence before any decision rests on it, reaches the same audience, and lets the sponsor restate her own claim."
       - text: "Correct the figure in the meeting with the pilot data, since a wrong target left standing will become the FDE's failure"
-        why: "The risk is real, but a public correction of an ally damages the relationship when a private one achieves the same."
+        why: "Would be right if a decision were about to rest on the figure. None is, so a public correction now costs the sponsor face for no gain over a private one that reaches the same group in time."
         misconception: "Transparency requires immediate public correction"
       - text: "Put the pilot range in the next written status report without comment on the sponsor's figure, so the data is on record"
         why: "Gets the facts out, but the sponsor learns of the gap from a document her peers also read, which feels like an ambush."
@@ -305,8 +310,10 @@ items:
         why: "Possible, but today's evidence says 20 to 25%, the FDE will be judged against the figure, and waiting lets the expectation harden."
         misconception: "Pilot data are too uncertain to challenge a claim"
     explanation: |
-      Expectation management is mostly private and early: align the sponsor on facts before a public setting forces the
-      issue. Silence lets the gap grow; a public correction or a bypass costs the relationship.
+      When no decision rests on a wrong claim yet, correct it privately and early: align the sponsor on the facts and
+      agree how the corrected figure reaches the same audience, ideally from her. If a decision were about to rely on
+      the claim, a brief, respectful clarification in the room would be the better move. Silence lets the gap grow,
+      and a bypass costs the relationship.
 
   - id: D3-011
     version: 1
@@ -520,7 +527,7 @@ items:
       risk and produces trustworthy evidence. It is the usual path for change that crosses many users.
 
   - id: D3-018
-    version: 1
+    version: 2
     type: multi
     subtopic: adoption.change
     tags: [comms.stakeholders]
@@ -529,29 +536,31 @@ items:
     time_s: 110
     stem: |
       An AI-assisted intake process spans Sales Operations, Legal and Finance. Usage is strong in two departments but
-      stalled in Finance, which cites other priorities. Which steps are most likely to restore adoption?
+      stalled in Finance. Finance managers say the new steps take little time, but the work keeps losing out to their
+      own priorities. Which steps are most likely to restore adoption?
     options:
       - text: "Ask the sponsor to name one accountable executive for the end-to-end process and set a shared target across departments"
         correct: true
         why: "Cross-department change needs a single owner; otherwise each department optimises its own goals."
       - text: "Align each department's own goals with the change, for example adding cycle time to Finance's targets"
         correct: true
-        why: "Finance's priorities will shift only when the change counts in how Finance is measured."
+        why: "Finance's own goals decide what wins its attention; making the change count in them removes the conflict."
       - text: "Set up a regular cross-department review chaired by the sponsor, where blockers are escalated and decided"
         correct: true
         why: "Gives a place where blockers can be resolved with authority instead of lingering."
       - text: "Offer Finance a dedicated analyst to enter and check intake records for the first two months"
-        why: "Lowers effort, but Finance cites priorities, not workload. A subsidy removes the symptom and leaves the incentive unchanged."
+        why: "Lowers effort, but Finance says the steps take little time. The blocker is competing priorities, which extra help does not change."
         misconception: "Adoption stalls because the work is burdensome"
       - text: "Run a communication campaign for Finance staff explaining the benefits the other two departments have seen"
-        why: "Finance is declining for reasons of priority and measurement, and benefits accruing to other departments do not change either."
+        why: "The blocker is Finance's own priorities, not awareness, and benefits accruing to other departments do not change them."
         misconception: "Adoption problems are awareness problems"
       - text: "Negotiate separately with each department head and keep the sponsor out until there is something to report"
         why: "Without the sponsor, the FDE lacks the authority to move priorities, and Finance learns it can wait."
         misconception: "Quiet diplomacy replaces executive sponsorship"
     explanation: |
-      Cross-department adoption stalls when no one owns the end-to-end result and local incentives conflict. Executive
-      sponsorship, shared goals and a place to decide are the standard remedies.
+      Cross-department adoption stalls when no one owns the end-to-end result and local goals conflict. Executive
+      sponsorship, shared goals and a place to decide are the usual remedies. Extra help and awareness campaigns
+      address effort and knowledge, which are not the blocker here.
 
   # ---------------------------------------------------------------- adoption.handoff
   - id: D3-019
@@ -616,7 +625,7 @@ items:
       known failure modes of this deployment.
 
   - id: D3-021
-    version: 1
+    version: 2
     type: single
     subtopic: adoption.handoff
     tags: [role.economics, role.productization]
@@ -624,24 +633,27 @@ items:
     level: evaluate
     time_s: 110
     stem: |
-      A customer has two engineers. Leadership fears dependence on the vendor's agent platform that underlies the
-      solution, and asks the FDE to design the handoff accordingly. What is the best approach?
+      A customer has two engineers. Leadership is content to stay on the vendor's agent platform that underlies the
+      solution, but fears needing the vendor for every change and incident, and asks the FDE to design the handoff
+      accordingly. What is the best approach?
     options:
       - text: "Keep prompts, evaluation sets and configuration in the customer's repository, document the platform dependency, and agree an SLA"
         correct: true
-        why: "The customer owns what differentiates its solution, while a bounded, explicit dependency on the platform is managed by contract."
+        why: "The customer owns and can change what carries its logic, while the remaining dependency on the platform is bounded, documented and supported by contract."
       - text: "Build a portability layer so the solution can be moved to a different platform within weeks, and hand over the layer with the solution"
-        why: "Reduces switching cost on paper, but two engineers would have to maintain the layer and test it against alternatives, and it is rarely exercised until it is needed."
+        why: "Prepares for leaving the platform, which leadership does not plan, and leaves two engineers maintaining a layer that does not help them change or run the solution day to day."
         misconception: "Eliminating a dependency is better than managing it"
       - text: "Keep the vendor operating the solution day to day, and give the customer dashboards, since two engineers cannot run it alone and need time"
         why: "Entrenches the dependency leadership wants to reduce and does not transfer capability."
         misconception: "Visibility is the same as control"
-      - text: "Negotiate source-code escrow for the platform, so the customer can maintain it if the vendor fails"
-        why: "A common safeguard, but two engineers cannot maintain a platform; it addresses vendor failure, not everyday ownership."
+      - text: "Negotiate source-code escrow for the platform, so the customer can maintain it themselves if the vendor fails"
+        why: "A common safeguard against vendor failure, but that is not the everyday dependence leadership fears, and two engineers could not maintain a platform."
         misconception: "A legal safeguard resolves an operational dependency"
     explanation: |
-      Avoiding vendor dependency in a handoff means the customer owns the assets that carry their logic and knowledge, and
-      the remaining dependence on the platform is explicit and contractually supported.
+      When the concern is day-to-day dependence rather than leaving the platform, the customer should own the assets
+      that carry its logic and knowledge, and the remaining dependence on the platform should be explicit and
+      contractually supported. If leadership wanted an exit path, proportionate export and exit terms would belong in
+      the plan as well.
 
   - id: D3-022
     version: 1
@@ -703,7 +715,7 @@ items:
 
   # ---------------------------------------------------------------- numeric
   - id: D3-024
-    version: 2
+    version: 3
     type: numeric
     subtopic: adoption.change
     tags: [role.economics, obs.cost]
@@ -716,18 +728,19 @@ items:
       420 of them actually do, and each active agent contributes equally. A handling hour costs $38 fully loaded, and the
       vendor fee is $20,000 per month. What is the monthly net benefit, in US dollars (negative if a loss)? Round to the
       nearest dollar.
-    answer: {value: -2267, tolerance: 150, tolerance_type: abs, unit: "USD (negative = loss)"}
+    answer: {value: -2267, tolerance: 15, tolerance_type: abs, unit: "USD (negative = loss)"}
     work: |
       Hours saved = 1,000 × 420 / 900 = 466.67.\
       Value = 466.67 × $38 = $17,733.\
       Net = 17,733 − 20,000 = −$2,267 per month.
     explanation: |
       Benefits scale with adoption, but the fee does not. Assuming full adoption would give +$18,000 (1,000 × 38 − 20,000),
-      the opposite sign. Adoption is part of the business case, not an afterthought.
+      the opposite sign. Adoption is part of the business case, not an afterthought. Answers within $15 are accepted,
+      which covers rounding the hours to a whole number first (467 hours gives −$2,254).
 
   # ---------------------------------------------------------------- open
   - id: D3-025
-    version: 1
+    version: 2
     type: open
     subtopic: comms.tradeoffs
     tags: [llm.failure-modes, gov.responsible-ai]
@@ -737,43 +750,50 @@ items:
     time_s: 540
     stem: |
       Last week, an insurer's customer-facing assistant told a policyholder that water damage was covered, when it was
-      not. The customer called, complained and the Head of Claims has asked you for a written account: what happened, how
-      likely it is to recur, and what you are changing. You have confirmed that a policy document was missing from the
-      knowledge base, so the assistant answered from general knowledge. Write the reply, under 300 words.
+      not. The customer called and complained, and the Head of Claims has asked you for a written account: what
+      happened, where things stand now, how likely it is to recur, and what you are changing. You have confirmed that a
+      policy document was missing from the knowledge base, so the assistant answered from general knowledge. Nothing in
+      the assistant has been changed yet. Write the reply, under 300 words.
     rubric:
-      - criterion: "Bottom line first"
+      - criterion: "Impact, cause and current status up front"
         points: 2
-        guidance: "2 if the opening states what went wrong, its cause in a sentence, and that the immediate fix is in place; 1 if the facts appear but after a preamble; 0 if it opens with apology or background only."
+        guidance: "2 if the opening quickly states the incorrect coverage answer, its cause in brief, and the current status, keeping what is done separate from what is proposed (for example an immediate containment step it recommends or will make today); 1 if these appear but are buried after a preamble or the status is unclear; 0 if there is no usable account, or it presents a fix, or a correction to the policyholder, as already done. A brief expression of regret alongside the facts is fine."
       - criterion: "Accurate, non-defensive account of cause"
         points: 2
-        guidance: "2 if the cause (missing document, answer from general knowledge) is stated plainly without blame or excuses; 1 if accurate but evasive or technical; 0 if it blames the model or the customer."
+        guidance: "2 if the cause (a policy document missing from the knowledge base, so the assistant answered from general knowledge instead of the insurer's wording) is stated plainly and the gap that allowed it is owned, without blame or excuses; 1 if broadly accurate but vague, evasive or needlessly technical; 0 if wrong, absent, or it blames the model or the customer."
       - criterion: "Honest statement of residual risk"
         points: 3
-        guidance: "3 if it says errors of this type can recur, quantifies or describes how often it will measure that, and does not promise zero; 2 if it acknowledges risk without a way to measure; 1 if vague; 0 if it promises it cannot happen again."
-      - criterion: "Concrete corrective actions with owners and dates"
+        guidance: "3 if it says errors of this type can recur, gives a credible way to measure or detect them (for example sampling coverage answers, tracking declined answers, regression tests) and neither promises zero nor invents a probability; 2 if it acknowledges the risk with only a limited or vague way to measure it; 1 if only a generic caveat; 0 if it promises it cannot happen again or ignores recurrence."
+      - criterion: "Concrete corrective plan with owners and dates"
         points: 3
-        guidance: "3 if it lists specific fixes such as refusing to answer when no source is found, a coverage check of the knowledge base, a test for this question type, and a review of the affected policyholder, with owner or date; 2 if specific but no owner or date; 1 if generic; 0 if none."
+        guidance: "3 if it covers proportionate containment (for example declining or routing coverage questions that have no matching source), correction (checking every policy against the knowledge base), verification (tests for this question type), and asks for the affected policyholder's case to be reviewed through the claims team, with owners or dates and a follow-up; 2 if concrete and useful but with a material gap in ownership, dates or verification; 1 if a generic promise to improve; 0 if none. Specific numbers such as sample sizes or test counts are examples, not requirements."
     model_answer: |
-      Subject: Incident summary: incorrect coverage answer, with fixes.
+      Subject: Incorrect coverage answer last week: cause, status and changes
 
-      Last Tuesday the assistant told a policyholder that water damage was covered under policy type B. It is not. We
-      have contacted the policyholder through your team, and the immediate fix is live.
+      Last week the assistant told a policyholder that water damage was covered under their policy. It is not. The
+      cause is confirmed: that policy's document was missing from the knowledge base, so the assistant answered from
+      general knowledge instead of from your wording. Nothing in the assistant has changed yet; the first action below
+      is the one I propose for today.
 
-      Cause: the policy document for type B was missing from the knowledge base, so the assistant answered from general
-      knowledge instead of from your wording. We should have caught that gap before launch.
+      That gap is ours. We had no check that every policy was loaded, and nothing stopped the assistant answering a
+      coverage question without a source.
 
-      Will it recur? Errors of this kind can recur, and I won't promise otherwise. What we can do is make them less
-      likely and visible. Since the fix, the assistant declines to answer coverage questions when it finds no matching
-      source, and we are measuring how often that happens.
+      Will it recur? It can, and I won't promise otherwise. What we can do is make it less likely and make any
+      recurrence visible.
 
       Actions:
-      1. By Friday, we will check every policy type against the knowledge base and report any gaps (owner: me).
-      2. By next Wednesday, we will add 50 coverage questions to the regression set, run before every release (owner:
-      our evaluation lead).
-      3. Starting now, a weekly sample of 100 coverage answers is reviewed by your claims team, and I will report the
-      error rate to you each Monday.
 
-      I will update you Friday with the results of the coverage check.
+      1. Today, with your approval: the assistant declines coverage questions when it finds no matching policy
+         source and refers the customer to your team. We will track how often that happens. Owner: me.
+      2. By Friday: check every policy type against the knowledge base and load anything missing. Owner: me.
+      3. By next Wednesday: add coverage questions, including this one, to the regression tests run before every
+         release. Owner: our evaluation lead.
+      4. From next week: your claims team reviews a weekly sample of coverage answers, and I report the error rate
+         to you.
+      5. Could your team review this policyholder's case and decide how to correct what they were told? I can send
+         you the conversation log today.
+
+      I will update you on Friday with the results of the coverage check.
     max_chars: 2200
 
   - id: D3-026
@@ -916,16 +936,16 @@ items:
 
   # ---------------------------------------------------------------- audio
   - id: D3-029
-    version: 1
+    version: 2
     type: audio
     subtopic: comms.tradeoffs
     tags: [eval.gates, delivery.go-live]
     competencies: [x.written-comms]
     difficulty: 2
     level: evaluate
-    time_s: 150
+    time_s: 90
     prep_s: 30
-    max_s: 120
+    max_s: 60
     stem: |
       In the corridor, the sponsor asks: "In one minute: should we expand the pilot to all regions?" Pilot results are
       strong in two regions and weak in three, mostly because of data quality in the three. Answer out loud, as you
@@ -933,28 +953,28 @@ items:
     rubric:
       - criterion: "Clear recommendation up front"
         points: 3
-        guidance: "3 if a direct answer in the first sentence (for example: expand to the two strong regions, not yet to the other three); 1 if it appears late; 0 if no recommendation."
+        guidance: "3 if a direct answer comes in the first sentence (for example: expand to the two strong regions, not yet to the other three); 2 if it comes promptly after a brief lead-in; 1 if it appears late or only by implication; 0 if no recommendation."
       - criterion: "States evidence and uncertainty plainly"
         points: 2
-        guidance: "2 if it cites the difference between regions, names data quality as the cause, and says what is not yet known; 1 if only one; 0 if none."
-      - criterion: "Gives a path and a date for the rest"
+        guidance: "2 if it cites the difference between regions, names data quality as the main cause without ruling out other factors, and says what is not yet known; 1 if only one or two of these; 0 if none."
+      - criterion: "Gives a path and a checkpoint for the rest"
         points: 2
-        guidance: "2 if it states what is needed in the three regions and when the decision will be revisited; 1 if vague; 0 if none."
+        guidance: "2 if it states what is needed in the three regions and when or on what evidence the decision will be revisited, without promising that the data work will be finished by then; 1 if vague; 0 if none."
       - criterion: "Suits a sponsor in a hurry"
         points: 1
-        guidance: "1 if jargon-free and concise; 0 if technical or rambling."
+        guidance: "1 if jargon-free and the answer fits the minute she asked for; 0 if technical or rambling."
     model_answer: |
-      Yes for two regions, not yet for the other three. The pilot works well in the north and the east: results there
-      meet the target. In the other three it falls short, and the reason is the quality of the data feeding it rather than
-      the tool itself, so rolling out there now would give those teams a poor first experience.
+      Yes for two regions, not yet for the other three. In the two strong regions the results meet the target. In the
+      other three they fall short, mainly because of the quality of their data, so rolling out there now
+      would give those teams a poor first experience.
 
-      What I don't yet know is how fast the data can be fixed; that depends on their IT teams. So my suggestion is:
+      What I don't know yet is how quickly that data can be fixed, or whether anything else is holding them back. So:
       expand to the two strong regions now, start the data cleanup in the other three with a named owner in each, and
-      let me bring you an update in six weeks with a go or no-go for each. If you want a single sentence for your boss:
-      expanding where it works, and fixing the data where it doesn't.
+      I'll come back in six weeks with progress and a go or no-go for any region that's ready. In one line for your
+      boss: expanding where it works, fixing the data where it doesn't.
 
   - id: D3-030
-    version: 1
+    version: 2
     type: audio
     subtopic: comms.stakeholders
     tags: [adoption.change]
@@ -976,7 +996,7 @@ items:
         guidance: "2 if it proposes to look at real examples (rewritten drafts, the added step) and measure; 1 if it promises to improve in general terms; 0 if it argues with the claim."
       - criterion: "Proposes a concrete and bounded next step"
         points: 3
-        guidance: "3 if it offers something specific and time-boxed (for example sit with two agents this week, fix the added step, review in two weeks) and addresses the switch-off request honestly; 1 if vague; 0 if none."
+        guidance: "3 if it offers something specific and time-boxed (for example sit with two agents this week, review the added step and the rewrites, decide together in two weeks) and answers the switch-off request honestly; 2 if specific and time-boxed but one material part is unresolved, such as ignoring the switch-off request; 1 if vague; 0 if none. Accept any justified answer to the switch-off request, including a temporary pause, opt-out for the team or a bounded comparison. Credit a commitment to findings and a decision by the date; a promise that a fix will be done before the cause is known does not count as concrete."
       - criterion: "Handles the sponsor in the room"
         points: 1
         guidance: "1 if it keeps the sponsor informed and does not escalate or play to them; 0 if it appeals to the sponsor to overrule the team lead."
@@ -988,12 +1008,13 @@ items:
       week, so I can watch the added step and the rewrites on real tickets? I'll measure how much time the tool takes
       against doing it without. If the numbers show it's slowing you down, we should know that.
 
-      On switching it off: I don't want to push it on you. What I propose is that I come back in two weeks with a fix for
-      the extra step and the data on the drafts, and then we decide together whether it stays on for your team. In the
-      meantime I'm happy for you to carry on without it if that's easier. I'll keep the sponsor updated on what we find.
+      On switching it off: I don't want to push it on you. What I propose is that I come back in two weeks with what we
+      found on the extra step and the drafts, and what can be fixed, and then we decide together whether it stays on for
+      your team. In the meantime I'm happy for you to carry on without it if that's easier. I'll keep the sponsor
+      updated on what we find.
 
   - id: D3-031
-    version: 1
+    version: 2
     type: audio
     subtopic: adoption.handoff
     tags: [obs.troubleshooting]
@@ -1004,21 +1025,22 @@ items:
     prep_s: 30
     max_s: 120
     stem: |
-      You are leaving the engagement next week. The customer's new platform owner, who joined last month, asks: "What are
-      you handing me, and what do I need to be able to do on day one?" Answer out loud.
+      You are leaving the engagement next week. You built and have run a retrieval-based assistant over the customer's
+      internal documents, on the vendor's agent platform. The customer's new platform owner, who joined last month,
+      asks: "What are you handing me, and what do I need to be able to do on day one?" Answer out loud.
     rubric:
       - criterion: "Bottom line first"
         points: 2
         guidance: "2 if it starts with a short summary of what is handed over and what the owner must be able to do; 1 if it starts with background; 0 if disorganised."
       - criterion: "Covers what the owner needs to operate"
         points: 3
-        guidance: "3 if it names the runbooks, the evaluation set and how to re-run it, monitoring and alerts, access, and the known failure modes; 2 if three of these; 1 if one or two; 0 if none."
+        guidance: "3 if it covers at least four of: the runbooks, the evaluation set and how to re-run it, monitoring and alerts, access, and the known failure modes; 2 if three of these; 1 if one or two; 0 if none."
       - criterion: "Is honest about risks and dependencies"
         points: 2
-        guidance: "2 if it names what is fragile or still dependent on the vendor or on one person, and what to watch; 1 if generic; 0 if it claims no risks."
+        guidance: "2 if it names specific risks plausible for this system (for example the document index going stale, quality drift when the model changes, dependence on the vendor's platform, knowledge only the FDE holds) and what to watch, or states how the open risks will be listed and confirmed before leaving; 1 if generic; 0 if it claims no risks. Do not require particular risks or invented system details."
       - criterion: "Support and next steps"
         points: 1
-        guidance: "1 if it states who to call for what and gives a first-week action; 0 if absent."
+        guidance: "1 if it says who to go to for which kind of problem, or how that will be confirmed, and gives a first-week action; 0 if absent."
     model_answer: |
       In short: you are getting a running system, the checks that tell you whether it is healthy, and a way to change it
       safely. On day one you need to be able to read the dashboard, handle the three most common failures from the runbook,
@@ -1029,8 +1051,9 @@ items:
       this week.
 
       What I would watch: the knowledge base goes stale if nobody owns refreshes, and quality can drift when the model
-      provider changes versions, so run the evaluation monthly. Today only I know the quirks of the document parser;
-      we'll write those down on Wednesday.
+      provider changes versions, so run the evaluation monthly. Some of what I know about the system's quirks is only
+      in my head; I'll write it into the runbook and walk you through it before I go.
 
       For support, your help desk triages, your team fixes, and the vendor's platform team takes platform defects under
-      the SLA. In your first week, I suggest you re-run the evaluation yourself with me watching.
+      your support agreement; I'll confirm the exact terms with you this week. In your first week, I suggest you re-run
+      the evaluation yourself with me watching.
