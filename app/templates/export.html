@@ -1,15 +1,14 @@
 {% extends "base.html" %}
+{% from "_macros.html" import feedback_export %}
 {% block title %}Export{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>Export</h1><p class="muted">Everything lives locally in <code>{{ data_dir }}</code>. Exports never contain your API key.</p></div></div>
 <div class="grid-2">
   <section class="card stack">
     <h2>Item feedback</h2>
-    <p class="muted">{{ counts.feedback }} notes, each with a snapshot of the item version it refers to.</p>
-    <div class="row wrap">
-      <a class="btn" href="/export/feedback.jsonl" download>feedback.jsonl</a>
-      <a class="btn" href="/export/feedback.md" download>feedback.md</a>
-    </div>
+    <p class="muted">{{ counts.feedback }} notes ({{ n_open_feedback }} open), each with a snapshot of the item version it refers to.
+      Tick <em>Only open issues</em> to leave out the notes you have already marked resolved.</p>
+    {{ feedback_export(n_open_feedback, counts.feedback) }}
   </section>
   <section class="card stack">
     <h2>All data</h2>

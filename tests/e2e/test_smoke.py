@@ -250,3 +250,33 @@ def test_new_test_form_scope_is_exactly_what_is_ticked(server, page):
     assert ids == {"D6-902", "D6-907"}
     assert page.errors == []
 
+
+def test_feedback_export_can_leave_out_resolved_notes(server, page):
+    base, app = server
+    for text in ("still open", "already fixed"):
+        httpx.post(f"{base}/api/feedback", json={"category": "ui", "text": text}).raise_for_status()
+    with db(app) as c:
+        fixed = c.execute("SELECT feedback_id FROM feedback WHERE text = 'already fixed'").fetchone()[0]
+    httpx.post(f"{base}/feedback/{fixed}/resolve", data={"resolved": "1"}, follow_redirects=False)
+
+    def download(button):
+        with page.expect_download() as d:
+            page.click(f"button:has-text('{button}')")
+        return d.value.suggested_filename, Path(d.value.path()).read_text(encoding="utf-8")
+
+    page.goto(f"{base}/feedback")
+    assert page.is_checked("input[name=show]")
+    name, body = download("feedback.jsonl")
+    assert name == "feedback-open.jsonl" and [json.loads(x)["text"] for x in body.splitlines()] == ["still open"]
+    name, body = download("feedback.md")
+    assert name == "feedback-open.md" and "still open" in body and "already fixed" not in body
+
+    page.uncheck("input[name=show]")
+    name, body = download("feedback.jsonl")
+    assert name == "feedback.jsonl" and len(body.splitlines()) == 2
+
+    page.goto(f"{base}/feedback?show=all")
+    assert not page.is_checked("input[name=show]")
+    page.goto(f"{base}/export")
+    assert page.is_checked("input[name=show]")
+    assert page.errors == []

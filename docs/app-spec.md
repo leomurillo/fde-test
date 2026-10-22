@@ -179,10 +179,14 @@ user's answer and correctness if already revealed). Never blocks the runner (mod
 ## Exports (`/export`)
 
 - `feedback.jsonl` — one object per feedback row, **with a snapshot of the item stem/options** so it can be pasted to
-  an LLM to fix items. Also `feedback.md` (human readable, grouped by item).
+  an LLM to fix items. Also `feedback.md` (human readable, grouped by item). Both take `?show=open` to leave out
+  rows with `resolved = 1` (downloaded as `feedback-open.*`, and `feedback.md` says so in its header); the default
+  is every row. `/feedback` and `/export` offer this as an "Only open issues" checkbox (ticked by default except on
+  the All tab) so a reviewer is not shown points that were already addressed.
 - `fde-data-{installation_id}-{date}.zip` — `manifest.json` (installation_id, schema_version, app_version,
   bank_fingerprint, export time), `sessions.jsonl`, `session_items.jsonl`, `responses.jsonl`, `events.jsonl`,
-  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included). This is the future upload format.
+  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included). This is the future upload format;
+  its `feedback.jsonl` always holds every row, resolved or not.
 - Response rows in exports never contain the API key; audio files are excluded by default (checkbox to include).
 
 ## Quality bar

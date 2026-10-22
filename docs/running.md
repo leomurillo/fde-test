@@ -83,10 +83,15 @@ From **Export** (or **Feedback**):
 
 - `feedback.jsonl`: one object per feedback note, with a snapshot of the exact item version it is about,
   ready to paste into an LLM to fix items. `feedback.md` is the same, human readable, grouped by item.
+  Tick **Only open issues** next to the download buttons to leave out the notes you have marked *Resolved*, so a
+  reviewer only sees what is still unaddressed (the files are then named `feedback-open.jsonl` / `feedback-open.md`;
+  by URL: `/export/feedback.jsonl?show=open`). The box starts ticked on the Open tab and on Export, and unticked on
+  the All tab. Mark a note resolved on the Feedback page once its item is fixed.
 - `fde-data-{installation_id}-{date}.zip`: `manifest.json` plus `sessions`, `session_items`, `responses`,
   `events`, `feedback` and `item_versions` as JSONL. Columns stored as JSON (`*_json`) appear decoded
   under the name without the suffix. Audio files are excluded unless you tick the checkbox. This is the
   format meant for pooling data from many installations later (`app.export.read_export` reads it back).
+  It always holds every feedback note, resolved or not.
 
 ## How item versioning works
 
