@@ -63,34 +63,41 @@ items:
       More cases or a different grader do not repair an estimate that is biased by construction.
 
   - id: D7-003
-    version: 1
+    version: 2
     type: single
     subtopic: eval.datasets
     tags: [obs.troubleshooting]
     difficulty: 1
     level: apply
-    time_s: 75
+    time_s: 90
     stem: |
-      A retailer's support bot told a customer that returns are accepted for 60 days; the policy changed to 30 days
-      last quarter. The fix, refreshing the policy document in the knowledge base, ships the same day. Which
-      follow-up best prevents this class of failure from silently returning?
+      A retailer's support bot told a customer that returns are accepted for 60 days. The knowledge base was up to
+      date with the current 30-day policy, but last week's index rebuild pulled the archived 60-day page back in, and
+      retrieval ranked it first. The fix, excluding archived pages from the build, ships the same day. Which
+      follow-up best stops this failure from silently returning with a later pipeline change?
     options:
-      - text: "Add the failing question, anonymised, with variants and the expected policy answer to the regression suite, so recurrence fails a test"
+      - text: "Add the failing question and variants to the regression suite, graded against the current policy page, so recurrence fails a test"
         correct: true
-        why: Every future change is now checked against this exact failure, so a stale-content regression fails the gate.
-      - text: "Re-run the existing golden set after the knowledge-base refresh and ship the fix if the aggregate score has not dropped relative to the previous run"
+        why: Every future pipeline change is checked against this exact failure, and the expected answer comes from the policy itself rather than a second copy.
+      - text: "Re-run the existing golden set after the fix and close the incident if the aggregate score has not dropped relative to the previous run"
         why: The golden set did not contain this failure, so an unchanged score says nothing about it.
         misconception: A passing suite proves the incident is covered
-      - text: "Record the incident and the fix in the post-incident review and assign a named owner for the policy document"
-        why: Process notes are worthwhile but nothing automated will catch the next stale answer.
-        misconception: Documentation substitutes for an automated check
+      - text: "Record the incident in the post-incident review and require a second reviewer's sign-off on future index-build changes"
+        why: A reviewer could approve last week's change too; nothing automated will catch the next one.
+        misconception: Process controls substitute for an automated check
       - text: "Add an output filter that blocks any answer stating a 60-day return window, then monitor for matches"
-        why: A brittle patch for one value; the next outdated figure passes straight through.
+        why: A brittle patch for one value; the next archived or outdated figure passes straight through.
         misconception: A guardrail on the exact symptom is equivalent to a test for the failure class
     explanation: |
-      Regression suites grow from production failures: each incident becomes a permanent test case with the
-      expected behaviour. That converts a one-off fix into protection against recurrence and keeps the suite
-      representative of how the system really fails.
+      Regression suites grow from production failures: each incident becomes a permanent test case with the expected
+      behaviour, which turns a one-off fix into protection against the next pipeline change. Grade it against the
+      policy's source of truth (or give the case to the policy's owner) so the test does not become a second copy
+      that goes stale when the policy changes.
+
+      Note what kind of failure this was: the content was right and the pipeline regressed, which is what a test
+      catches. Had the policy changed without the knowledge base being updated, a test with a fixed expected answer
+      would pass happily. That failure needs a freshness control instead, such as a named owner and an
+      effective-date check between the policy system and the index.
 
   - id: D7-004
     version: 1
@@ -411,7 +418,7 @@ items:
     refs: [https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents]
 
   - id: D7-014
-    version: 1
+    version: 2
     type: single
     subtopic: eval.methods
     tags: [llm.prompting]
@@ -422,9 +429,9 @@ items:
       A judge prompt asks "Rate the helpfulness of this answer from 1 to 10". Ninety percent of scores land on 7
       or 8, so a prompt that clearly improves answers shows no significant movement. What should you change?
     options:
-      - text: "Replace the score with specific pass/fail criteria, each defined with an example, and aggregate them"
+      - text: "Replace the score with pass/fail checks, each defined with an example, and compare each check's pass rate across the set"
         correct: true
-        why: Concrete checkable criteria give the judge something to discriminate on and make failures diagnosable.
+        why: Concrete checks give the judge something to discriminate on, and per-check pass rates show which behaviour the prompt change moved.
       - text: "Widen the scale to 1 to 100 so that the judge has finer resolution to separate good answers from great ones in every batch"
         why: A vague criterion on a wider scale produces more clustered noise, not more signal.
         misconception: Finer scales add discrimination
@@ -437,7 +444,14 @@ items:
     explanation: |
       Holistic scores like "helpfulness" are underspecified, so judges default to the middle-high range. Break
       quality into narrow, observable criteria (cites the policy section, states the deadline, avoids unsupported
-      claims), grade each pass/fail, and let the judge reason before it decides.
+      claims), grade each pass/fail, and let the judge reason before it decides. This is an analytic rubric of
+      binary checks, as opposed to one holistic score.
+
+      One answer's score becomes coarser (three checks allow only 0 to 3), but resolution comes from the set: over
+      300 answers each check's pass rate moves in steps of a third of a percentage point, and the change shows up as
+      specific checks moving ("states the deadline" from 58% to 83%). The 1-to-10 scale was coarser than it looked,
+      with nearly every answer on 7 or 8. Report per-check pass rates, not only their average, so a change can be
+      traced to the behaviour that moved.
 
   # ---------------------------------------------------------------- eval.rag-agent
   - id: D7-015

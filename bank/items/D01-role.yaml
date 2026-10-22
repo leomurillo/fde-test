@@ -165,7 +165,7 @@ items:
 
   # ---------------------------------------------------------------- role.adjacent
   - id: D1-006
-    version: 2
+    version: 3
     type: single
     subtopic: role.adjacent
     tags: [delivery.scoping]
@@ -173,9 +173,14 @@ items:
     level: apply
     time_s: 75
     stem: |
-      A retailer wants a demand-forecasting assistant that runs nightly on real store data, is supported for six
-      months, and whose business impact the sponsor will measure. A presales demo has already impressed them. Which
-      role should lead delivery, and why?
+      A presales demo of a demand-forecasting service has won over a retailer, and they want it in production. The
+      service must:
+
+      - run every night on real store data;
+      - be supported for six months;
+      - produce a business impact that the sponsor will measure.
+
+      Which role should lead delivery, and why?
     options:
       - text: A forward deployed engineer, because the work is production code in the retailer's environment, owned to a result the sponsor will measure
         correct: true
@@ -194,8 +199,8 @@ items:
       owns the result, and how the work is priced. Compare the responsibilities each option describes, not the titles:
       here the solutions engineer would stretch a presales demo while acting as a contact, the architect advises while
       others build, and the services team answers for deliverables. Only the FDE option combines production code in the
-      retailer's environment with the measured result. An architect or services team contracted to build, run and answer for that result would
-      compete on the same terms.
+      retailer's environment with the measured result. An architect or services team contracted to build, run and
+      answer for that result would compete on the same terms.
 
   - id: D1-007
     version: 1
