@@ -704,6 +704,22 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                               "reveal_html": Markup(render_reveal(request, c, si, resp, s))})
         return page(request, "review.html", nav="run", session=s, summary=summary, cards=cards)
 
+    @app.get("/api/s/{sid}/item/{pos}/copy")
+    def api_copy(sid: str, pos: int):
+        """Item as plain text for the Copy button. The key and the user's answer are included only once the
+        item is revealed (real-time: after submit; exam mode: after the test is finished)."""
+        with ctx.conn() as c:
+            s = need_session(c, sid)
+            items = store.session_items(c, sid)
+            if not 1 <= pos <= len(items):
+                raise HTTPException(404, "No such position")
+            si = items[pos - 1]
+            resp = store.latest_responses(c, sid).get(pos)
+            revealed = s["status"] != "in_progress" or bool(resp and not resp["skipped"] and resp["feedback_revealed_at"])
+            item = store.snapshot(c, si["item_id"], si["item_version"])
+            text = views.copy_text(item, si["presented_order"], resp, revealed)
+        return JSONResponse({"text": text, "revealed": revealed}, headers={"Cache-Control": "no-store"})
+
     @app.get("/media/audio/{rid}")
     def media_audio(rid: str):
         p = ctx.audio_path(rid)

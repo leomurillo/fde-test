@@ -27,6 +27,12 @@ Runner shortcuts: `1`–`6` select options, `Enter` submits (and goes to the nex
 `F` flags, `Ctrl+Enter` submits from a text box, `Ctrl+'` runs SQL/code. You can skip items and come back to
 them before finishing; reopening a test resumes at the first item you have not reached.
 
+**Copy as text.** The **Copy** button next to Feedback (on every runner item and on the results page) copies the
+item as Markdown to paste into an AI chat: `id vN · subtopic · type`, the stem, and the options lettered A, B, C…
+in the order you saw them. Before the answer is revealed it contains only the question; after the reveal
+(real-time mode after you submit, or the results page) it also has your answer, the correct answer, the per-option
+reasons and the explanation. It never contains your email or any id other than the item id and version.
+
 **Ending a test.** The runner header has an **End test** menu with *Finish and see results* (it asks first if
 items are unanswered, which score zero) and *Abandon test*. The dashboard shows a **Test in progress** card
 with *Resume test* and *Abandon*. Abandoning asks for confirmation and closes the test without a results

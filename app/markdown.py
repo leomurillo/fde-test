@@ -155,3 +155,91 @@ def plain_excerpt(text: str | None, limit: int = 180) -> str:
     t = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", t)
     t = " ".join(t.split())
     return t if len(t) <= limit else t[: limit - 1].rstrip() + "…"
+
+
+def plain(text: str | None) -> str:
+    """Markdown source -> tidy Markdown for pasting elsewhere (e.g. into an AI chat).
+
+    Follows the same line-break rules as `render`: a single newline inside a paragraph is a soft wrap and
+    becomes a space; a trailing backslash or two spaces keeps a line break. Fenced code, tables and
+    headings are kept as written; list items and quotes are unwrapped like paragraphs.
+    """
+    if not text:
+        return ""
+    lines = str(text).replace("\r\n", "\n").split("\n")
+    out: list[str] = []
+    para: list[str] = []
+    i = 0
+
+    def flush_para():
+        if para:
+            buf = ""
+            for n, raw in enumerate(para):
+                seg = raw.rstrip()
+                hard = n < len(para) - 1 and (raw.endswith("  ") or seg.endswith("\\"))
+                if hard and seg.endswith("\\"):
+                    seg = seg[:-1].rstrip()
+                buf += seg + ("\n" if hard else " " if n < len(para) - 1 else "")
+            out.append(buf)
+            para.clear()
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            flush_para()
+            block = [stripped]
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                block.append(lines[i].rstrip())
+                i += 1
+            block.append("```")
+            out.append("\n".join(block))
+            i += 1
+            continue
+        if not stripped:
+            flush_para()
+            i += 1
+            continue
+        if re.match(r"^#{1,6}\s+", stripped):
+            flush_para()
+            out.append(stripped)
+            i += 1
+            continue
+        if "|" in stripped and i + 1 < len(lines) and _TABLE_SEP.match(lines[i + 1]):
+            flush_para()
+            block = [stripped, lines[i + 1].strip()]
+            i += 2
+            while i < len(lines) and "|" in lines[i] and lines[i].strip():
+                block.append(lines[i].strip())
+                i += 1
+            out.append("\n".join(block))
+            continue
+        if stripped.startswith(">"):
+            flush_para()
+            quote = []
+            while i < len(lines) and lines[i].strip().startswith(">"):
+                quote.append(lines[i].strip()[1:].lstrip())
+                i += 1
+            out.append("\n".join("> " + ln if ln else ">" for ln in plain(chr(10).join(quote)).split("\n")))
+            continue
+        m = _LIST_ITEM.match(line)
+        if m and not para:
+            ordered = m.group(2)[0].isdigit()
+            items: list[str] = []
+            while i < len(lines):
+                mm = _LIST_ITEM.match(lines[i])
+                if mm and (mm.group(2)[0].isdigit()) == ordered:
+                    items.append(f"{mm.group(2)} {mm.group(3)}")
+                    i += 1
+                elif items and lines[i].startswith(("  ", "\t")) and lines[i].strip():
+                    items[-1] += " " + lines[i].strip()
+                    i += 1
+                else:
+                    break
+            out.append("\n".join(items))
+            continue
+        para.append(line.lstrip())
+        i += 1
+    flush_para()
+    return "\n\n".join(out)

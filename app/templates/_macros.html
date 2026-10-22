@@ -10,6 +10,14 @@
 </button>
 {%- endmacro %}
 
+{% macro copy_button(session_id, position, cls='btn ghost small') -%}
+<button type="button" class="{{ cls }}" data-copy data-session-id="{{ session_id }}" data-position="{{ position }}"
+  title="Copy this item as text, to paste into an AI chat">
+  <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><rect x="6.5" y="3" width="9" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 6.5v9a1.5 1.5 0 0 0 1.5 1.5H12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  <span data-copy-label aria-live="polite">Copy</span>
+</button>
+{%- endmacro %}
+
 {% macro verdict_badge(v) -%}
 {% set labels = {'correct': 'Correct', 'incorrect': 'Incorrect', 'partial': 'Partly correct', 'ungraded': 'Needs grading', 'skipped': 'Skipped', 'unanswered': 'Not answered'} %}
 <span class="badge v-{{ v }}">{{ labels.get(v, v) }}</span>

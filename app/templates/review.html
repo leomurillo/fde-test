@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import feedback_button, verdict_badge %}
+{% from "_macros.html" import feedback_button, copy_button, verdict_badge %}
 {% block title %}Results{% endblock %}
 {% block content %}
 {% set t = summary.total %}
@@ -49,7 +49,10 @@
           <span>{{ card.item.subtopic_name }}</span>
           <span class="mono">{{ card.si.item_id }}@{{ card.si.item_version }}</span>
         </div>
-        {{ feedback_button(card.si.item_id, card.si.item_version, session.session_id, card.si.position) }}
+        <div class="row">
+          {{ copy_button(session.session_id, card.si.position) }}
+          {{ feedback_button(card.si.item_id, card.si.item_version, session.session_id, card.si.position) }}
+        </div>
       </div>
       <div class="stem prose">{{ card.item.stem|md }}</div>
       {% if card.resp and card.resp.flagged %}<p class="small muted">You flagged this item.</p>{% endif %}

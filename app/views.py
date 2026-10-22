@@ -7,10 +7,12 @@ presented indexes only (original indexes would leak the key when authors list th
 
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 
 from .graders.sql import run_query
+from .markdown import plain
 from .taxonomy import load_taxonomy
 
 TYPE_LABELS = {
@@ -196,3 +198,143 @@ def audio_ext(mime: str | None, filename: str | None) -> str:
 
 AUDIO_MIME = {"webm": "audio/webm", "ogg": "audio/ogg", "m4a": "audio/mp4", "mp3": "audio/mpeg", "wav": "audio/wav",
               "aac": "audio/aac", "flac": "audio/flac"}
+
+
+# ---------------------------------------------------------------- "Copy" button text
+
+COPY_TYPE_LABELS = {
+    "single": "single choice", "multi": "multiple select", "numeric": "numeric", "open": "open text",
+    "audio": "spoken answer", "sql": "SQL", "code": "Python code",
+}
+VERDICT_LABELS = {"correct": "Correct", "incorrect": "Incorrect", "partial": "Partly correct",
+                  "ungraded": "Not graded yet", "skipped": "Skipped", "unanswered": "Not answered"}
+
+
+def _letter(i: int) -> str:
+    return chr(ord("A") + i) if i < 26 else str(i + 1)
+
+
+def _md_table(columns: list, rows: list) -> str:
+    def cell(v) -> str:
+        return ("NULL" if v is None else str(v)).replace("|", "\\|").replace("\n", " ")
+    lines = ["| " + " | ".join(cell(c) for c in columns) + " |", "|" + "|".join(" --- " for _ in columns) + "|"]
+    lines += ["| " + " | ".join(cell(v) for v in r) + " |" for r in rows]
+    return "\n".join(lines)
+
+
+def _fence(body: str, lang: str = "") -> str:
+    return f"```{lang}\n{body.strip(chr(10))}\n```"
+
+
+def _args_text(args: list, kwargs: dict) -> str:
+    bits = [json.dumps(a, ensure_ascii=False) for a in args]
+    bits += [f"{k}={json.dumps(v, ensure_ascii=False)}" for k, v in kwargs.items()]
+    return ", ".join(bits)
+
+
+def copy_text(item: dict, perm: list[int] | None, resp: dict | None, revealed: bool) -> str:
+    """Plain-text / Markdown version of an item for pasting into an AI chat.
+
+    The question part is built from `public_item` (what the runner shows, options in the order this session
+    presented them). The answer key, the user's answer and the explanations are added ONLY when `revealed`;
+    callers decide that from server-side state, so the key never reaches the page before the user answers.
+    Contains no user or installation identifiers, only the item id and version.
+    """
+    pub = public_item(item, perm)
+    t = pub["type"]
+    parts = [f"{pub['id']} v{pub['version']} · {pub['subtopic']} · {COPY_TYPE_LABELS.get(t, t)}",
+             plain(pub["stem"])]
+
+    if t in ("single", "multi"):
+        if t == "multi":
+            parts.append(f"Select all that apply ({pub['n_correct']} correct).")
+        parts.append("\n".join(f"{_letter(o['index'])}. {plain(o['text'])}" for o in pub["options"]))
+    elif t == "numeric":
+        parts.append("Answer with a number" + (f" (unit: {pub['unit']})." if pub["unit"] else "."))
+    elif t == "open":
+        parts.append(f"Written answer, up to {pub['max_chars']} characters.")
+    elif t == "audio":
+        parts.append(f"Spoken answer: {pub['prep_s']} s to prepare, then up to {pub['max_s']} s to answer out loud.")
+    elif t == "sql":
+        for tb in pub["tables"]:
+            block = f"Table {tb['name']}:\n" + _fence(tb["ddl"], "sql")
+            if tb["columns"]:
+                block += f"\n\nSample rows ({len(tb['rows'])} of {tb['count']}):\n" + _md_table(tb["columns"], tb["rows"])
+            parts.append(block)
+        parts.append("Write a query (SQLite).")
+    elif t == "code":
+        parts.append("Write a Python function (standard library only):\n" + _fence(pub["starter"], "python"))
+        if pub["examples"]:
+            parts.append("Examples:\n" + "\n".join(
+                f"- {pub['function']}({_args_text(e['args'], e['kwargs'])}) -> {json.dumps(e['expected'], ensure_ascii=False)}"
+                for e in pub["examples"]))
+
+    if revealed:
+        parts += _copy_revealed(item, perm, resp)
+    return "\n\n".join(p for p in parts if p).strip() + "\n"
+
+
+def _copy_revealed(item: dict, perm: list[int] | None, resp: dict | None) -> list[str]:
+    rv = reveal(item, perm, resp)
+    t = rv["type"]
+    ans = rv["answer"]
+    skipped = rv["verdict"] in ("skipped", "unanswered")
+    mine = {"skipped": "(skipped)", "unanswered": "(not answered)"}.get(rv["verdict"])
+    parts: list[str] = []
+
+    if t in ("single", "multi"):
+        picked = [(i, o) for i, o in enumerate(rv["options"]) if o["chosen"]]
+        right = [(i, o) for i, o in enumerate(rv["options"]) if o["correct"]]
+        fmt = lambda xs: "; ".join(f"{_letter(i)}. {plain(o['text'])}" for i, o in xs)
+        parts.append(f"My answer: {mine or fmt(picked) or '(nothing selected)'}")
+        parts.append(f"Correct answer: {fmt(right)}")
+        lines = []
+        for i, o in enumerate(rv["options"]):
+            tag = "correct" if o["correct"] else "incorrect"
+            if o["chosen"]:
+                tag += ", my pick"
+            line = f"{_letter(i)}. ({tag}) {plain(o['why'])}"
+            if o["misconception"] and not o["correct"]:
+                line += f" Trap: {plain(o['misconception'])}"
+            lines.append(line)
+        parts.append("Why:\n" + "\n".join(lines))
+    elif t == "numeric":
+        unit = f" {rv['unit']}" if rv["unit"] else ""
+        tol = rv["tolerance"]
+        tol_s = f"{tol * 100:g}%" if rv["tolerance_type"] == "rel" else f"{tol:g}"
+        value = ans.get("value")
+        parts.append(f"My answer: {mine or ('–' if value in (None, '') else f'{value}{unit}')}")
+        parts.append(f"Correct answer: {rv['expected']:g}{unit} (accepted ± {tol_s})")
+        if rv["work"]:
+            parts.append("Worked solution:\n" + plain(rv["work"]))
+    elif t in ("open", "audio"):
+        text = rv["transcript"] or ans.get("text")
+        parts.append("My answer:\n" + text if text and not skipped else f"My answer: {mine or ('(spoken, no transcript)' if t == 'audio' else '(no text)')}")
+        if rv["verdict"] != "skipped":
+            parts.append("Rubric:\n" + "\n".join(
+                f"- {r['criterion']} (max {r['points']}): {plain(r['guidance'])}" for r in rv["rubric"]))
+            crit = rv["criteria"]
+            if crit and not rv["needs_self_grade"]:
+                parts.append("Grader feedback:\n" + "\n".join(
+                    f"- {r['criterion']}: {c.get('points'):g} / {r['points']}" + (f" ({c['justification']})" if c.get("justification") else "")
+                    for r, c in zip(rv["rubric"], crit)))
+            if rv["overall_feedback"]:
+                parts.append(plain(rv["overall_feedback"]))
+        if rv["model_answer"]:
+            parts.append("Model answer:\n" + plain(rv["model_answer"]))
+    elif t == "sql":
+        parts.append("My answer:\n" + _fence(ans["sql"], "sql") if ans.get("sql") and not skipped
+                     else f"My answer: {mine or '(empty)'}")
+        parts.append("Correct answer (reference query):\n" + _fence(rv["reference"], "sql"))
+    elif t == "code":
+        parts.append("My answer:\n" + _fence(ans["code"], "python") if ans.get("code") and not skipped
+                     else f"My answer: {mine or '(empty)'}")
+        if rv["total"]:
+            parts.append(f"Hidden tests passed: {rv['passed']} / {rv['total']}")
+        if rv["code_error"]:
+            parts.append("Error:\n" + _fence(rv["code_error"]))
+
+    parts.insert(0, f"Result: {VERDICT_LABELS.get(rv['verdict'], rv['verdict'])}")
+    if rv["explanation"]:
+        parts.append("Explanation:\n" + plain(rv["explanation"]))
+    return parts

@@ -218,3 +218,16 @@ def test_end_test_menu_abandons_from_runner_and_dashboard(server, page):
         assert {r[0]: r[1] for r in c.execute("SELECT session_id, status FROM sessions")} == {
             sid: "abandoned", sid2: "abandoned"}
     assert page.errors == []
+
+
+def test_copy_button_fetches_item_text(server, page):
+    base, _ = server
+    sid = new_session(base, "realtime", formats=["single"], length=1)
+    page.goto(f"{base}/s/{sid}/item/1")
+    page.wait_for_selector("[data-copy]")
+    # the clipboard itself is browser/permission dependent, so check the endpoint the button calls and the label
+    with page.expect_response(lambda r: r.url.endswith("/item/1/copy")) as info:
+        page.click("[data-copy]")
+    body = info.value.json()
+    assert body["revealed"] is False and "Correct answer" not in body["text"] and "A. " in body["text"]
+    page.wait_for_function("document.querySelector('[data-copy-label]').textContent !== 'Copy'")

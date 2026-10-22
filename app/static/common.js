@@ -112,6 +112,51 @@
     });
   }
 
+  // ------------------------------------------------------------------ copy item as text (for pasting into an AI chat)
+  // The server builds the text (presented option order; key and explanation only once the item is revealed).
+  function copyViaTextarea(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) { /* fall through */ }
+    ta.remove();
+    if (!ok) throw new Error("Copy is not available in this browser");
+  }
+  async function fetchCopyText(btn) {
+    const res = await fetch(`/api/s/${btn.dataset.sessionId}/item/${btn.dataset.position}/copy`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+    return (await res.json()).text;
+  }
+  async function copyItem(btn) {
+    const label = btn.querySelector("[data-copy-label]");
+    const idle = label.dataset.idle || (label.dataset.idle = label.textContent);
+    let msg = "Copied";
+    try {
+      if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+        // Passing a promise keeps the click's permission while the text is fetched (needed by Safari).
+        const blob = fetchCopyText(btn).then((t) => new Blob([t], { type: "text/plain" }));
+        await navigator.clipboard.write([new ClipboardItem({ "text/plain": blob })]);
+      } else {
+        const text = await fetchCopyText(btn);
+        if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
+        else copyViaTextarea(text);
+      }
+    } catch (_) {
+      try { copyViaTextarea(await fetchCopyText(btn)); } catch (_2) { msg = "Copy failed"; }
+    }
+    label.textContent = msg;
+    clearTimeout(btn._copyTimer);
+    btn._copyTimer = setTimeout(() => { label.textContent = idle; }, 1600);
+  }
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-copy]");
+    if (btn) { e.preventDefault(); copyItem(btn); }
+  });
+
   // ------------------------------------------------------------------ "End test" menu (runner header)
   document.addEventListener("click", (e) => {
     const menu = document.querySelector(".end-menu");

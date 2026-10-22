@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import feedback_button, abandon_form, stale_notice %}
+{% from "_macros.html" import feedback_button, copy_button, abandon_form, stale_notice %}
 {% block title %}Item {{ pos }} of {{ total }}{% endblock %}
 {% block body_class %}runner-page{% endblock %}
 {% block main_class %}container runner-container{% endblock %}
@@ -18,6 +18,7 @@
       <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 17V3m0 1h9l-2 3.5L14 11H5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>Flag</span>
     </button>
     {% endif %}
+    {{ copy_button(session.session_id, pos) }}
     {{ feedback_button(si.item_id, si.item_version, session.session_id, pos) }}
     <details class="end-menu">
       <summary class="btn ghost small" aria-haspopup="menu">End test</summary>
