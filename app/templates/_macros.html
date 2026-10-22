@@ -18,6 +18,18 @@
 </button>
 {%- endmacro %}
 
+{# Downloads feedback.jsonl / feedback.md; with the box ticked the files hold only notes not marked resolved. #}
+{% macro feedback_export(n_open, n_total, only_open=True) -%}
+<form method="get" class="export-form" aria-label="Export feedback">
+  <label class="check">
+    <input type="checkbox" name="show" value="open" {% if only_open %}checked{% endif %}>
+    <span>Only open issues <span class="muted">({{ n_open }} of {{ n_total }})</span></span>
+  </label>
+  <button class="btn" type="submit" formaction="/export/feedback.jsonl">feedback.jsonl</button>
+  <button class="btn" type="submit" formaction="/export/feedback.md">feedback.md</button>
+</form>
+{%- endmacro %}
+
 {% macro verdict_badge(v) -%}
 {% set labels = {'correct': 'Correct', 'incorrect': 'Incorrect', 'partial': 'Partly correct', 'ungraded': 'Needs grading', 'skipped': 'Skipped', 'unanswered': 'Not answered'} %}
 <span class="badge v-{{ v }}">{{ labels.get(v, v) }}</span>

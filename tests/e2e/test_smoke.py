@@ -231,3 +231,65 @@ def test_copy_button_fetches_item_text(server, page):
     body = info.value.json()
     assert body["revealed"] is False and "Correct answer" not in body["text"] and "A. " in body["text"]
     page.wait_for_function("document.querySelector('[data-copy-label]').textContent !== 'Copy'")
+
+
+def test_new_test_form_scope_is_exactly_what_is_ticked(server, page):
+    """Unticking topics must narrow the test. D6-901 is only *tagged* discovery.selection (its own subtopic is
+    agents.when) and D6-906/907 are tagged obs.cost / int.resilience: a tag must never widen the scope."""
+    base, app = server
+    page.goto(f"{base}/new")
+    page.click("[data-scope-none]")
+    page.wait_for_selector("#pv-pool:text-is('0')")
+    assert page.is_disabled("#start-btn")
+
+    def tick(domain, tag):
+        """Expand the domain, tick the subtopic and return the pool preview the page then asked the server for."""
+        page.locator(f"details.tree-domain:has(.domain-check[data-domain={domain}]) > summary > span.muted").click()
+        with page.expect_response(lambda r: r.url.endswith("/api/preview")) as resp:
+            page.check(f"input[name=subtopics][value='{tag}']")
+        return resp.value.json()
+
+    assert tick("D2", "discovery.selection")["pool_size"] == 0  # no item's own subtopic; D6-901 is only tagged
+    assert page.is_disabled("#start-btn") and page.input_value("#preset") == ""
+
+    preview = tick("D6", "agents.state")  # D6-902 and D6-907
+    assert preview["pool_size"] == 2 and preview["count"] == 2
+    page.wait_for_selector("#pv-pool:text-is('2')")
+    page.click("#start-btn")
+    page.wait_for_url("**/s/*/item/1")
+    sid = page.url.split("/s/")[1].split("/")[0]
+    with db(app) as c:
+        ids = {r[0] for r in c.execute("SELECT item_id FROM session_items WHERE session_id=?", (sid,))}
+    assert ids == {"D6-902", "D6-907"}
+    assert page.errors == []
+
+
+def test_feedback_export_can_leave_out_resolved_notes(server, page):
+    base, app = server
+    for text in ("still open", "already fixed"):
+        httpx.post(f"{base}/api/feedback", json={"category": "ui", "text": text}).raise_for_status()
+    with db(app) as c:
+        fixed = c.execute("SELECT feedback_id FROM feedback WHERE text = 'already fixed'").fetchone()[0]
+    httpx.post(f"{base}/feedback/{fixed}/resolve", data={"resolved": "1"}, follow_redirects=False)
+
+    def download(button):
+        with page.expect_download() as d:
+            page.click(f"button:has-text('{button}')")
+        return d.value.suggested_filename, Path(d.value.path()).read_text(encoding="utf-8")
+
+    page.goto(f"{base}/feedback")
+    assert page.is_checked("input[name=show]")
+    name, body = download("feedback.jsonl")
+    assert name == "feedback-open.jsonl" and [json.loads(x)["text"] for x in body.splitlines()] == ["still open"]
+    name, body = download("feedback.md")
+    assert name == "feedback-open.md" and "still open" in body and "already fixed" not in body
+
+    page.uncheck("input[name=show]")
+    name, body = download("feedback.jsonl")
+    assert name == "feedback.jsonl" and len(body.splitlines()) == 2
+
+    page.goto(f"{base}/feedback?show=all")
+    assert not page.is_checked("input[name=show]")
+    page.goto(f"{base}/export")
+    assert page.is_checked("input[name=show]")
+    assert page.errors == []

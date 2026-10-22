@@ -34,17 +34,27 @@ def test_weighting_by_taxonomy():
     assert res.note is None and res.pool_size == 50
 
 
-def test_scope_filter_and_tag_attribution():
+def test_scope_matches_primary_subtopic_only():
     pool = make_pool(3, ["agents.when"]) + [
-        PoolItem("D7-001", 1, "single", "eval.methods", ("agents.state",), 60, 4),   # in scope via tag
+        PoolItem("D7-001", 1, "single", "eval.methods", ("agents.state",), 60, 4),   # tagged in scope: still out
         PoolItem("D7-002", 1, "single", "eval.methods", (), 60, 4),                  # out of scope
         PoolItem("D6-090", 1, "sql", "agents.when", (), 300, 0),                     # format not allowed
     ]
     res = assemble(pool, {}, TAX, Request(["agents.when", "agents.state"], 10, ["single", "multi"], seed=3))
-    ids = {p.item.item_id for p in res.picked}
-    assert "D7-001" in ids and "D7-002" not in ids and "D6-090" not in ids
-    assert next(p for p in res.picked if p.item.item_id == "D7-001").attributed == "agents.state"
-    assert res.pool_size == 4
+    assert {p.item.item_id for p in res.picked} == {"D6-001", "D6-002", "D6-003"}
+    assert res.pool_size == 3
+    assert all(p.attributed == p.item.subtopic for p in res.picked)
+
+
+def test_single_domain_scope_does_not_leak_tagged_items():
+    """A D11-only test must be all D11, however many items from other domains carry a D11 tag."""
+    obs = ["obs.tracing", "obs.troubleshooting", "obs.cost", "obs.slo"]
+    pool = make_pool(4, obs, prefix="D11")
+    pool += [PoolItem(f"D4-{i:03d}", 1, "single", "llm.prompting", (obs[i % 4],), 60, 4) for i in range(30)]
+    for seed in range(25):
+        res = assemble(pool, {}, TAX, Request(obs, 12, ["single"], "random", seed))
+        assert res.pool_size == 16 and len(res.picked) == 12
+        assert {p.item.subtopic for p in res.picked} <= set(obs), seed
 
 
 def test_shortfall_redistributes_and_reports():

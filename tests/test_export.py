@@ -1,4 +1,5 @@
 import json
+import re
 
 from app.export import read_export
 from app.gemini import save_api_key
@@ -64,3 +65,67 @@ def test_feedback_exports(make_client):
     assert item_fb["context"]["position"] == 1
     md = client.get("/export/feedback.md").text
     assert f"## {item_fb['item_id']}@1" in md and "Option 2 is also right" in md and "General (no item)" in md
+
+
+def test_feedback_exports_can_leave_out_resolved_notes(make_client):
+    client = make_client()
+    sid = new_session(client, "realtime", formats=["single"], length=1)
+    client.get(f"/s/{sid}/item/1")
+    fixed = client.post("/api/feedback", json={"category": "wrong_key", "text": "Option 2 is also right",
+                                               "session_id": sid, "position": 1}).json()["feedback_id"]
+    client.post("/api/feedback", json={"category": "typo", "text": "Typo in the stem", "session_id": sid,
+                                       "position": 1})
+    client.post("/api/feedback", json={"category": "ui", "text": "Timer too small"})
+    client.post(f"/feedback/{fixed}/resolve", data={"resolved": "1"})
+
+    # no filter (and any value but "open") still exports every note, resolved or not
+    for url in ("/export/feedback.jsonl", "/export/feedback.jsonl?show=all"):
+        r = client.get(url)
+        assert len(r.text.splitlines()) == 3 and 'filename="feedback.jsonl"' in r.headers["content-disposition"]
+    assert "Option 2 is also right" in client.get("/export/feedback.md").text
+
+    r = client.get("/export/feedback.jsonl?show=open")
+    assert 'filename="feedback-open.jsonl"' in r.headers["content-disposition"]
+    rows = [json.loads(line) for line in r.text.splitlines()]
+    assert {x["text"] for x in rows} == {"Typo in the stem", "Timer too small"}
+    assert all(x["resolved"] == 0 for x in rows)
+    assert next(x for x in rows if x["item_id"])["item"]["stem"]  # still carries the item snapshot
+
+    r = client.get("/export/feedback.md?show=open")
+    assert 'filename="feedback-open.md"' in r.headers["content-disposition"]
+    assert r.text.startswith("# Open item feedback (2 notes)")
+    assert "Typo in the stem" in r.text and "Timer too small" in r.text and "Option 2 is also right" not in r.text
+    assert "Open notes only" in r.text
+    assert "# Open item feedback" not in client.get("/export/feedback.md").text
+
+    # reopening a note brings it back; resolving the rest leaves an empty file
+    client.post(f"/feedback/{fixed}/resolve", data={"resolved": "0"})
+    assert len(client.get("/export/feedback.jsonl?show=open").text.splitlines()) == 3
+    with client.app.state.ctx.conn() as c:
+        c.execute("UPDATE feedback SET resolved = 1")
+        c.commit()
+    assert client.get("/export/feedback.jsonl?show=open").text == ""
+    assert client.get("/export/feedback.md?show=open").text.startswith("# Open item feedback (0 notes)")
+
+    # the full data export is the portability format: it keeps resolved notes
+    data = read_export(client.get("/export/data.zip").content)
+    assert len(data["feedback.jsonl"]) == 3
+
+
+def test_feedback_pages_offer_open_only_export(make_client):
+    client = make_client()
+    client.post("/api/feedback", json={"category": "ui", "text": "one"})
+    done = client.post("/api/feedback", json={"category": "ui", "text": "two"}).json()["feedback_id"]
+    client.post(f"/feedback/{done}/resolve", data={"resolved": "1"})
+
+    def box(url):
+        """The 'Only open issues' checkbox on a page: (present, checked)."""
+        m = re.search(r'<input type="checkbox" name="show" value="open"([^>]*)>', client.get(url).text)
+        return (m is not None, m is not None and "checked" in m.group(1))
+
+    assert box("/feedback") == (True, True)                # Open tab: ticked, so the files match what is listed
+    assert box("/feedback?show=all") == (True, False)      # All tab: unticked
+    assert box("/export") == (True, True)
+    page = client.get("/export").text
+    assert "2 notes (1 open)" in page and "(1 of 2)" in page
+    assert 'formaction="/export/feedback.jsonl"' in page and 'formaction="/export/feedback.md"' in page

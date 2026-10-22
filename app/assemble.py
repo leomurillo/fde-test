@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from .taxonomy import Taxonomy
 
-ASSEMBLER_VERSION = "1"
+ASSEMBLER_VERSION = "2"  # 2: scope matches the primary subtopic only (1 also matched secondary tags)
 
 CHOICE = ("single", "multi")
 HEAVY = ("open", "sql", "code", "audio")
@@ -32,13 +32,9 @@ class PoolItem:
     version: int
     type: str
     subtopic: str
-    tags: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()  # secondary tags: informational, never used to select items
     time_s: int = 60
     n_options: int = 0
-
-    @property
-    def all_tags(self) -> tuple[str, ...]:
-        return (self.subtopic,) + tuple(t for t in self.tags if t != self.subtopic)
 
 
 @dataclass
@@ -173,14 +169,12 @@ def assemble(pool: list[PoolItem], history: dict[str, History], tax: Taxonomy, r
     priority = req.priority if req.priority in PRIORITIES else "unseen_first"
     out = Assembly(requested=req.length)
 
-    # 1. candidates, attributed to primary subtopic if in scope else first in-scope tag
+    # 1. candidates: the item's primary subtopic must be ticked. Secondary tags never widen the scope, so a
+    # test on one domain contains only that domain's items.
     cands: list[tuple[PoolItem, str]] = []
     for it in sorted(pool, key=lambda p: p.item_id):
-        if it.type not in formats:
-            continue
-        attributed = next((t for t in it.all_tags if t in scope_set), None)
-        if attributed:
-            cands.append((it, attributed))
+        if it.type in formats and it.subtopic in scope_set:
+            cands.append((it, it.subtopic))
     out.pool_size = len(cands)
     if not cands or req.length <= 0:
         out.note = "No items match this scope and these formats." if not cands else None

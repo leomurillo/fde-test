@@ -1,4 +1,6 @@
+import html
 import json
+import re
 
 import yaml
 
@@ -279,9 +281,32 @@ def test_new_session_errors_and_preview(make_client):
     with client.app.state.ctx.conn() as c:
         sid = new_session(client, "realtime", length=3)
         s = store.get_session(c, sid)
-    assert s["assembler_version"] == "1" and s["bank_fingerprint"].startswith("sha256:")
+    assert s["assembler_version"] == "2" and s["bank_fingerprint"].startswith("sha256:")
     assert s["taxonomy_version"] == "1" and s["seed"] == 7 and s["installation_id"]
     assert json.loads(s["scope_json"])["formats"] == ALL
+
+
+def test_scope_is_exactly_the_ticked_subtopics(make_client):
+    """Secondary tags never widen a test: D6-901 is tagged discovery.selection, D6-906 obs.cost, D6-907 int.resilience."""
+    client = make_client()
+    only_tags = ["discovery.selection", "obs.cost", "int.resilience"]
+    p = client.post("/api/preview", json={"subtopics": only_tags, "formats": ALL, "length": 5}).json()
+    assert p["pool_size"] == 0 and p["count"] == 0
+    r = client.post("/new", data={"subtopics": only_tags, "formats": ALL, "length": "5"}, follow_redirects=False)
+    assert r.status_code == 303 and "/new?error=" in r.headers["location"]
+
+    scope = ["agents.state", "discovery.selection"]  # D6-902 and D6-907 are agents.state; D6-901 is only tagged
+    p = client.post("/api/preview", json={"subtopics": scope, "formats": ALL, "length": 7}).json()
+    assert p["pool_size"] == 2 and p["count"] == 2
+    sid = new_session(client, "realtime", length=7, subtopics=scope)
+    assert {si["item_id"] for si in session_items(client, sid)} == {"D6-902", "D6-907"}
+
+    # the counts beside each checkbox on the New test form use the same rule
+    page = client.get("/new").text
+    counts = {m.group(1): json.loads(html.unescape(m.group(2)))
+              for m in re.finditer(r'name="subtopics" value="([^"]+)"[^>]*data-counts="([^"]*)"', page)}
+    assert counts["agents.patterns"] == {"numeric": 1, "sql": 1}
+    assert counts["obs.cost"] == {} and counts["discovery.selection"] == {}
 
 
 def test_pages_render_and_404s(make_client):

@@ -10,7 +10,7 @@ a later move to adaptive testing (CAT/IRT).
 - **Tests are assembled on demand** from a scope (a preset or any subtopics), a length and a set of formats. Items are drawn in
   proportion to the taxonomy weights; unseen items come first, then the ones you got wrong.
 - **Two modes:** real-time feedback after every item, or exam conditions with a review at the end.
-- **Progress:** seen, never seen, right and wrong, per item and per subtopic. **Feedback:** a 💬 button on every item, exportable to send back
+- **Progress:** seen, never seen, right and wrong, per item and per subtopic. **Feedback:** a 💬 button on every item, exportable (all notes, or only the open ones) to send back
   for item fixes.
 
 ## Quick start

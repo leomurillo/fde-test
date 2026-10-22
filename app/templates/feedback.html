@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import feedback_button %}
+{% from "_macros.html" import feedback_button, feedback_export %}
 {% block title %}Feedback{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -9,8 +9,7 @@
   </div>
   <div class="row wrap">
     {{ feedback_button(label='General feedback', cls='btn') }}
-    <a class="btn" href="/export/feedback.jsonl">feedback.jsonl</a>
-    <a class="btn" href="/export/feedback.md">feedback.md</a>
+    {{ feedback_export(n_open, n_open + n_resolved, only_open=(show != 'all')) }}
   </div>
 </div>
 <nav class="tabs" aria-label="Filter">

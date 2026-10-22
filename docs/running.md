@@ -23,6 +23,11 @@ item priority and the feedback mode:
   option is right or wrong, the explanation, references, and the worked solution / model answer / rubric.
 - **Feedback at the end**: exam conditions; everything is revealed on the results page.
 
+The subtopics you tick are the whole scope. An item is drawn only when its own (primary) subtopic is ticked;
+the secondary tags an item carries never pull it into another subtopic's test, so a test on one domain
+contains only that domain's items. The number beside each subtopic, and the *Pool* figure in the preview,
+count exactly the items you can draw from.
+
 Runner shortcuts: `1`–`6` select options, `Enter` submits (and goes to the next item after a reveal),
 `F` flags, `Ctrl+Enter` submits from a text box, `Ctrl+'` runs SQL/code. You can skip items and come back to
 them before finishing; reopening a test resumes at the first item you have not reached.
@@ -84,10 +89,15 @@ From **Export** (or **Feedback**):
 
 - `feedback.jsonl`: one object per feedback note, with a snapshot of the exact item version it is about,
   ready to paste into an LLM to fix items. `feedback.md` is the same, human readable, grouped by item.
+  Tick **Only open issues** next to the download buttons to leave out the notes you have marked *Resolved*, so a
+  reviewer only sees what is still unaddressed (the files are then named `feedback-open.jsonl` / `feedback-open.md`;
+  by URL: `/export/feedback.jsonl?show=open`). The box starts ticked on the Open tab and on Export, and unticked on
+  the All tab. Mark a note resolved on the Feedback page once its item is fixed.
 - `fde-data-{installation_id}-{date}.zip`: `manifest.json` plus `sessions`, `session_items`, `responses`,
   `events`, `feedback` and `item_versions` as JSONL. Columns stored as JSON (`*_json`) appear decoded
   under the name without the suffix. Audio files are excluded unless you tick the checkbox. This is the
   format meant for pooling data from many installations later (`app.export.read_export` reads it back).
+  It always holds every feedback note, resolved or not.
 
 ## How item versioning works
 

@@ -249,11 +249,11 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
     # ------------------------------------------------------------ new test
 
     def _pool_counts(conn) -> dict[str, dict[str, int]]:
+        """subtopic -> type -> items, by primary subtopic: the same rule assemble() uses to put items in scope."""
         counts: dict[str, dict[str, int]] = {}
         for it in store.pool_items(conn):
-            for tag in it.all_tags:
-                counts.setdefault(tag, {}).setdefault(it.type, 0)
-                counts[tag][it.type] += 1
+            counts.setdefault(it.subtopic, {}).setdefault(it.type, 0)
+            counts[it.subtopic][it.type] += 1
         return counts
 
     @app.get("/new", response_class=HTMLResponse)
@@ -916,23 +916,30 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
         with ctx.conn() as c:
             counts = {t: c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
                       for t in ("sessions", "responses", "events", "feedback", "item_versions")}
+            n_open_feedback = c.execute("SELECT COUNT(*) FROM feedback WHERE resolved = 0").fetchone()[0]
         n_audio = len(list((ctx.data_dir / "audio").glob("*")))
         return page(request, "export.html", nav="export", counts=counts, n_audio=n_audio,
-                    data_dir=str(ctx.data_dir))
+                    n_open_feedback=n_open_feedback, data_dir=str(ctx.data_dir))
+
+    # `?show=open` leaves out notes marked resolved; anything else exports every note.
 
     @app.get("/export/feedback.jsonl")
-    def export_feedback_jsonl():
+    def export_feedback_jsonl(show: str = "all"):
+        only_open = show == "open"
         with ctx.conn() as c:
-            body = feedback_jsonl(c)
+            body = feedback_jsonl(c, only_open)
+        name = "feedback-open.jsonl" if only_open else "feedback.jsonl"
         return Response(body, media_type="application/x-ndjson",
-                        headers={"content-disposition": 'attachment; filename="feedback.jsonl"'})
+                        headers={"content-disposition": f'attachment; filename="{name}"'})
 
     @app.get("/export/feedback.md")
-    def export_feedback_md():
+    def export_feedback_md(show: str = "all"):
+        only_open = show == "open"
         with ctx.conn() as c:
-            body = feedback_md(c)
+            body = feedback_md(c, only_open)
+        name = "feedback-open.md" if only_open else "feedback.md"
         return Response(body, media_type="text/markdown; charset=utf-8",
-                        headers={"content-disposition": 'attachment; filename="feedback.md"'})
+                        headers={"content-disposition": f'attachment; filename="{name}"'})
 
     @app.get("/export/data.zip")
     def export_zip(audio: int = 0):

@@ -82,15 +82,20 @@ invalid items**; never crash. Upsert `item_versions` for unseen `(id, version)`;
 mark ids missing from the bank as `retired`. If an existing `(id, version)` has a different hash than stored,
 log a loud warning and keep the stored snapshot (responses must remain interpretable).
 
-## Test assembly (`assemble.py`, `ASSEMBLER_VERSION = "1"`)
+## Test assembly (`assemble.py`, `ASSEMBLER_VERSION = "2"`)
 
 Input: subtopic tags (from a preset in `bank/scopes/*.yaml` and/or a custom selection), length N,
 allowed formats, priority (`unseen_first` default | `weak_first` | `random`), mode, optional time limit, seed.
 
-1. Candidates: current, non-retired items whose **primary subtopic or any tag** is in scope and whose type is allowed.
-2. Allocate N across in-scope subtopics proportional to taxonomy effective weight (largest remainder). Items are
-   attributed to their primary subtopic if in scope, else to their first in-scope tag. If a subtopic lacks items,
-   redistribute its shortfall by weight; if the whole pool is short, return what exists and say so.
+Version history: **2** matches scope on the primary subtopic only; **1** also pulled in items whose secondary
+`tags` named an in-scope subtopic, so a one-domain test contained items from other domains.
+
+1. Candidates: current, non-retired items whose **primary subtopic** is in scope and whose type is allowed.
+   Secondary `tags` are descriptive and never widen the scope. The subtopic counts on `/new`, the live pool
+   preview and `/progress` all use the same primary-subtopic rule.
+2. Allocate N across in-scope subtopics proportional to taxonomy effective weight (largest remainder). If a
+   subtopic lacks items, redistribute its shortfall by weight; if the whole pool is short, return what exists
+   and say so.
 3. Format mix: if non-choice formats are allowed, aim for CandiTech-like mix: ≈ 70% choice, ≈ 10% numeric,
    ≈ 20% split across open/sql/code/audio (at least one of each allowed heavy format when N ≥ 20). Small N: choice-only
    unless the user only selected heavy formats.
@@ -174,10 +179,14 @@ user's answer and correctness if already revealed). Never blocks the runner (mod
 ## Exports (`/export`)
 
 - `feedback.jsonl` — one object per feedback row, **with a snapshot of the item stem/options** so it can be pasted to
-  an LLM to fix items. Also `feedback.md` (human readable, grouped by item).
+  an LLM to fix items. Also `feedback.md` (human readable, grouped by item). Both take `?show=open` to leave out
+  rows with `resolved = 1` (downloaded as `feedback-open.*`, and `feedback.md` says so in its header); the default
+  is every row. `/feedback` and `/export` offer this as an "Only open issues" checkbox (ticked by default except on
+  the All tab) so a reviewer is not shown points that were already addressed.
 - `fde-data-{installation_id}-{date}.zip` — `manifest.json` (installation_id, schema_version, app_version,
   bank_fingerprint, export time), `sessions.jsonl`, `session_items.jsonl`, `responses.jsonl`, `events.jsonl`,
-  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included). This is the future upload format.
+  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included). This is the future upload format;
+  its `feedback.jsonl` always holds every row, resolved or not.
 - Response rows in exports never contain the API key; audio files are excluded by default (checkbox to include).
 
 ## Quality bar

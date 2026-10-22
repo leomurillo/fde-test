@@ -326,6 +326,8 @@ form[inert] { opacity: .8; }
 .tabs a { padding: .45rem .8rem; text-decoration: none; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
 .feedback-list .resolved { opacity: .65; }
+.export-form { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0; }
+.card .export-form .check { flex-basis: 100%; }
 .feedback-text { margin: .5rem 0 0; white-space: pre-wrap; }
 .problem-list { max-height: 320px; overflow: auto; padding-left: 1.1rem; overflow-wrap: anywhere; }
 

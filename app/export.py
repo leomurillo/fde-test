@@ -56,9 +56,11 @@ def _item_snapshot(conn: sqlite3.Connection, item_id: str | None, version: int |
     return {"version": version, "content_hash": row["content_hash"], "content": loads(row["content_json"])}
 
 
-def feedback_records(conn: sqlite3.Connection) -> list[dict]:
+def feedback_records(conn: sqlite3.Connection, only_open: bool = False) -> list[dict]:
+    """Feedback notes with their item snapshot. `only_open` leaves out the ones marked resolved."""
     out = []
-    for r in conn.execute("SELECT * FROM feedback ORDER BY created_at"):
+    where = "WHERE resolved = 0 " if only_open else ""
+    for r in conn.execute(f"SELECT * FROM feedback {where}ORDER BY created_at"):
         rec = _decode_row(r)
         snap = _item_snapshot(conn, r["item_id"], r["item_version"])
         rec["item"] = snap["content"] if snap else None
@@ -67,17 +69,20 @@ def feedback_records(conn: sqlite3.Connection) -> list[dict]:
     return out
 
 
-def feedback_jsonl(conn: sqlite3.Connection) -> str:
-    return _jsonl(feedback_records(conn))
+def feedback_jsonl(conn: sqlite3.Connection, only_open: bool = False) -> str:
+    return _jsonl(feedback_records(conn, only_open))
 
 
-def feedback_md(conn: sqlite3.Connection) -> str:
-    recs = feedback_records(conn)
+def feedback_md(conn: sqlite3.Connection, only_open: bool = False) -> str:
+    recs = feedback_records(conn, only_open)
     groups: dict[str, list[dict]] = defaultdict(list)
     for r in recs:
         key = f"{r['item_id']}@{r['item_version']}" if r["item_id"] else "General (no item)"
         groups[key].append(r)
-    lines = [f"# Item feedback ({len(recs)} notes)", "", f"Exported {now_iso()}.", ""]
+    title = "Open item feedback" if only_open else "Item feedback"
+    lines = [f"# {title} ({len(recs)} notes)", "", f"Exported {now_iso()}.", ""]
+    if only_open:
+        lines += ["Open notes only: notes already marked resolved are left out.", ""]
     for key in sorted(groups, key=lambda k: (k.startswith("General"), k)):
         rs = groups[key]
         lines += [f"## {key}", ""]
