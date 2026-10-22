@@ -23,6 +23,11 @@ item priority and the feedback mode:
   option is right or wrong, the explanation, references, and the worked solution / model answer / rubric.
 - **Feedback at the end**: exam conditions; everything is revealed on the results page.
 
+The subtopics you tick are the whole scope. An item is drawn only when its own (primary) subtopic is ticked;
+the secondary tags an item carries never pull it into another subtopic's test, so a test on one domain
+contains only that domain's items. The number beside each subtopic, and the *Pool* figure in the preview,
+count exactly the items you can draw from.
+
 Runner shortcuts: `1`–`6` select options, `Enter` submits (and goes to the next item after a reveal),
 `F` flags, `Ctrl+Enter` submits from a text box, `Ctrl+'` runs SQL/code. You can skip items and come back to
 them before finishing; reopening a test resumes at the first item you have not reached.

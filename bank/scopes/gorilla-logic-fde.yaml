@@ -1,5 +1,5 @@
 # Generated from the jd mappings in data/taxonomy.yaml. Items match if their primary
-# subtopic or any secondary tag is listed.
+# subtopic is listed; secondary tags do not widen the scope.
 id: gorilla-logic-fde
 name: 'Gorilla Logic: Senior FDE, AI Platform'
 description: Subtopics mapped to the non-generic requirements of the Gorilla Logic Senior Forward Deployed Engineer (AI Platform)

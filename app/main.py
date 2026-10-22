@@ -249,11 +249,11 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
     # ------------------------------------------------------------ new test
 
     def _pool_counts(conn) -> dict[str, dict[str, int]]:
+        """subtopic -> type -> items, by primary subtopic: the same rule assemble() uses to put items in scope."""
         counts: dict[str, dict[str, int]] = {}
         for it in store.pool_items(conn):
-            for tag in it.all_tags:
-                counts.setdefault(tag, {}).setdefault(it.type, 0)
-                counts[tag][it.type] += 1
+            counts.setdefault(it.subtopic, {}).setdefault(it.type, 0)
+            counts[it.subtopic][it.type] += 1
         return counts
 
     @app.get("/new", response_class=HTMLResponse)
