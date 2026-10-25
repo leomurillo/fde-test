@@ -1,0 +1,406 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D4
+items:
+  - id: D4-101
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What does raising the sampling temperature mainly change?
+    options:
+      - text: How random the token choices are
+        correct: true
+        why: Temperature flattens or sharpens the probability distribution the next token is sampled from.
+      - text: How long the model's answers tend to be
+        why: Length is governed by the prompt and the output-token limit, not temperature.
+        misconception: Higher temperature means longer output
+      - text: How much of the context window the model can use
+        why: The context window is fixed by the model; temperature does not touch it.
+        misconception: Temperature unlocks more context
+      - text: How carefully the model reasons before answering
+        why: Reasoning effort is a separate setting or model behavior; temperature only affects randomness.
+        misconception: Temperature controls reasoning depth
+    explanation: |
+      Temperature scales the logits before sampling: low values make output more deterministic, high values more
+      varied. Even at temperature 0, hosted models are not perfectly deterministic.
+
+  - id: D4-102
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In a chat interface with streaming, which latency figure most affects how fast a reply feels?
+    options:
+      - text: Time to first token
+        correct: true
+        why: With streaming, users start reading as soon as the first tokens arrive.
+      - text: Total time to generate the full reply
+        why: Matters for non-streamed or batch use; with streaming, perceived speed is set by the first tokens.
+        misconception: Users wait for the whole answer either way
+      - text: Requests per minute allowed by the API
+        why: A throughput limit, not the latency a single user feels.
+        misconception: Rate limits are a latency measure
+      - text: The model's maximum context length
+        why: Capacity, not speed.
+        misconception: Bigger context means slower or faster replies by itself
+    explanation: |
+      For interactive use, stream the response and optimize time to first token; total generation time depends
+      mostly on output length.
+
+  - id: D4-103
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    difficulty: 2
+    level: recall
+    time_s: 40
+    stem: |
+      With provider prompt caching, which change stops the cached prefix from being reused?
+    options:
+      - text: Editing text near the start of the prompt
+        correct: true
+        why: The cache matches an identical leading prefix; an early edit changes everything after it.
+      - text: Appending a new user message at the end
+        why: The earlier content is unchanged, so the prefix still matches.
+        misconception: Any change to the request invalidates the cache
+      - text: Lowering the maximum number of output tokens
+        why: Output settings are not part of the cached input prefix.
+        misconception: Generation parameters are part of the cache key
+      - text: Sending the identical request a second time
+        why: An identical request is the best case for a cache hit.
+        misconception: Caches only help on new requests
+    explanation: |
+      Prompt caches reuse the longest identical prefix. Put stable content (instructions, tools, documents) first
+      and volatile content last, and avoid editing early parts of the prompt.
+
+  - id: D4-104
+    version: 1
+    type: single
+    subtopic: llm.fundamentals
+    tags: [obs.cost]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A nightly job classifies 200,000 support tickets with an LLM. Nobody needs the results before morning. What
+      is the cheapest suitable approach?
+    options:
+      - text: Submit the tickets through the provider's batch API
+        correct: true
+        why: Batch APIs trade latency (hours) for a substantial discount and separate rate limits.
+      - text: Stream every response so each one completes sooner
+        why: Streaming improves perceived latency, not cost.
+        misconception: Streaming reduces cost
+      - text: Send them all in parallel at the highest allowed rate
+        why: Finishes sooner at full price and risks rate-limit errors; speed is not needed here.
+        misconception: Parallelism lowers cost
+      - text: Use the largest model so that fewer tickets need a retry
+        why: Raises cost per ticket sharply to solve a problem nobody has measured.
+        misconception: A bigger model is cheaper overall
+    explanation: |
+      When results are not needed interactively, batch processing is usually the cheapest option; combine it with
+      the smallest model that meets the quality bar.
+
+  - id: D4-105
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      You need the model to follow an unusual output format exactly. What usually helps most?
+    options:
+      - text: Add a few examples of the desired output
+        correct: true
+        why: Examples show the format directly and are among the most reliable ways to pin it down.
+      - text: Raise the temperature so it tries other phrasings
+        why: More randomness makes exact formatting less reliable.
+        misconception: Variety helps the model find the right format
+      - text: Repeat the instruction in capital letters
+        why: Emphasis can help a little, but it does not show what the format looks like.
+        misconception: Louder instructions are clearer instructions
+      - text: Ask the model to think step by step first
+        why: Step-by-step reasoning helps with problems to solve, not with copying a format.
+        misconception: Reasoning prompts improve every task
+    explanation: |
+      Few-shot examples are the most direct way to specify an unusual format. Pair them with structured outputs when
+      the format is machine-read.
+
+  - id: D4-106
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    tags: [llm.failure-modes]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A prompt pastes a customer email right after the instructions. The model sometimes answers questions asked in
+      the email instead of summarizing it. What should you change first?
+    options:
+      - text: Put the email in clear tags and say it is content to summarize
+        correct: true
+        why: Delimiters separate data from instructions so the model treats the email as material, not as a request.
+      - text: Place the email above the system instructions in the prompt
+        why: Order alone does not tell the model which text is data; it can make things worse.
+        misconception: Position alone separates data from instructions
+      - text: Set the temperature to zero for consistent behavior
+        why: Makes the confusion more consistent, not less likely.
+        misconception: Determinism fixes instruction confusion
+      - text: Move to a model with a larger context window
+        why: The prompt already fits; the problem is ambiguity, not length.
+        misconception: Bigger context means better instruction following
+    explanation: |
+      Separate instructions from data with delimiters or tags and say what to do with the data. For untrusted
+      content this reduces but does not eliminate injection risk; treat it as untrusted downstream as well.
+
+  - id: D4-107
+    version: 1
+    type: single
+    subtopic: llm.prompting
+    tags: [rag.architecture]
+    difficulty: 2
+    level: analyze
+    time_s: 70
+    stem: |
+      You put a 300-page manual into the prompt. The model supports that length, but answers about facts in the
+      middle of the manual are often wrong. What is the best fix?
+    options:
+      - text: Retrieve the relevant passages and send only those
+        correct: true
+        why: Less, more relevant context avoids the weaker recall models show for material buried in long inputs.
+      - text: Move to a model with an even larger context window
+        why: Length was never the limit; recall inside long contexts is.
+        misconception: More context capacity means better use of context
+      - text: Raise the maximum output tokens for each answer
+        why: Output length does not change how well the model finds facts in the input.
+        misconception: Longer answers are more accurate answers
+      - text: Tell the model to read the entire manual carefully
+        why: Instructions do not fix the model's uneven attention over very long inputs.
+        misconception: Asking for care changes how attention works
+    explanation: |
+      Supporting a long context is not the same as using it well; recall degrades for information in the middle of
+      long inputs. Retrieve and send the passages that matter.
+
+  - id: D4-108
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In standard tool calling, who actually executes the tool?
+    options:
+      - text: Your application, which sends the result back
+        correct: true
+        why: The model only proposes a call with arguments; your code runs it and returns the output.
+      - text: The model, by running code during generation
+        why: The model emits a structured request; it does not execute anything itself.
+        misconception: The model runs tools internally
+      - text: The provider, automatically, for any declared tool
+        why: Client-defined tools are run by the client; providers run only their own built-in tools.
+        misconception: Declaring a tool hands its execution to the provider
+      - text: The end user, after approving each call
+        why: Approval can be added for risky actions, but execution still happens in your application.
+        misconception: Human approval means the human executes
+    explanation: |
+      Tool calling: the model proposes a call, the application validates and executes it, then returns the result to
+      the model. Validation before execution is where guardrails belong.
+
+  - id: D4-109
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A pipeline parses model output as JSON and about 2% of responses fail to parse. What is the most robust fix?
+    options:
+      - text: Use schema-constrained structured output, then validate the fields
+        correct: true
+        why: Constrained decoding guarantees well-formed output; validation still catches wrong values.
+      - text: Add "return only valid JSON" to the prompt in capital letters
+        why: Instructions lower the failure rate but cannot guarantee valid output.
+        misconception: Stronger wording guarantees format
+      - text: Set the temperature to zero for every request
+        why: Makes output more consistent but does not guarantee it parses.
+        misconception: Deterministic output is valid output
+      - text: Retry each failed request until it parses successfully
+        why: Adds cost and latency, and parseable JSON can still have wrong fields.
+        misconception: Retries are a format guarantee
+    explanation: |
+      Prefer JSON-schema structured outputs (constrained decoding) over asking nicely, and validate the parsed values
+      against business rules before use.
+
+  - id: D4-110
+    version: 1
+    type: single
+    subtopic: llm.structured-tools
+    tags: [agents.tools-mcp]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An agent keeps calling `search_orders` when it already has an order ID and should call `get_order`. What
+      helps most?
+    options:
+      - text: Rewrite both descriptions to say when to use each one
+        correct: true
+        why: Tool selection relies on names and descriptions; explicit guidance resolves the overlap.
+      - text: Lower the temperature so that tool choices become consistent
+        why: Consistently picking the wrong tool is not an improvement.
+        misconception: Determinism fixes selection errors
+      - text: Retry with `get_order` whenever search returns many results
+        why: Patches one symptom in code and leaves the confusion in place.
+        misconception: Downstream retries fix upstream ambiguity
+      - text: List the tools in alphabetical order in the request
+        why: Ordering is not what the model uses to decide between overlapping tools.
+        misconception: Tool order controls tool choice
+    explanation: |
+      Write tool definitions the model can use correctly: clear names, and descriptions that say what the tool is
+      for and when to prefer it over similar tools.
+
+  - id: D4-111
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [obs.cost]
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is a model cascade?
+    options:
+      - text: A small model first, with hard cases escalated
+        correct: true
+        why: Most requests are answered cheaply; only low-confidence or failed cases go to the larger model.
+      - text: Several models answering, then a majority vote
+        why: That is ensembling or voting, which raises cost rather than lowering it.
+        misconception: Cascades combine answers from several models
+      - text: A chain of prompts, each using the previous output
+        why: That is prompt chaining, a workflow pattern.
+        misconception: Cascade means a sequence of steps
+      - text: A small model fine-tuned on a large model's outputs
+        why: That is distillation, a training technique.
+        misconception: Cascading is a way of training models
+    explanation: |
+      Cascades (and routing) send easy requests to cheap, fast models and escalate the rest, cutting cost without
+      lowering quality on hard cases.
+
+  - id: D4-112
+    version: 1
+    type: single
+    subtopic: llm.model-selection
+    tags: [rag.architecture]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An assistant must use the client's internal product codes, which change every week. How should it get them?
+    options:
+      - text: Look them up at query time with retrieval or a tool
+        correct: true
+        why: Fresh, exact facts belong in a live lookup, not in model weights.
+      - text: Fine-tune the model on the latest codes every month
+        why: Fine-tuning is slow to refresh, imprecise for exact facts, and always weeks out of date.
+        misconception: Fine-tuning is how a model learns new facts
+      - text: Move to a larger model with broader world knowledge
+        why: No public model knows a client's private, changing codes.
+        misconception: Bigger models know private data
+      - text: Ask the model to flag any code it is unsure about
+        why: Flags some errors but still leaves the model guessing the codes.
+        misconception: Self-reported uncertainty replaces having the data
+    explanation: |
+      Prompting, retrieval, fine-tuning and tools solve different problems. Changing facts come from retrieval or tool
+      lookups; fine-tuning shapes behavior and style.
+
+  - id: D4-113
+    version: 1
+    type: single
+    subtopic: llm.failure-modes
+    tags: [gov.guardrails]
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is indirect prompt injection?
+    options:
+      - text: Instructions hidden in content the model reads
+        correct: true
+        why: Attacks arrive through web pages, files, emails or tool results the model processes.
+      - text: A user typing commands to override the system prompt
+        why: That is direct prompt injection or a jailbreak attempt.
+        misconception: All injection comes from the user's own input
+      - text: Attackers poisoning the model's training data
+        why: That is data poisoning, which happens before deployment.
+        misconception: Injection is a training-time attack
+      - text: The model inventing facts that sound plausible
+        why: That is hallucination, a reliability problem rather than an attack.
+        misconception: Injection is a kind of hallucination
+    explanation: |
+      Indirect injection hides instructions in retrieved or tool-provided content. Treat such content as untrusted
+      and limit what the model can do on its own.
+
+  - id: D4-114
+    version: 1
+    type: single
+    subtopic: llm.failure-modes
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      When users push back with "Are you sure?", an assistant often abandons a correct answer for a wrong one.
+      Which failure mode is this?
+    options:
+      - text: Sycophancy
+        correct: true
+        why: The model shifts its answer to agree with the user rather than with the evidence.
+      - text: Hallucination
+        why: Hallucination is inventing content; here the change is driven by social pressure.
+        misconception: Every wrong answer is a hallucination
+      - text: Knowledge cutoff
+        why: The model knew the correct answer moments earlier.
+        misconception: Wrong answers mean missing knowledge
+      - text: Prompt injection
+        why: The user is not smuggling instructions; they are only expressing doubt.
+        misconception: Any user influence is injection
+    explanation: |
+      Sycophancy is the tendency to agree with the user. Test for it explicitly in evals with pushback turns.
+
+  - id: D4-115
+    version: 1
+    type: single
+    subtopic: llm.failure-modes
+    tags: [eval.gates]
+    difficulty: 2
+    level: evaluate
+    time_s: 70
+    stem: |
+      After moving to a newer version of the same model, a well-tested prompt scores 8 points lower on your
+      evaluation set. What is the best response?
+    options:
+      - text: Adjust the prompt against the eval set, then switch
+        correct: true
+        why: Prompts are tuned to a model's quirks; re-tune and re-run the eval before upgrading production.
+      - text: Ship the upgrade anyway, since newer versions are better overall
+        why: Better on average does not mean better on your task; your eval just showed otherwise.
+        misconception: Newer model versions are improvements on every task
+      - text: Replace the evaluation set, assuming it has gone stale
+        why: Discards the evidence instead of acting on it.
+        misconception: An unwelcome eval result means the eval is wrong
+      - text: Pin the old version for good and stop testing new ones
+        why: Old versions are retired eventually; you need a repeatable upgrade path.
+        misconception: Pinning forever avoids brittleness
+    explanation: |
+      Prompts are brittle across model versions. Re-run evals on every upgrade and re-tune the prompt before the
+      switch; keep the old version pinned until the new one passes.

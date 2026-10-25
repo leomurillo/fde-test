@@ -30,3 +30,13 @@ def test_every_subtopic_is_covered(real_bank):
     tagged = {t for i in items for t in i.tags}
     missing = [s.tag for s in load_taxonomy().subtopics if s.tag not in tagged]
     assert missing == []
+
+
+def test_fast_tier_fits_its_reading_budget(real_bank):
+    """Quick-fire items (time_s <= FAST_MAX_S) leave most of their time for deciding, not reading."""
+    items, _ = real_bank
+    fast = [i for i in items if bank.is_fast(i.data)]
+    too_long = [(i.key, bank.item_words(i.data), i.data["time_s"]) for i in fast
+                if bank.item_words(i.data) > bank.FAST_WORDS_PER_S * i.data["time_s"]]
+    assert too_long == []
+    assert {40, 60, 70} <= {i.data["time_s"] for i in fast}

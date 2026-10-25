@@ -1,0 +1,294 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D9
+items:
+  - id: D9-101
+    version: 1
+    type: single
+    subtopic: int.apis
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Why should a receiver verify a webhook's signature?
+    options:
+      - text: To confirm the sender and that nothing was altered
+        correct: true
+        why: An HMAC or similar signature proves the payload came from the holder of the shared secret, unchanged.
+      - text: To decompress the payload before parsing it
+        why: Signatures have nothing to do with compression.
+        misconception: Signatures encode the payload
+      - text: To make delivery of the event faster
+        why: Verification adds a small cost; it is about trust, not speed.
+        misconception: Verification is a performance step
+      - text: To guarantee that the events arrive in the order sent
+        why: Ordering needs sequence numbers or timestamps, not signatures.
+        misconception: Signed events are ordered events
+    explanation: |
+      Verify webhook signatures (in constant time), then guard against replays and duplicates with timestamps and
+      idempotent processing.
+
+  - id: D9-102
+    version: 1
+    type: single
+    subtopic: int.apis
+    difficulty: 2
+    level: recall
+    time_s: 40
+    stem: |
+      When is cursor-based pagination clearly better than offset pagination?
+    options:
+      - text: When rows are inserted while clients are paging
+        correct: true
+        why: Offsets shift as rows arrive, causing skipped or repeated items; a cursor marks a stable position.
+      - text: When the whole dataset has fewer than 100 rows
+        why: Small datasets hardly need pagination at all.
+        misconception: Cursor pagination is for small data
+      - text: When clients must jump straight to page 50
+        why: Random page access is offset pagination's strength.
+        misconception: Cursors support arbitrary page jumps
+      - text: When every single response has to be cached by a CDN
+        why: Caching is not what distinguishes the two approaches.
+        misconception: Pagination style determines cacheability
+    explanation: |
+      Cursor (keyset) pagination stays consistent and fast on large, changing datasets; offset pagination allows page
+      jumps but drifts when data changes.
+
+  - id: D9-103
+    version: 1
+    type: single
+    subtopic: int.apis
+    tags: [gov.guardrails]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An attacker captures a validly signed webhook request and resends it an hour later. What stops the replay?
+    options:
+      - text: Reject old timestamps and remember processed event IDs
+        correct: true
+        why: The signature is still valid, so freshness and de-duplication are what reject the copy.
+      - text: Verify the signature a second time before processing
+        why: A captured request carries a valid signature, so it passes every time.
+        misconception: Signature checks prevent replays
+      - text: Require HTTPS for every webhook endpoint
+        why: Protects data in transit but does not stop resending a captured request.
+        misconception: TLS prevents replay attacks
+      - text: Return an error status to any sender you do not recognize
+        why: The replay appears to come from the legitimate sender.
+        misconception: Sender identity checks catch replays
+    explanation: |
+      Replay protection: sign a timestamp with the payload, reject requests outside a short window, and store event
+      IDs to drop duplicates.
+
+  - id: D9-104
+    version: 1
+    type: single
+    subtopic: int.async
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      With at-least-once message delivery, consumers must be:
+    options:
+      - text: Idempotent
+        correct: true
+        why: The same message may arrive more than once, so processing it again must have no extra effect.
+      - text: Stateless
+        why: Statelessness does not stop a duplicate from being processed twice.
+        misconception: Stateless means duplicate-safe
+      - text: Single-threaded
+        why: Concurrency is not the issue; duplicates are.
+        misconception: Duplicates come from parallelism
+      - text: Synchronous
+        why: Delivery guarantees apply whether processing is synchronous or not.
+        misconception: Async processing causes duplicates
+    explanation: |
+      Exactly-once delivery is rare in practice; design consumers to be idempotent (deduplicate by message ID or
+      use idempotent writes).
+
+  - id: D9-105
+    version: 1
+    type: single
+    subtopic: int.async
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      One queue message fails every time because its payload is malformed, and its retries delay everything behind
+      it. What should happen to it?
+    options:
+      - text: Move it to a dead-letter queue after a few tries
+        correct: true
+        why: Parks the poison message for inspection and lets the rest of the queue flow.
+      - text: Keep retrying it with exponential backoff and jitter
+        why: A malformed payload will never succeed, however long you wait.
+        misconception: Every failure is transient
+      - text: Add more consumers to work around it
+        why: The message still fails and keeps coming back.
+        misconception: Scaling fixes poison messages
+      - text: Delete the queue and recreate it empty
+        why: Loses every valid message along with the bad one.
+        misconception: Resetting is a safe recovery
+    explanation: |
+      Use dead-letter queues for messages that fail repeatedly, alert on them, and fix or replay them after
+      inspection.
+
+  - id: D9-106
+    version: 1
+    type: single
+    subtopic: int.async
+    tags: [deploy.compute]
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      A document-analysis call takes three to eight minutes. The client's API gateway cuts requests off after 60
+      seconds. What is the best design?
+    options:
+      - text: Run it as a job; return an ID, then notify or poll
+        correct: true
+        why: Long-running work becomes an asynchronous job, so no request has to stay open.
+      - text: Ask the client to raise the gateway timeout to ten minutes
+        why: Fragile, often not allowed, and ties up connections for minutes.
+        misconception: Timeouts should stretch to fit the work
+      - text: Stream partial results back over the same open request
+        why: Streaming keeps the request open, so long jobs can still hit the gateway's limits.
+        misconception: Streaming removes time limits
+      - text: Switch to a smaller model so the call finishes faster
+        why: May cut quality and still may not fit within 60 seconds.
+        misconception: Long jobs are a model-speed problem
+    explanation: |
+      Choose async for long jobs: accept, return a job ID, and report status by polling or callback (webhook).
+
+  - id: D9-107
+    version: 1
+    type: single
+    subtopic: int.resilience
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Why add random jitter to exponential backoff?
+    options:
+      - text: So that clients do not all retry together
+        correct: true
+        why: Spreading retries out avoids synchronized waves that overload a recovering service.
+      - text: So that each retry completes faster
+        why: Jitter changes when a retry happens, not how fast it runs.
+        misconception: Jitter speeds requests up
+      - text: So that retries happen in their original order
+        why: Randomness makes order less predictable, not more.
+        misconception: Jitter preserves ordering
+      - text: So that the total number of retries is capped
+        why: A retry limit does that; jitter only varies the delays.
+        misconception: Jitter limits retries
+    explanation: |
+      Retries with exponential backoff and jitter, plus a retry cap and timeouts, avoid thundering herds against a
+      struggling dependency.
+
+  - id: D9-108
+    version: 1
+    type: single
+    subtopic: int.resilience
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A downstream CRM is down. Every request waits 30 seconds to time out, tying up all of your workers. What helps
+      most?
+    options:
+      - text: A circuit breaker that fails fast while it is down
+        correct: true
+        why: After repeated failures, calls are rejected immediately and probed periodically, freeing workers.
+      - text: Longer timeouts so slow responses can still succeed
+        why: Holds workers even longer against a service that is down.
+        misconception: Patience fixes outages
+      - text: More retries on each failed request to the CRM
+        why: Multiplies the load and the waiting.
+        misconception: Retries fix outages
+      - text: More worker threads to absorb the waiting
+        why: Delays exhaustion slightly while adding pressure on the failing service.
+        misconception: Capacity solves dependency failure
+    explanation: |
+      Circuit breakers stop calling a failing dependency for a while, fail fast, and test recovery with occasional
+      probes; pair them with timeouts and fallbacks.
+
+  - id: D9-109
+    version: 1
+    type: single
+    subtopic: int.resilience
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      The LLM provider behind a customer-support assistant is down. What should the assistant do?
+    options:
+      - text: Hand off to a human queue or a backup model, and say so
+        correct: true
+        why: Graceful degradation keeps customers served and is honest about the reduced service.
+      - text: Keep retrying until the provider comes back
+        why: Leaves customers waiting indefinitely.
+        misconception: Retrying is a fallback
+      - text: Show a generic error page and ask them to come back later today
+        why: Fails the customer when alternatives exist.
+        misconception: Failing loudly is the safe default
+      - text: Serve cached answers to whatever is asked
+        why: Cached answers to different questions can be wrong or misleading.
+        misconception: Any cached answer beats none
+    explanation: |
+      Plan graceful degradation and fallbacks, including to humans, for when a model or dependency is unavailable.
+
+  - id: D9-110
+    version: 1
+    type: single
+    subtopic: int.enterprise-devex
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is an anti-corruption layer in an integration?
+    options:
+      - text: An adapter that maps a legacy model into yours
+        correct: true
+        why: It isolates your design from the legacy system's concepts and quirks.
+      - text: A set of firewall rules around the legacy system
+        why: Network security, not domain translation.
+        misconception: The layer is a security control
+      - text: A library that validates all incoming data fields
+        why: Validation may be part of it, but the defining job is translation between models.
+        misconception: It is just input validation
+      - text: A code review policy for legacy changes
+        why: A process, not an architectural component.
+        misconception: The layer is a team practice
+    explanation: |
+      An anti-corruption layer translates between a legacy or external system's model and your own, so its quirks do
+      not leak into your code.
+
+  - id: D9-111
+    version: 1
+    type: multi
+    subtopic: int.enterprise-devex
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      You are building an integration with a client's Jira Cloud. Which practices fit?
+    options:
+      - text: Back off on rate limits, using the retry headers
+        correct: true
+        why: SaaS APIs enforce rate limits and tell you when to retry.
+      - text: Use webhooks for changes rather than polling every issue
+        correct: true
+        why: Event-driven updates cut load and latency compared with full polling.
+      - text: Use one admin's personal API token for the integration
+        why: Ties the integration to one person and over-privileges it; use an app with scoped OAuth.
+        misconception: A personal token is fine for production
+      - text: Poll the whole project each minute to stay current
+        why: Wastes quota and hits rate limits on large projects.
+        misconception: Frequent polling is the simple safe choice
+      - text: Copy the project's issues into the prompt on each request
+        why: Expensive, slow and exposes more data than needed.
+        misconception: More context is always better
+    explanation: |
+      SaaS integrations: OAuth apps with scoped access, rate-limit handling, and webhooks for change events.

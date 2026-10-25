@@ -8,6 +8,7 @@
  *                     text/numeric/sql/code: editing bursts (1.5 s pauses) after the first burst
  *   focus_losses      transitions from active to inactive (blur or tab hidden)
  *   paste_count, runs (sql/code executions), confidence (1 guess, 2 unsure, 3 sure; optional)
+ *   read_ms           render -> "Done reading" (optional; measures first-reading speed)
  */
 (function () {
   "use strict";
@@ -88,7 +89,7 @@
   // ---------------------------------------------------------------- telemetry state
   const T = {
     t0: performance.now(), firstAt: null, activeMs: 0, activeSince: null, changes: 0, focusLosses: 0,
-    pastes: 0, runs: 0, bursts: 0, burstTimer: null, picks: 0, submitted: false,
+    pastes: 0, runs: 0, bursts: 0, burstTimer: null, picks: 0, submitted: false, readAt: null,
   };
   const isActive = () => document.visibilityState === "visible" && document.hasFocus();
   if (isActive()) T.activeSince = T.t0;
@@ -122,6 +123,7 @@
       paste_count: T.pastes,
       runs: T.runs,
       confidence: conf ? Number(conf.value) : null,
+      read_ms: T.readAt === null ? null : Math.round(T.readAt - T.t0),
     };
   }
   FDE.track("render", { type: C.type, item_id: C.itemId, item_version: C.itemVersion });
@@ -203,6 +205,18 @@
     FDE.track("flag", { flagged });
   }
   if (flagBtn) flagBtn.addEventListener("click", toggleFlag);
+
+  // ---------------------------------------------------------------- done reading
+  const readBtn = $("#read-btn");
+  function doneReading() {
+    if (!readBtn || T.readAt !== null || T.submitted) return;
+    T.readAt = performance.now();
+    const ms = Math.round(T.readAt - T.t0);
+    readBtn.disabled = true;
+    readBtn.textContent = `Read in ${FDE.fmtClock(ms / 1000)}`;
+    FDE.track("read_done", { ms });
+  }
+  if (readBtn) readBtn.addEventListener("click", doneReading);
 
   // ---------------------------------------------------------------- run sql / code
   const runBtn = $("#run-btn");
@@ -370,6 +384,9 @@
     } else if ((e.key === "f" || e.key === "F") && !T.submitted) {
       e.preventDefault();
       toggleFlag();
+    } else if ((e.key === "r" || e.key === "R") && !T.submitted) {
+      e.preventDefault();
+      doneReading();
     }
   });
 

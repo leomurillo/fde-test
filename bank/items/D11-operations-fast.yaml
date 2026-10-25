@@ -1,0 +1,271 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D11
+items:
+  - id: D11-101
+    version: 1
+    type: single
+    subtopic: obs.tracing
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In a distributed trace of an agent run, what is a span?
+    options:
+      - text: One timed operation, such as a model or tool call
+        correct: true
+        why: Spans nest under a trace to show each step's timing, inputs and outcome.
+      - text: The full conversation history of the session
+        why: That is application state, not a tracing unit.
+        misconception: Spans store conversations
+      - text: The log file written by each individual server in the cluster
+        why: Logs are a separate signal; spans are structured operations within a trace.
+        misconception: Spans and log files are the same
+      - text: A metric averaged over each minute of traffic
+        why: That is a time-series metric.
+        misconception: Spans are aggregated metrics
+    explanation: |
+      Traces are trees of spans across model calls, tool calls and services; OpenTelemetry's GenAI conventions name
+      the common attributes.
+
+  - id: D11-102
+    version: 1
+    type: single
+    subtopic: obs.tracing
+    tags: [gov.audit-compliance]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      You need prompts and outputs in your logs for debugging, but they contain customers' personal data. What is
+      the best approach?
+    options:
+      - text: Redact personal data first, and restrict log access
+        correct: true
+        why: Keeps most of the debugging value while protecting personal data.
+      - text: Stop logging prompts and outputs altogether
+        why: Loses the evidence needed to debug and evaluate model behavior.
+        misconception: The only safe log is no log
+      - text: Log everything in plain text, keeping it for a long time
+        why: Creates a store of personal data with little protection.
+        misconception: Debugging needs trump data protection
+      - text: Log only the model name and the latency
+        why: Too little to understand why an answer was wrong.
+        misconception: Metadata is enough to debug LLM behavior
+    explanation: |
+      Log prompts and outputs without leaking PII: redact or tokenize sensitive fields, restrict access and set
+      retention.
+
+  - id: D11-103
+    version: 1
+    type: single
+    subtopic: obs.tracing
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Why pass a correlation ID through every service that handles a request?
+    options:
+      - text: To join the logs and spans of one request
+        correct: true
+        why: One ID lets you follow a request across services and tools.
+      - text: To authenticate calls between the services
+        why: Authentication uses tokens or certificates, not correlation IDs.
+        misconception: Correlation IDs are credentials
+      - text: To rate-limit callers that send too many requests
+        why: Rate limiting keys on clients, not on per-request IDs.
+        misconception: Correlation IDs enforce limits
+      - text: To encrypt the payload between hops
+        why: Encryption is handled by TLS.
+        misconception: IDs provide confidentiality
+    explanation: |
+      Correlation IDs tie together logs, traces and events for one request or run, which makes replay and diagnosis
+      possible.
+
+  - id: D11-104
+    version: 1
+    type: single
+    subtopic: obs.troubleshooting
+    tags: [rag.ingestion]
+    difficulty: 2
+    level: analyze
+    time_s: 60
+    stem: |
+      An assistant works in staging, but in production some users get "I couldn't find any relevant documents".
+      Which layer should you check first?
+    options:
+      - text: Permissions; what those users are allowed to retrieve
+        correct: true
+        why: Production identities and access rights often differ from staging test accounts.
+      - text: The prompt wording used for the final answer-writing step
+        why: The model is reporting that nothing was retrieved; the prompt is downstream.
+        misconception: Answer problems are prompt problems
+      - text: The model version that serves the requests
+        why: The symptom points to retrieval returning nothing, not to the model.
+        misconception: Production issues are model issues
+      - text: The network latency between the services
+        why: Slowness would cause timeouts, not empty results for some users.
+        misconception: Every production issue is performance
+    explanation: |
+      Isolate the layer: network, auth, data, retrieval, prompt, model, tool. Prod differs from staging in data,
+      permissions, config and model version; "only some users" points at permissions.
+
+  - id: D11-105
+    version: 1
+    type: single
+    subtopic: obs.troubleshooting
+    difficulty: 2
+    level: analyze
+    time_s: 70
+    stem: |
+      A failure happens in about 1 of 30 runs with the same input. How should you investigate?
+    options:
+      - text: Compare full traces of failing runs with passing runs
+        correct: true
+        why: Differences between traces show where behavior diverges in a non-deterministic system.
+      - text: Lower the temperature until it stops, then close the ticket
+        why: Hides the symptom without understanding it, and failures may persist at a lower rate.
+        misconception: Lower randomness is a fix
+      - text: Re-run it once, and treat a pass as the fix
+        why: A 1-in-30 failure passes most re-runs anyway.
+        misconception: One passing run proves a fix
+      - text: Switch to a larger model and watch whether it recurs
+        why: Changes many variables at once and teaches nothing about the cause.
+        misconception: Bigger models fix intermittent bugs
+    explanation: |
+      Reproduce non-deterministic failures with repeated runs and full traces, compare failing and passing
+      trajectories, and classify the failure before fixing it.
+
+  - id: D11-106
+    version: 1
+    type: single
+    subtopic: obs.cost
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is the most direct way to attribute LLM spend to each customer?
+    options:
+      - text: Tag each call with the tenant and log its tokens
+        correct: true
+        why: Gives exact per-tenant usage that can be priced and analyzed.
+      - text: Divide the monthly invoice evenly by the number of customers
+        why: Assumes every customer uses the same amount.
+        misconception: Averages are attribution
+      - text: Estimate each share from the customer's seat count
+        why: Seats correlate poorly with token usage.
+        misconception: Seats predict usage
+      - text: Open a separate provider account per region
+        why: Separates regions, not customers.
+        misconception: Accounts by region give per-customer cost
+    explanation: |
+      Cost attribution: record token usage per call with tenant, feature and run identifiers, then aggregate.
+
+  - id: D11-107
+    version: 1
+    type: single
+    subtopic: obs.cost
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      LLM costs doubled after a feature launch, and you notice responses became much longer. What is the cheapest
+      effective lever?
+    options:
+      - text: Cap the output length and ask for concise answers
+        correct: true
+        why: Output tokens drove the increase and usually cost more per token than input.
+      - text: Move to another provider whose pricing is roughly the same
+        why: Similar prices leave the doubled token count unchanged.
+        misconception: Switching vendors fixes usage problems
+      - text: Cache every response for a week and reuse it
+        why: Unique questions rarely match, and stale answers carry risk.
+        misconception: Caching full responses suits open-ended chat
+      - text: Use a larger model that answers more precisely
+        why: Higher price per token works against the goal.
+        misconception: Larger models are cheaper overall
+    explanation: |
+      Cost levers: output-length control, prompt caching, routing and cascades to smaller models, and batching for
+      offline work.
+
+  - id: D11-108
+    version: 1
+    type: single
+    subtopic: obs.cost
+    tags: [gov.approvals]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A bug made an agent loop and spend $2,500 overnight. Which control would have limited the damage most?
+    options:
+      - text: Per-run and daily spend limits that halt the agent
+        correct: true
+        why: A budget circuit breaker stops the run as soon as spending passes the limit.
+      - text: A monthly budget alert that is sent to the whole team by email
+        why: Fires too late and does not stop anything.
+        misconception: Alerts are controls
+      - text: Prompt caching on the agent's system prompt
+        why: Lowers cost per call a little but does not stop a runaway loop.
+        misconception: Cheaper calls contain runaway cost
+      - text: A weekly cost report broken down by feature
+        why: Explains the bill after the fact.
+        misconception: Reporting limits spend
+    explanation: |
+      Budgets with automatic stops (per run, per tenant, per day) contain runaway agents; alerts and reports only
+      describe the damage.
+
+  - id: D11-109
+    version: 1
+    type: single
+    subtopic: obs.slo
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is an error budget?
+    options:
+      - text: The unreliability an SLO allows over a period
+        correct: true
+        why: For a 99.9% target, the remaining 0.1% is the budget for failures and risky changes.
+      - text: Money set aside to pay for incident response
+        why: A financial budget, not a reliability concept.
+        misconception: Error budgets are monetary
+      - text: The number of bugs allowed in each release
+        why: Bug counts are not how SLOs are expressed.
+        misconception: Error budgets count defects
+      - text: The maximum number of retries per request
+        why: A retry policy, not an SLO concept.
+        misconception: Error budgets configure retries
+    explanation: |
+      An error budget is 100% minus the SLO target over a window. When it is spent, reliability work takes priority
+      over new changes.
+
+  - id: D11-110
+    version: 1
+    type: multi
+    subtopic: obs.slo
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      For an AI support assistant, which of these deserve their own SLOs?
+    options:
+      - text: Availability of the assistant
+        correct: true
+        why: Users need it to be up; a classic SLO.
+      - text: Latency, such as time to first token
+        correct: true
+        why: Slow answers hurt the experience even when they are correct.
+      - text: Quality score on sampled production traffic
+        correct: true
+        why: An AI system can be up and fast while giving bad answers.
+      - text: Number of prompt files in the repository
+        why: An internal artifact count, not a user-facing objective.
+        misconception: Code metrics are service objectives
+      - text: The engineering team's sprint velocity
+        why: A delivery metric, not a service objective.
+        misconception: Team metrics belong in SLOs
+    explanation: |
+      AI systems need separate SLOs for availability, latency and quality, with error budgets, alerts and runbooks for
+      each.

@@ -29,7 +29,7 @@ contains only that domain's items. The number beside each subtopic, and the *Poo
 count exactly the items you can draw from.
 
 Runner shortcuts: `1`–`6` select options, `Enter` submits (and goes to the next item after a reveal),
-`F` flags, `Ctrl+Enter` submits from a text box, `Ctrl+'` runs SQL/code. You can skip items and come back to
+`R` marks *Done reading*, `F` flags, `Ctrl+Enter` submits from a text box, `Ctrl+'` runs SQL/code. You can skip items and come back to
 them before finishing; reopening a test resumes at the first item you have not reached.
 
 **Copy as text.** The **Copy** button next to Feedback (on every runner item and on the results page) copies the
@@ -43,6 +43,44 @@ items are unanswered, which score zero) and *Abandon test*. The dashboard shows 
 with *Resume test* and *Abandon*. Abandoning asks for confirmation and closes the test without a results
 page. Answers already given are kept: the test stays under Recent tests marked *Abandoned*, you can still open
 its review, and its answers keep counting in Progress and in exports. Only unanswered items are dropped.
+
+**Done reading.** Press *Done reading* (or `R`) the moment you finish your first read of the question and its
+options. It is optional and only measures: the results page then shows your median first-reading time, your
+reading speed (words of stem and options per minute), and how long you spent deciding after reading, next to how
+many answers fit each item's budget. Use it to tell slow reading apart from slow deciding.
+
+## Modeled tests (loaded from a file)
+
+**Modeled tests** in the top bar loads a test you built by hand: a fixed list of items per part, each part with its
+own clock, run back to back. The file lives on your machine, so a mock of a specific assessment never has to be
+committed to this public repository: keep it outside the clone, or in `private/` (git ignores that folder).
+
+```yaml
+name: Practice run
+mode: end              # end (default): results after the last part · realtime: reveal after every item
+description: optional note shown on the test page
+parts:
+  - title: Part 1
+    time_limit_min: 8  # or time_limit_s; leave out for an untimed part
+    items: [D4-101, D6-105, D2-103]
+  - title: Part 2
+    time_limit_min: 5
+    items: [D7-102, D9-104@1]   # id@version pins a specific version
+```
+
+- The file is checked against the bank when you load it; every problem (unknown or retired id, a version that was
+  never stored, an item used twice, a bad time limit) is listed, and nothing is saved until the file is clean.
+- Items keep the order you list and their versions are pinned at load time; options are shuffled per part.
+- Each part starts when you press *Start* on the test page. Its clock starts on its first item and does not stop;
+  when it runs out, the part ends and unanswered items score zero. You then land back on the test page, ready for
+  the next part, the way a sectioned assessment moves from one section to the next.
+- In `end` mode no answers are revealed, and part reviews stay locked, until the last part is done. The finished
+  test page shows, per part, the time used, score and pace (including how many answers fit the part's time per
+  item), with links to each part's review.
+- Abandoning a part abandons the whole test; answers already given are kept.
+- Fast-tier items (ids `-101` and up, `time_s` 40, 60 or 70) are the natural building blocks for timed
+  multiple-choice parts. In the item browser on **Progress**, never-seen items show only metadata, so you can pick
+  ids without spoiling them.
 
 Spoken items emulate CandiTech's "Video" questions: a preparation countdown, then one take recorded with
 the microphone that stops automatically at the time limit. Without a microphone you get a timed text box
@@ -94,7 +132,7 @@ From **Export** (or **Feedback**):
   by URL: `/export/feedback.jsonl?show=open`). The box starts ticked on the Open tab and on Export, and unticked on
   the All tab. Mark a note resolved on the Feedback page once its item is fixed.
 - `fde-data-{installation_id}-{date}.zip`: `manifest.json` plus `sessions`, `session_items`, `responses`,
-  `events`, `feedback` and `item_versions` as JSONL. Columns stored as JSON (`*_json`) appear decoded
+  `events`, `feedback`, `item_versions` and `plans` (modeled tests) as JSONL. Columns stored as JSON (`*_json`) appear decoded
   under the name without the suffix. Audio files are excluded unless you tick the checkbox. This is the
   format meant for pooling data from many installations later (`app.export.read_export` reads it back).
   It always holds every feedback note, resolved or not.
@@ -124,12 +162,13 @@ From **Export** (or **Feedback**):
 
 ## What is measured (for later CAT/IRT calibration)
 
-Per response: time to first interaction, time to submit, active time (page visible and focused),
+Per response: time to first interaction, time to submit, first-reading time (*Done reading*, optional), active
+time (page visible and focused),
 answer changes, focus losses, pastes, SQL/code runs, optional confidence (guess / unsure / sure),
 flag and skip, plus server-side `presented_at` / `submitted_at` timestamps. Answer changes count
 re-selections for single choice, de-selections for multiple select, and editing bursts separated by
 1.5 s pauses for typed answers. Raw events (`render`, `select`, `input` with length only, `paste`, `blur`,
-`visibility`, `run_sql`, `audio_start`, `reveal`, …) are batched to the `events` table every 5 s.
+`visibility`, `run_sql`, `audio_start`, `reveal`, `read_done`, …) are batched to the `events` table every 5 s.
 
 ## Progress
 

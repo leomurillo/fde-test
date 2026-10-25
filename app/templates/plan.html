@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pace_table %}
+{% block title %}{{ plan.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ plan.name }}</h1>
+    <p class="muted">{{ plan.parts|length }} part{{ '' if plan.parts|length == 1 else 's' }} · {{ plan.n_items }} items{% if plan.time_limit_s %} · {{ plan.time_limit_s|dur }} in total{% endif %} · {{ 'Feedback at the end' if plan.mode == 'end' else 'Real-time feedback' }}{% if plan.status == 'abandoned' %} · abandoned{% endif %}</p>
+  </div>
+  <div class="row"><a class="btn" href="/plans">All modeled tests</a></div>
+</div>
+{% if plan.spec.description %}<p>{{ plan.spec.description }}</p>{% endif %}
+
+{% if plan.current %}
+{% set nxt = plan.current %}
+<section class="card resume-card stack" aria-label="Next part">
+  <h2>{{ 'Continue' if nxt.status == 'in_progress' else 'Next' }}: {{ nxt.title }}</h2>
+  <p>{{ nxt.n }} items{% if nxt.time_limit_s %} in <strong>{{ nxt.time_limit_s|dur }}</strong> (about {{ (nxt.time_limit_s / nxt.n)|dur }} per item){% else %}, no time limit{% endif %}.
+    {% if nxt.status == 'not_started' %}The clock starts when the first item opens and does not stop: when it runs out, the part ends and unanswered items score zero.{% endif %}</p>
+  {% if plan.mode == 'end' %}<p class="small muted">Answers and explanations are shown after the last part.</p>{% endif %}
+  <div class="row">
+    <form method="post" action="/m/{{ plan.plan_id }}/start"><button class="btn primary" type="submit" id="start-part">{{ 'Resume' if nxt.status == 'in_progress' else 'Start' }} {{ nxt.title }}</button></form>
+    <form method="post" action="/m/{{ plan.plan_id }}/abandon" onsubmit="return confirm('Abandon this modeled test? Answers already given are kept.')"><button class="btn ghost" type="submit">Abandon test</button></form>
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>Parts</h2>
+  <table class="data compact">
+    <thead><tr><th>Part</th><th class="num">Items</th><th class="num">Time limit</th><th>Status</th>{% if plan.done %}<th class="num">Time used</th><th class="num">Answered</th><th class="num">Correct</th><th class="num">Score</th><th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for p in plan.parts %}
+      {% set sm = p.summary %}
+      <tr>
+        <td>{{ p.title }}</td>
+        <td class="num">{{ p.n }}</td>
+        <td class="num">{{ p.time_limit_s|dur if p.time_limit_s else '–' }}</td>
+        <td>{{ {'not_started': 'Not started', 'in_progress': 'In progress', 'finished': 'Done', 'abandoned': 'Abandoned'}[p.status] }}</td>
+        {% if plan.done %}
+        <td class="num">{{ p.used_s|dur if p.used_s is not none else '–' }}</td>
+        <td class="num">{{ (sm.answered ~ ' / ' ~ sm.n) if sm else '–' }}</td>
+        <td class="num">{{ sm.correct if sm else '–' }}</td>
+        <td class="num">{{ ('%.0f%%'|format(sm.score_pct)) if sm else '–' }}</td>
+        <td>{% if p.session_id %}<a href="/s/{{ p.session_id }}/review">Review</a>{% endif %}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if plan.done and pace %}
+<h2 class="section-title">Pace</h2>
+<div class="grid-2">
+  <section class="card">
+    <h3>Whole test</h3>
+    {{ pace_table(pace) }}
+  </section>
+  {% for p in plan.parts if parts_pace.get(p.index) %}
+  <section class="card">
+    <h3>{{ p.title }}</h3>
+    {{ pace_table(parts_pace[p.index]) }}
+  </section>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

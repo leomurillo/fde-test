@@ -1,0 +1,242 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D10
+items:
+  - id: D10-101
+    version: 1
+    type: single
+    subtopic: deploy.compute
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is the main drawback of serverless functions for long-running agent jobs?
+    options:
+      - text: Maximum execution time limits
+        correct: true
+        why: Functions are cut off after a platform limit, while agent runs with slow model calls can take far longer.
+      - text: They cannot serve traffic over HTTPS
+        why: Serverless platforms serve HTTPS routinely.
+        misconception: Serverless lacks basic web features
+      - text: They are unable to call external APIs
+        why: Functions can call external APIs, including model providers.
+        misconception: Serverless is sandboxed from the network
+      - text: Each function requires a dedicated GPU
+        why: Calling a hosted model needs no GPU at all.
+        misconception: Calling an LLM requires local accelerators
+    explanation: |
+      Serverless trade-offs: cold starts and maximum durations versus zero idle cost. Long agent runs fit containers or
+      job platforms, or must be split into resumable steps.
+
+  - id: D10-102
+    version: 1
+    type: single
+    subtopic: deploy.compute
+    tags: [agents.state]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An agent runs jobs that last up to two hours and checkpoint their progress. Which compute fits best?
+    options:
+      - text: Containers on a job platform with no short time limit
+        correct: true
+        why: Long jobs need a runtime that will not cut them off; checkpoints handle restarts.
+      - text: Serverless functions with a fifteen-minute execution limit
+        why: Every job would be killed partway through.
+        misconception: Serverless fits any workload
+      - text: The user's browser tab that started the job
+        why: Closing the tab or sleeping the laptop ends the job.
+        misconception: Client-side execution is a backend
+      - text: The API gateway that receives the request
+        why: Gateways route requests and time out quickly; they do not run jobs.
+        misconception: Gateways are compute
+    explanation: |
+      Pick compute for the workload's duration and state: long-running, checkpointed agent jobs belong on containers
+      or job runners with queues.
+
+  - id: D10-103
+    version: 1
+    type: single
+    subtopic: deploy.compute
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In Kubernetes, what does a Deployment manage?
+    options:
+      - text: Replicas of a pod and how they are rolled out
+        correct: true
+        why: It keeps the desired number of identical pods running and handles rolling updates.
+      - text: The DNS names that external users connect to
+        why: Services and ingress handle naming and routing.
+        misconception: Deployments handle networking
+      - text: The persistent disks attached to workloads
+        why: Persistent volumes and claims manage storage.
+        misconception: Deployments manage storage
+      - text: The physical or virtual machine nodes in the cluster
+        why: Nodes are managed by the cluster or cloud provider.
+        misconception: Deployments provision machines
+    explanation: |
+      Kubernetes basics: pods run containers; Deployments keep replicas running and roll out new versions; Services
+      expose them.
+
+  - id: D10-104
+    version: 1
+    type: single
+    subtopic: deploy.delivery
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is a canary release?
+    options:
+      - text: A small share of traffic goes to the new version first
+        correct: true
+        why: Problems surface on a fraction of users before everyone is exposed.
+      - text: Two full environments, with traffic switched between them
+        why: That is blue/green deployment.
+        misconception: Canary and blue/green are the same
+      - text: A finished feature hidden behind a runtime toggle
+        why: That is a feature flag.
+        misconception: Feature flags are canaries
+      - text: Releases scheduled for quiet weekend hours
+        why: That is a change window, not a rollout strategy.
+        misconception: Timing is the rollout strategy
+    explanation: |
+      Rollout strategies: canary (small share first), blue/green (switch between two environments), feature flags
+      (decouple deploy from release), each with a fast rollback.
+
+  - id: D10-105
+    version: 1
+    type: single
+    subtopic: deploy.delivery
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Someone changed a firewall rule by hand in the cloud console, and the infrastructure-as-code state no longer
+      matches reality. What is this, and the fix?
+    options:
+      - text: Drift; bring the change into code and stop manual edits
+        correct: true
+        why: Code must remain the source of truth, or the next apply silently reverts or conflicts.
+      - text: A tool bug; reinstall the infrastructure-as-code tool
+        why: The tool is reporting a real difference correctly.
+        misconception: Drift is a tooling defect
+      - text: Expected behavior, which the team can safely ignore for now
+        why: Unmanaged changes undermine reproducibility and can be reverted unexpectedly.
+        misconception: Small manual changes are harmless
+      - text: A breach; rotate every credential right away
+        why: A manual change is not evidence of compromise by itself.
+        misconception: Every unexpected change is an attack
+    explanation: |
+      Drift is the gap between code and real infrastructure. Detect it (plan), reconcile it through code, and restrict
+      manual console changes.
+
+  - id: D10-106
+    version: 1
+    type: single
+    subtopic: deploy.delivery
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      You want to deploy new code today but turn a new feature on for one team next week, and off instantly if
+      needed. What do you use?
+    options:
+      - text: A feature flag
+        correct: true
+        why: Separates deploying code from releasing the feature, per audience, with instant off.
+      - text: A blue/green deployment
+        why: Switches all traffic between versions; it does not target one team.
+        misconception: Blue/green targets users
+      - text: An unmerged branch kept aside
+        why: Code that is not deployed cannot be turned on next week without another release.
+        misconception: Branches are a release mechanism
+      - text: A database migration
+        why: Unrelated to controlling feature exposure.
+        misconception: Schema changes gate features
+    explanation: |
+      Feature flags decouple deploy from release and allow targeting and instant rollback without a redeploy.
+
+  - id: D10-107
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [gov.audit-compliance]
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      A bank requires that its data and the running system never leave its own cloud account. Which deployment model
+      fits?
+    options:
+      - text: Deployment in the customer's own cloud (VPC)
+        correct: true
+        why: The vendor's software runs inside the bank's account and network boundary.
+      - text: Multi-tenant SaaS hosted by the vendor
+        why: Data is processed in the vendor's shared environment.
+        misconception: SaaS keeps data in the customer's account
+      - text: Single-tenant SaaS in the vendor's cloud
+        why: Dedicated, but still in the vendor's account.
+        misconception: Single-tenant means customer-hosted
+      - text: A public API with encryption enabled
+        why: Encryption protects data in transit but it still leaves the bank's account.
+        misconception: Encryption equals residency
+    explanation: |
+      Deployment models range from multi-tenant SaaS to single-tenant, customer VPC (bring your own cloud) and
+      on-premises or air-gapped. Data sensitivity drives the choice.
+
+  - id: D10-108
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    tags: [gov.guardrails]
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      An agent runs inside a client's VPC. Security wants to prevent data leaving the network even if the agent is
+      manipulated. Which control is most effective?
+    options:
+      - text: Allow outbound traffic only to the endpoints it needs
+        correct: true
+        why: Egress allowlisting blocks exfiltration at the network layer, whatever the agent is told.
+      - text: Encrypt every data store at rest with managed keys
+        why: Protects stored data from theft, not from a running agent sending it out.
+        misconception: Encryption at rest stops exfiltration
+      - text: Strengthen the system prompt against any manipulation attempts
+        why: Helps, but it is not an enforced boundary.
+        misconception: Prompts are security boundaries
+      - text: Log every outbound request for review afterwards
+        why: Records exfiltration rather than preventing it.
+        misconception: Logging prevents data loss
+    explanation: |
+      Network controls (egress allowlists, private endpoints, exfiltration perimeters) enforce limits that a
+      manipulated agent cannot talk its way around.
+
+  - id: D10-109
+    version: 1
+    type: single
+    subtopic: deploy.models-network
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Traffic from a client's application to the model API must not cross the public internet. What do you use?
+    options:
+      - text: A private endpoint to the provider
+        correct: true
+        why: Routes traffic over the cloud provider's private network instead of the internet.
+      - text: The newest version of TLS
+        why: Encrypts traffic but it still crosses the internet.
+        misconception: TLS changes the network path
+      - text: A VPN for the developers' laptops
+        why: Covers people, not the application's traffic.
+        misconception: Developer VPNs protect production traffic
+      - text: A separate API key for each deployment environment
+        why: Authentication, not network routing.
+        misconception: Keys determine network paths
+    explanation: |
+      Private endpoints (private links) keep service traffic on private networks; combine them with egress controls.

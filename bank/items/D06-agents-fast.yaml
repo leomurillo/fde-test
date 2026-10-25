@@ -1,0 +1,430 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D6
+items:
+  - id: D6-101
+    version: 1
+    type: single
+    subtopic: agents.when
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What distinguishes an agent from an LLM workflow?
+    options:
+      - text: The model decides its own next steps
+        correct: true
+        why: In an agent the model directs the sequence and tool use; a workflow follows a path written in code.
+      - text: It calls a language model at least once
+        why: Workflows call models too; that is not the distinction.
+        misconception: Any LLM-powered system is an agent
+      - text: It runs automatically on a schedule
+        why: Scheduling says when something runs, not who decides the steps.
+        misconception: Automation equals agency
+      - text: It uses more than one model or provider
+        why: Workflows can use many models; agents can use one.
+        misconception: Multiple models make a system agentic
+    explanation: |
+      Workflow: a predefined code path with LLM steps. Agent: the model chooses its own steps and tools in a loop
+      until a stopping condition.
+
+  - id: D6-102
+    version: 1
+    type: single
+    subtopic: agents.when
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      Incoming emails need a reply drafted from one of five templates, and the steps never change. What design fits?
+    options:
+      - text: A fixed workflow with an LLM step to pick the template
+        correct: true
+        why: Only template choice is variable; a fixed path is cheaper, predictable and easy to audit.
+      - text: An autonomous agent with one tool per template
+        why: Adds autonomy and unpredictability to a path that never changes.
+        misconception: Agents are the default for LLM automation
+      - text: A team of agents, one for each template
+        why: Coordination cost with no benefit for a simple choice.
+        misconception: More agents means more reliability
+      - text: Rule-based automation with no model involved
+        why: Free-text emails are exactly the variable input rules handle badly.
+        misconception: Fixed steps mean no model is needed
+    explanation: |
+      Start with the simplest design that works: a workflow, with the model only where the input is genuinely
+      variable.
+
+  - id: D6-103
+    version: 1
+    type: single
+    subtopic: agents.when
+    difficulty: 2
+    level: evaluate
+    time_s: 60
+    stem: |
+      When is an agent most likely worth its extra cost and unpredictability compared with a fixed workflow?
+    options:
+      - text: When the steps needed cannot be known in advance
+        correct: true
+        why: Open-ended tasks with an unknown path are where model-directed steps pay off.
+      - text: When the task is high-volume and highly repetitive
+        why: Repetitive tasks have known paths; a workflow is cheaper and steadier.
+        misconception: Volume justifies autonomy
+      - text: When auditors need every action to be explained
+        why: Auditability favors predefined paths over model-chosen ones.
+        misconception: Agents are more auditable
+      - text: When responses are needed in under one second
+        why: Agent loops add model calls and latency.
+        misconception: Agents are faster
+    explanation: |
+      Choose by predictability of the path, cost of errors, auditability, latency and cost. Add autonomy only when
+      the path genuinely cannot be written down.
+
+  - id: D6-104
+    version: 1
+    type: single
+    subtopic: agents.patterns
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Which description matches the evaluator-optimizer pattern?
+    options:
+      - text: One call drafts, another critiques, and it repeats
+        correct: true
+        why: Generation and evaluation alternate until the output meets the criteria.
+      - text: A router sends each input to a specialized prompt
+        why: That is routing.
+        misconception: Evaluation and routing are the same pattern
+      - text: Subtasks run in parallel and their results are merged
+        why: That is parallelization (sectioning).
+        misconception: Any multi-call pattern is evaluator-optimizer
+      - text: An orchestrator plans the work and assigns it to workers
+        why: That is orchestrator-workers.
+        misconception: Orchestration includes critique by definition
+    explanation: |
+      Composition patterns: prompt chaining, routing, parallelization, orchestrator-workers and evaluator-optimizer.
+      The last fits when clear criteria exist and iteration measurably improves the result.
+
+  - id: D6-105
+    version: 1
+    type: single
+    subtopic: agents.patterns
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      Requests must be sorted into billing, technical or sales, and each kind is handled with its own prompt and
+      tools. Which pattern is this?
+    options:
+      - text: Routing
+        correct: true
+        why: A classification step sends each input to a specialized downstream path.
+      - text: Parallelization by voting
+        why: Voting runs the same task several times; here each input takes one path.
+        misconception: Several paths means parallel execution
+      - text: Prompt chaining
+        why: Chaining runs fixed steps in sequence for every input.
+        misconception: Any multi-step flow is a chain
+      - text: Evaluator-optimizer
+        why: Nothing here critiques and revises an output.
+        misconception: Classification is a form of evaluation
+    explanation: |
+      Routing classifies the input and directs it to a specialized prompt, model or toolset, keeping each path simple.
+
+  - id: D6-106
+    version: 1
+    type: single
+    subtopic: agents.patterns
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An agent sometimes keeps going for 40 or more steps without finishing the task. What should you add first?
+    options:
+      - text: Stopping conditions such as a step or cost limit
+        correct: true
+        why: An agent loop needs explicit limits so runaway runs end and get flagged for review.
+      - text: A larger model that plans its work more carefully
+        why: May loop less, but still has no guaranteed end.
+        misconception: Better models do not need limits
+      - text: More tools, so it finds a way to finish sooner
+        why: More choices usually make selection harder, not loops shorter.
+        misconception: Loops come from missing tools
+      - text: A higher temperature so it breaks out of repetition
+        why: More randomness makes behavior less predictable, not bounded.
+        misconception: Randomness ends loops
+    explanation: |
+      The agent loop (reason, act, observe) needs explicit stopping conditions: success checks, step and budget
+      limits, and a handoff to a human when they trigger.
+
+  - id: D6-107
+    version: 1
+    type: single
+    subtopic: agents.patterns
+    tags: [gov.guardrails]
+    difficulty: 2
+    level: analyze
+    time_s: 70
+    stem: |
+      A content-safety check must rarely miss harmful posts. A single model call catches most but not all of them.
+      Which pattern raises recall most directly?
+    options:
+      - text: Several independent checks in parallel, flag if any fires
+        correct: true
+        why: Voting with an any-flag rule trades some false positives for fewer misses, which is the stated priority.
+      - text: A prompt chain that summarizes each post before checking it
+        why: Summarizing can drop exactly the detail that makes a post harmful.
+        misconception: Pre-processing always improves classification
+      - text: Routing each post to a specialist prompt by its topic
+        why: Helps if misses cluster by topic, but adds no redundancy for the cases one call misses.
+        misconception: Specialization alone fixes recall
+      - text: An orchestrator that splits each post into its sentences
+        why: Loses context across sentences and adds coordination without redundancy.
+        misconception: Decomposition raises detection rates
+    explanation: |
+      Parallelization by voting runs the same check several times or with different prompts; the aggregation rule
+      (any, majority, all) sets the balance between misses and false alarms.
+
+  - id: D6-108
+    version: 1
+    type: single
+    subtopic: agents.tools-mcp
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In the Model Context Protocol, what does an MCP server provide?
+    options:
+      - text: Tools, resources and prompts for host applications
+        correct: true
+        why: Servers expose capabilities; hosts connect to them through MCP clients.
+      - text: The language model that generates the answers
+        why: The model belongs to the host application, not the MCP server.
+        misconception: An MCP server is a model server
+      - text: The chat interface that end users interact with
+        why: The interface is part of the host application.
+        misconception: MCP servers render the UI
+      - text: Training data for fine-tuning the host's model
+        why: MCP connects models to context and actions at run time, not training.
+        misconception: MCP is a data pipeline for training
+    explanation: |
+      MCP architecture: a host application runs MCP clients, each connected to a server that exposes tools,
+      resources and prompts.
+    refs: [https://modelcontextprotocol.io/docs/learn/architecture]
+
+  - id: D6-109
+    version: 1
+    type: single
+    subtopic: agents.tools-mcp
+    difficulty: 2
+    level: recall
+    time_s: 40
+    stem: |
+      Which MCP transport is typically used for a local server that the host launches as a subprocess?
+    options:
+      - text: stdio
+        correct: true
+        why: The host starts the server process and exchanges messages over its stdin and stdout.
+      - text: Streamable HTTP
+        why: Used for remote servers reached over the network.
+        misconception: Every MCP server is a web service
+      - text: Server-sent events only
+        why: SSE was part of the older HTTP transport for remote servers, not local subprocesses.
+        misconception: Local servers stream over SSE
+      - text: gRPC streams
+        why: gRPC is not one of the MCP specification's standard transports.
+        misconception: MCP is built on gRPC
+    explanation: |
+      MCP defines stdio for local servers and Streamable HTTP for remote servers.
+    refs: [https://modelcontextprotocol.io/docs/learn/architecture]
+
+  - id: D6-110
+    version: 1
+    type: single
+    subtopic: agents.tools-mcp
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An agent has access to 60 tools and often picks the wrong one. What is the best fix?
+    options:
+      - text: Expose only the tools that are relevant to each task
+        correct: true
+        why: Fewer, relevant tools make selection easier and save context.
+      - text: Raise the temperature so it explores alternative tools
+        why: More randomness makes wrong picks more likely.
+        misconception: Exploration helps tool choice
+      - text: Add one extra tool that describes all the other tools
+        why: Adds a 61st option and more text without reducing confusion.
+        misconception: A meta-tool simplifies selection
+      - text: Switch to a smaller and faster model for tool calls
+        why: Smaller models usually select tools less accurately.
+        misconception: Smaller models are more decisive
+    explanation: |
+      Too many tools degrade selection. Scope tools per task or agent, keep their names and descriptions distinct,
+      and load more only when needed.
+
+  - id: D6-111
+    version: 1
+    type: single
+    subtopic: agents.tools-mcp
+    tags: [int.apis]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      After a timeout, a retry sometimes runs the `create_refund` tool twice, refunding the customer twice. What is
+      the right fix?
+    options:
+      - text: Require an idempotency key so a repeat has one effect
+        correct: true
+        why: The payment system recognizes the duplicate and returns the first result instead of refunding again.
+      - text: Turn retries off entirely for every tool the agent uses
+        why: Avoids duplicates but turns every transient timeout into a failure.
+        misconception: Retries are the problem, not missing idempotency
+      - text: Instruct the agent never to retry a refund request
+        why: A prompt rule is not enforced, and the timeout may happen below the agent.
+        misconception: Prompt instructions guarantee side-effect safety
+      - text: Reconcile refunds in a nightly batch report
+        why: Finds duplicates after the money has left.
+        misconception: Detection is as good as prevention
+    explanation: |
+      Side-effecting tools must be idempotent: callers send a unique key, and the service performs the action once
+      per key however many times it is called.
+
+  - id: D6-112
+    version: 1
+    type: single
+    subtopic: agents.state
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is context compaction in a long-running agent?
+    options:
+      - text: Summarizing older turns to free up context
+        correct: true
+        why: Replaces earlier history with a summary so the run can continue within the context window.
+      - text: Compressing the model weights to run faster
+        why: That is quantization, a deployment technique.
+        misconception: Compaction is about the model itself
+      - text: Caching the stable prefix of each prompt
+        why: That is prompt caching; it saves cost but does not shrink the context.
+        misconception: Caching reduces context length
+      - text: Dropping the system prompt once a session is long
+        why: Removes the instructions the agent depends on.
+        misconception: Instructions are disposable later in a session
+    explanation: |
+      Short-term memory lives in the context window. Compaction summarizes older history; long-term memory stores
+      facts outside the context and retrieves them when needed.
+
+  - id: D6-113
+    version: 1
+    type: single
+    subtopic: agents.state
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      A contract-review run waits overnight for a manager's approval, and the server restarts at 2 a.m. Which design
+      lets the run continue correctly?
+    options:
+      - text: Checkpoint the state durably and resume at the approval step
+        correct: true
+        why: Durable execution survives restarts and avoids repeating completed, possibly side-effecting steps.
+      - text: Keep the process alive with a much longer request timeout
+        why: Any restart or deployment still kills the in-memory run.
+        misconception: Long timeouts equal durability
+      - text: Rerun the whole review from the start the next morning
+        why: Wastes work and may repeat side effects or ask for approval twice.
+        misconception: Restarting from scratch is safe
+      - text: Keep the state inside the model's context window
+        why: The context exists only for the duration of a call; it is not storage.
+        misconception: The context window is persistent memory
+    explanation: |
+      Long runs need durable execution: persist state at each step (especially before waits such as approvals) and
+      resume from the last checkpoint, with idempotent side effects.
+
+  - id: D6-114
+    version: 1
+    type: single
+    subtopic: agents.multi
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      When does a multi-agent design most often pay off?
+    options:
+      - text: Broad research split into independent parallel parts
+        correct: true
+        why: Parallel breadth is where several agents beat one; each explores separately and results are merged.
+      - text: Short tasks whose steps depend tightly on each other
+        why: Coupled steps suffer from coordination cost and lost context between agents.
+        misconception: Splitting work always helps
+      - text: Writing that must keep one consistent voice
+        why: Several agents tend to produce inconsistent output.
+        misconception: More agents improve coherence
+      - text: Requests that need a single answer in under a second
+        why: Coordination adds latency.
+        misconception: Agents in parallel are always faster
+    explanation: |
+      Multi-agent systems help with parallel breadth and hurt with tightly coupled tasks, where coordination costs and
+      errors compound across handoffs.
+
+  - id: D6-115
+    version: 1
+    type: single
+    subtopic: agents.multi
+    tags: [gov.approvals]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An agent can draft vendor payments and send them. Where should a human approval step go?
+    options:
+      - text: Before sending payments above a risk threshold
+        correct: true
+        why: Puts human attention where an action is costly and hard to reverse, without slowing routine work.
+      - text: Before each draft is written, whatever its amount
+        why: Drafts change nothing; approving them wastes reviewers' time.
+        misconception: Approval belongs on every step
+      - text: After sending, in a weekly review of all payments
+        why: Too late for payments that cannot be reversed.
+        misconception: After-the-fact review is control
+      - text: Nowhere, provided the eval pass rate is high enough
+        why: Rare failures on irreversible, high-value actions still need a gate.
+        misconception: High accuracy removes the need for oversight
+    explanation: |
+      Put human approval where risk, irreversibility and blast radius are high, not on every action. Make the
+      approval a durable, auditable step.
+
+  - id: D6-116
+    version: 1
+    type: multi
+    subtopic: agents.multi
+    difficulty: 2
+    level: analyze
+    time_s: 70
+    stem: |
+      On short, tightly linked tasks, a supervisor with five sub-agents is slower and less accurate than one agent.
+      What are the likely reasons?
+    options:
+      - text: Every handoff adds coordination overhead
+        correct: true
+        why: Extra model calls and messages add latency and cost on each task.
+      - text: Errors compound as work passes between agents
+        correct: true
+        why: A mistake early in the chain is inherited and amplified downstream.
+      - text: The sub-agents cannot call tools in parallel
+        why: Parallel tool use is not what slows a coupled, sequential task.
+        misconception: Parallelism is the bottleneck in coupled tasks
+      - text: The supervisor's model is too large to coordinate well
+        why: Model size is not the cause; the topology is.
+        misconception: Coordination quality depends on model size
+      - text: A single agent is allowed to use more tools
+        why: Tool access can be the same in both designs.
+        misconception: Single agents have more capability
+    explanation: |
+      For coupled tasks, multi-agent topologies add coordination cost and compounding errors. Use them for parallel
+      breadth, not for short sequential work.

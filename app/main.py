@@ -21,7 +21,7 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import __version__, store, views
+from . import __version__, plans, store, views
 from .assemble import ALL_TYPES, PRIORITIES, SECTION_ORDER
 from .bank import BANK_DIR
 from .db import connect, default_data_dir, dumps, get_setting, ms_between, new_id, now_iso, open_db, parse_iso, set_setting
@@ -43,10 +43,10 @@ MAX_AUDIO_BYTES = 25 * 1024 * 1024
 MAX_EVENTS_PER_POST = 500
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 TELEMETRY_INT_FIELDS = ("time_to_first_ms", "time_to_submit_ms", "active_ms", "answer_changes", "focus_losses",
-                        "paste_count", "runs")
+                        "paste_count", "runs", "read_ms")
 EVENT_TYPES = {"render", "select", "deselect", "input", "paste", "blur", "focus", "visibility", "run_sql", "run_code",
                "audio_start", "audio_stop", "flag", "reveal", "feedback_open", "skip", "submit", "confidence",
-               "audio_prep", "audio_fallback", "timeout", "unload"}
+               "audio_prep", "audio_fallback", "timeout", "unload", "read_done"}
 
 
 # ---------------------------------------------------------------- context
@@ -227,6 +227,10 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             raise HTTPException(404, "Session not found")
         return s
 
+    def after_finish_url(s: dict) -> str:
+        """Results page of an ordinary test; the modeled test's page for one of its parts (next part or results)."""
+        return f"/m/{s['plan_id']}" if s.get("plan_id") else f"/s/{s['session_id']}/review"
+
     def time_expired(s: dict) -> bool:
         limit = (s["scope"] or {}).get("time_limit_s")
         if not limit or not s["started_at"]:
@@ -243,8 +247,11 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             resume = next((s for s in recent if s["status"] == "in_progress"), None)
             if resume:
                 resume["stale"] = store.stale_unopened_count(c, resume["session_id"])
+            # a modeled test between two parts has no session in progress, but is still waiting for you
+            active_plans = [p for p in plans.list_plans(c, 5) if p["status"] == "in_progress"]
         prog.pop("status")
-        return page(request, "dashboard.html", nav="home", prog=prog, recent=recent, resume=resume)
+        return page(request, "dashboard.html", nav="home", prog=prog, recent=recent, resume=resume,
+                    active_plans=active_plans)
 
     # ------------------------------------------------------------ new test
 
@@ -341,7 +348,7 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                 return RedirectResponse(f"/s/{sid}/review", status_code=303)
             if time_expired(s):
                 store.finish_session(c, sid)
-                return RedirectResponse(f"/s/{sid}/review", status_code=303)
+                return RedirectResponse(after_finish_url(s), status_code=303)
             items = store.session_items(c, sid)
             if not 1 <= pos <= len(items):
                 raise HTTPException(404, "No such position")
@@ -512,14 +519,14 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                      response_json, correct, score, max_points, points, grader, grader_model, grader_detail_json,
                      presented_at, first_interaction_at, submitted_at, time_to_first_ms, time_to_submit_ms, active_ms,
                      answer_changes, focus_losses, paste_count, runs, confidence, flagged, skipped, mode,
-                     feedback_revealed_at, created_at, superseded)
-                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)""",
+                     feedback_revealed_at, created_at, superseded, read_ms)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)""",
                   (rid, sid, pos, ctx.installation_id, si["item_id"], si["item_version"], dumps(answer),
                    outcome.correct_int, outcome.score, outcome.max_points, outcome.points, outcome.grader,
                    outcome.grader_model, dumps(outcome.detail), presented_at, first_at, submitted_at,
                    tel["time_to_first_ms"], tel["time_to_submit_ms"], tel["active_ms"], tel["answer_changes"],
                    tel["focus_losses"], tel["paste_count"], tel["runs"], tel["confidence"], tel["flagged"],
-                   int(skipped), s["mode"], revealed_at, submitted_at))
+                   int(skipped), s["mode"], revealed_at, submitted_at, tel["read_ms"]))
         if prev is not None:
             c.execute("UPDATE responses SET superseded = 1 WHERE response_id = ?", (prev["response_id"],))
         c.commit()
@@ -672,16 +679,103 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
     @app.post("/s/{sid}/finish")
     def finish(sid: str):
         with ctx.conn() as c:
-            need_session(c, sid)
+            s = need_session(c, sid)
             store.finish_session(c, sid)
-        return RedirectResponse(f"/s/{sid}/review", status_code=303)
+        return RedirectResponse(after_finish_url(s), status_code=303)
 
     @app.post("/s/{sid}/abandon")
     def abandon(sid: str):
         with ctx.conn() as c:
-            need_session(c, sid)
+            s = need_session(c, sid)
+            if s.get("plan_id"):  # one part of a modeled test: the whole test stops
+                plans.abandon_plan(c, s["plan_id"])
             store.finish_session(c, sid, "abandoned")
         return RedirectResponse("/", status_code=303)
+
+    # ------------------------------------------------------------ modeled tests (loaded from a local file)
+
+    @app.get("/plans", response_class=HTMLResponse)
+    def plans_page(request: Request):
+        with ctx.conn() as c:
+            rows = plans.list_plans(c)
+        return page(request, "plans.html", nav="plans", plans=rows, problems=[], source_name=None)
+
+    @app.post("/plans/load")
+    async def plans_load(request: Request):
+        form = await request.form()
+        upload = form.get("file")
+        source_name, text, problems = None, "", []
+        if upload is None or not hasattr(upload, "read"):
+            problems = ["Choose a file first."]
+        else:
+            source_name = upload.filename
+            data = await upload.read(plans.MAX_FILE_BYTES + 1)
+            if len(data) > plans.MAX_FILE_BYTES:
+                problems = ["The file is larger than 1 MB."]
+            else:
+                try:
+                    text = data.decode("utf-8-sig")
+                except UnicodeDecodeError:
+                    problems = ["The file is not UTF-8 text."]
+        with ctx.conn() as c:
+            if not problems:
+                try:
+                    spec = plans.parse_spec(text, c)
+                except plans.PlanError as exc:
+                    problems = exc.problems
+                else:
+                    pid = plans.create_plan(c, spec, ctx.installation_id, source_name)
+                    return RedirectResponse(f"/m/{pid}", status_code=303)
+            rows = plans.list_plans(c)
+        return page(request, "plans.html", status_code=400, nav="plans", plans=rows, problems=problems,
+                    source_name=source_name)
+
+    def need_plan(conn, pid: str) -> dict:
+        p = plans.get_plan(conn, pid) if UUID_RE.match(pid) else None
+        if not p:
+            raise HTTPException(404, "Modeled test not found")
+        return p
+
+    @app.get("/m/{pid}", response_class=HTMLResponse)
+    def plan_page(request: Request, pid: str):
+        with ctx.conn() as c:
+            state = plans.plan_state(c, need_plan(c, pid))
+            pace = parts_pace = None
+            if state["done"]:
+                rows, parts_pace = [], {}
+                for part in state["parts"]:
+                    if not part["session_id"]:
+                        continue
+                    items = store.session_items(c, part["session_id"])
+                    timing = list(store.timing_rows(c, items, store.latest_responses(c, part["session_id"])).values())
+                    slot = part["time_limit_s"] / part["n"] if part["time_limit_s"] else None
+                    parts_pace[part["index"]] = store.pace_summary(timing, slot)
+                    rows += timing
+                pace = store.pace_summary(rows)
+        return page(request, "plan.html", nav="plans", plan=state, pace=pace, parts_pace=parts_pace)
+
+    @app.post("/m/{pid}/start")
+    async def plan_start(request: Request, pid: str):
+        form = await request.form()
+        try:
+            client = json.loads(form.get("client") or "{}")
+        except ValueError:
+            client = {}
+        with ctx.conn() as c:
+            need_plan(c, pid)
+            try:
+                sid = plans.start_next_part(c, pid, ctx.installation_id, ctx.sync_report.fingerprint,
+                                            client if isinstance(client, dict) else {})
+            except ValueError:
+                return RedirectResponse(f"/m/{pid}", status_code=303)
+        return RedirectResponse(f"/s/{sid}", status_code=303)
+
+    @app.post("/m/{pid}/abandon")
+    def plan_abandon(pid: str):
+        with ctx.conn() as c:
+            need_plan(c, pid)
+            plans.abandon_plan(c, pid)
+        return RedirectResponse(f"/m/{pid}", status_code=303)
 
     @app.get("/s/{sid}/review", response_class=HTMLResponse)
     def review(request: Request, sid: str):
@@ -689,6 +783,9 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             s = need_session(c, sid)
             if s["status"] == "in_progress":
                 return RedirectResponse(f"/s/{sid}/end", status_code=303)
+            plan = plans.session_plan(c, s)
+            if plan and plan["mode"] == "end" and plan["status"] == "in_progress":
+                return RedirectResponse(f"/m/{plan['plan_id']}", status_code=303)  # exam conditions until the end
             ts = now_iso()
             c.execute("""UPDATE responses SET feedback_revealed_at = ? WHERE session_id = ? AND skipped = 0
                          AND feedback_revealed_at IS NULL""", (ts, sid))
@@ -696,13 +793,18 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             items = store.session_items(c, sid)
             responses = store.latest_responses(c, sid)
             summary = store.session_summary(c, sid, items, responses)
+            timing = store.timing_rows(c, items, responses)
+            limit = (s["scope"] or {}).get("time_limit_s")
+            pace = store.pace_summary(list(timing.values()), limit / len(items) if limit and items else None)
             cards = []
             for si in items:
                 item = store.snapshot(c, si["item_id"], si["item_version"])
                 resp = responses.get(si["position"])
                 cards.append({"si": si, "item": views.public_item(item, si["presented_order"]), "resp": resp,
+                              "timing": timing.get(si["position"]),
                               "reveal_html": Markup(render_reveal(request, c, si, resp, s))})
-        return page(request, "review.html", nav="run", session=s, summary=summary, cards=cards)
+        return page(request, "review.html", nav="run", session=s, summary=summary, cards=cards, pace=pace,
+                    plan=plan)
 
     @app.get("/api/s/{sid}/item/{pos}/copy")
     def api_copy(sid: str, pos: int):

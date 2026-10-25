@@ -31,7 +31,7 @@ items:
 | `competencies` | | Cross-cutting ids: `x.ai-assisted`, `x.decomposition`, `x.python`, `x.sql`, `x.estimation`, `x.written-comms` |
 | `difficulty` | ✓ | `1` easy · `2` medium · `3` hard (seed for IRT b-parameter) |
 | `level` | ✓ | `recall` · `apply` · `analyze` · `evaluate` |
-| `time_s` | ✓ | Expected seconds for a prepared candidate (MCQ 45–120, numeric 60–180, open 300–600, audio = prep+answer, sql/code 300–900) |
+| `time_s` | ✓ | Expected seconds for a prepared candidate (MCQ 40–120, numeric 60–180, open 300–600, audio = prep+answer, sql/code 300–900). Choice items with `time_s` ≤ 70 are the **fast tier** and must fit a reading budget: stem + options ≤ 1.5 words per second of `time_s` (40 s → 60 words, 60 s → 90, 70 s → 105; `--lint` and a test enforce it). |
 | `stem` | ✓ | Markdown. Scenario-first. For `multi`, do **not** write "select N" — the UI states the count. |
 | `explanation` | ✓* | (*optional for open/audio) Markdown teaching note shown after answering: the principle, why the right answer wins. |
 | `refs` | | List of URLs to primary/mainstream sources. Only URLs you are confident exist. |

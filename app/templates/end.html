@@ -16,7 +16,7 @@
   {% endif %}
   <p class="muted small">Unanswered and skipped items score zero. {% if session.mode == 'end' %}Answers and explanations are shown after you finish.{% endif %}</p>
   <div class="row">
-    <form method="post" action="/s/{{ session.session_id }}/finish"><button class="btn primary" type="submit" id="finish-btn">Finish and see results</button></form>
+    <form method="post" action="/s/{{ session.session_id }}/finish"><button class="btn primary" type="submit" id="finish-btn">{{ 'Finish this part' if session.plan_id else 'Finish and see results' }}</button></form>
     {{ abandon_form(session.session_id, 'Abandon', 'btn ghost') }}
   </div>
 </section>

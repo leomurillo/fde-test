@@ -1,6 +1,7 @@
 import json
 import re
 
+from app.db import SCHEMA_VERSION
 from app.export import read_export
 from app.gemini import save_api_key
 from tests.test_http import new_session, session_items, submit
@@ -24,12 +25,13 @@ def test_export_round_trip(make_client, data_dir):
     data = read_export(r.content)
     m = data["manifest"]
     ctx = client.app.state.ctx
-    assert m["installation_id"] == ctx.installation_id and m["schema_version"] == 1
+    assert m["installation_id"] == ctx.installation_id and m["schema_version"] == SCHEMA_VERSION
     assert m["bank_fingerprint"] == ctx.sync_report.fingerprint and m["audio_included"] is False
     with ctx.conn() as c:
         for name, table in [("sessions.jsonl", "sessions"), ("session_items.jsonl", "session_items"),
                             ("responses.jsonl", "responses"), ("events.jsonl", "events"),
-                            ("feedback.jsonl", "feedback"), ("item_versions.jsonl", "item_versions")]:
+                            ("feedback.jsonl", "feedback"), ("item_versions.jsonl", "item_versions"),
+                            ("plans.jsonl", "plans")]:
             n = c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             assert len(data[name]) == n == m["files"][name], name
         db_resp = {r["response_id"]: dict(r) for r in c.execute("SELECT * FROM responses")}

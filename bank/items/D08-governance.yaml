@@ -96,13 +96,13 @@ items:
       entitled to, or generate per-audience outputs under that audience's permissions.
 
   - id: D8-004
-    version: 1
+    version: 2
     type: single
     subtopic: gov.identity
     tags: [deploy.models-network]
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 80
     stem: |
       A containerized agent service in a client's Kubernetes cluster must read documents from the cloud
       provider's object storage. A teammate suggests downloading a service-account key file and mounting it as

@@ -5,3 +5,4 @@ __pycache__/
 .env
 var/
 .pytest_cache/
+private/

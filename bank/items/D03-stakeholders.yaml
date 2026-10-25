@@ -2,14 +2,14 @@ domain: D3
 items:
   # ---------------------------------------------------------------- comms.tradeoffs
   - id: D3-001
-    version: 1
+    version: 2
     type: single
     subtopic: comms.tradeoffs
     tags: [discovery.environment]
     competencies: [x.written-comms]
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 120
     stem: |
       A pilot will miss its launch date by three weeks because the customer's data-access approval is still pending.
       You are writing the first paragraph of an update to the customer's COO, who reads on a phone between meetings.
@@ -441,13 +441,13 @@ items:
       into the existing workflow and align what managers ask for before reaching for training or mandates.
 
   - id: D3-015
-    version: 1
+    version: 2
     type: single
     subtopic: adoption.change
     tags: [obs.slo]
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 80
     stem: |
       A contact-centre assistant has been given to 900 agents. The team wants one metric that shows whether the launch
       is turning into real use during the first two weeks. Which is the best choice?

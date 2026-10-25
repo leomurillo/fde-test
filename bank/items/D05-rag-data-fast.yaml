@@ -1,0 +1,376 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D5
+items:
+  - id: D5-101
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Why combine keyword (BM25) search with dense vector search?
+    options:
+      - text: Exact terms such as part numbers match reliably
+        correct: true
+        why: Embeddings blur rare exact tokens; keyword search catches them, and fusion keeps both strengths.
+      - text: It removes the need to compute embeddings at all
+        why: Hybrid search uses both; embeddings are still computed.
+        misconception: Hybrid means replacing dense retrieval
+      - text: It makes building the index noticeably faster
+        why: Running two retrievers adds indexing work rather than saving it.
+        misconception: Keyword search is added for speed
+      - text: It reorders the final results by true relevance
+        why: That is the job of a reranker, applied after retrieval.
+        misconception: Keyword search is a reranking step
+    explanation: |
+      Dense retrieval captures meaning; keyword retrieval captures exact tokens (codes, names, IDs). Hybrid search
+      fuses the two lists, for example with reciprocal rank fusion.
+
+  - id: D5-102
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 2
+    level: recall
+    time_s: 40
+    stem: |
+      What does a cross-encoder reranker do in a retrieval pipeline?
+    options:
+      - text: Scores each query and passage together to reorder them
+        correct: true
+        why: Reading the pair jointly is more accurate than comparing separate embeddings, so it is used on a short list.
+      - text: Embeds the documents faster when building the index
+        why: Cross-encoders are slower and do not produce reusable document embeddings.
+        misconception: Rerankers are faster embedders
+      - text: Merges the ranked lists from several retrievers
+        why: That is rank fusion, such as reciprocal rank fusion.
+        misconception: Reranking and fusion are the same step
+      - text: Rewrites the user's query before retrieval starts
+        why: That is query rewriting or expansion, which happens before search.
+        misconception: Rerankers act on the query
+    explanation: |
+      Retrieve a broad candidate set cheaply (dense, keyword or hybrid), then rerank the top candidates with a
+      cross-encoder that scores each query-passage pair.
+
+  - id: D5-103
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Each chunk in your index is a single sentence. Answers keep missing conditions stated in the sentences right
+      after the one that matched. What should you change?
+    options:
+      - text: Use larger or overlapping chunks that keep paragraphs together
+        correct: true
+        why: The missing conditions sit next to the match; chunks need to carry that context.
+      - text: Switch to a larger and more expensive embedding model for the index
+        why: Better embeddings still return one sentence without its neighbors.
+        misconception: Retrieval quality problems are embedding problems
+      - text: Raise top-k to 100 chunks per question
+        why: Adds a lot of unrelated text and still may not include the neighboring sentence.
+        misconception: More chunks always means more context
+      - text: Lower the similarity threshold for retrieved chunks
+        why: Lets in weaker matches rather than the adjacent sentences that hold the conditions.
+        misconception: Looser matching recovers missing context
+    explanation: |
+      Chunking is a trade-off: small chunks match precisely but lose context; larger or overlapping chunks (or
+      returning neighboring chunks) keep related statements together.
+
+  - id: D5-104
+    version: 1
+    type: single
+    subtopic: rag.retrieval
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is HNSW in a vector database?
+    options:
+      - text: An approximate nearest-neighbor index
+        correct: true
+        why: It is a graph-based index that finds near neighbors quickly, giving up a little recall for speed.
+      - text: An exact search that compares every vector
+        why: Exact (brute-force) search is what HNSW avoids for large collections.
+        misconception: Vector databases always search exactly
+      - text: A keyword ranking function for text
+        why: That describes BM25, not a vector index.
+        misconception: HNSW is a lexical method
+      - text: A model that turns text into embeddings
+        why: Embedding models produce the vectors; HNSW indexes them.
+        misconception: The index and the embedding model are the same thing
+    explanation: |
+      Approximate nearest-neighbor indexes such as HNSW trade a small loss of recall for large speed gains; their
+      parameters tune that recall-latency trade-off.
+
+  - id: D5-105
+    version: 1
+    type: single
+    subtopic: rag.ingestion
+    tags: [gov.identity]
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      Users must only see documents they are allowed to open. Where should a RAG system enforce this?
+    options:
+      - text: Filter retrieval by the caller's access rights
+        correct: true
+        why: Restricted text never reaches the model, so it cannot leak into answers.
+      - text: Tell the model not to reveal restricted content
+        why: Instructions can be ignored or bypassed; once text is in the prompt it can leak.
+        misconception: The model can be trusted to enforce access control
+      - text: Remove every restricted document from the index
+        why: Also hides them from the users who are allowed to see them.
+        misconception: Security means excluding sensitive content for everyone
+      - text: Check permissions once, when the index is built
+        why: Permissions change after indexing, and one index serves many users with different rights.
+        misconception: Access can be decided at ingestion time
+    explanation: |
+      Permission-aware retrieval: store ACL metadata with each chunk and filter by the caller's identity at query
+      time, before anything is sent to the model.
+
+  - id: D5-106
+    version: 1
+    type: single
+    subtopic: rag.ingestion
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      An HR assistant quotes a leave policy that was changed last week. The index is rebuilt once a quarter. What
+      is the right fix?
+    options:
+      - text: Re-index documents incrementally when they change
+        correct: true
+        why: Freshness comes from updating the index as sources change, not from waiting for a full rebuild.
+      - text: Tell the model to prefer the most recent documents it sees
+        why: The new policy is not in the index at all, so there is nothing recent to prefer.
+        misconception: Prompting can fix stale data
+      - text: Add a last-updated date to every chunk in the index
+        why: Useful metadata, but the chunks are still the old version.
+        misconception: Metadata alone makes an index fresh
+      - text: Retrieve more chunks for every question that comes in
+        why: More of the old content is still old content.
+        misconception: Retrieval depth fixes freshness
+    explanation: |
+      Plan ingestion for freshness: change detection and incremental indexing, plus removal of superseded versions.
+
+  - id: D5-107
+    version: 1
+    type: single
+    subtopic: rag.ingestion
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Answers about prices are often wrong. You find the PDF parser flattens pricing tables into a stream of
+      numbers. What should you fix?
+    options:
+      - text: Use a layout-aware parser that keeps rows and headers
+        correct: true
+        why: The data is lost at parsing; only a parser that preserves table structure can recover it.
+      - text: Make chunks larger so whole tables stay together
+        why: A larger chunk of scrambled numbers is still scrambled.
+        misconception: Chunk size fixes parsing errors
+      - text: Switch to an embedding model trained on financial text
+        why: Retrieval may find the chunk, but its content still lacks rows and headers.
+        misconception: Better embeddings repair bad text
+      - text: Ask the model to rebuild the table structure itself
+        why: The model would be guessing which number belongs to which row.
+        misconception: The model can reliably reconstruct lost structure
+    explanation: |
+      Garbage in, garbage out: tables and layouts need structure-preserving parsing (or conversion to rows with
+      headers) at ingestion.
+
+  - id: D5-108
+    version: 1
+    type: single
+    subtopic: rag.architecture
+    tags: [data.sql]
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      A user asks for "total sales by region last quarter". The data sits in a warehouse. How should the assistant
+      answer?
+    options:
+      - text: Run a SQL query on the warehouse
+        correct: true
+        why: Aggregations over structured data need an exact query, not text similarity.
+      - text: Embed the sales rows in a vector store and retrieve them
+        why: Similarity search cannot sum thousands of rows correctly.
+        misconception: Every data question is a retrieval problem
+      - text: Paste last quarter's sales report into the prompt
+        why: May be stale or at the wrong grain, and leaves the model to do arithmetic.
+        misconception: Long context replaces querying data
+      - text: Fine-tune a model on the historical sales data
+        why: Fine-tuning does not make a model a reliable store of numbers.
+        misconception: Models can memorize data for exact answers
+    explanation: |
+      Structured data belongs in SQL, reached through a query tool, not in a vector store.
+
+  - id: D5-109
+    version: 1
+    type: single
+    subtopic: rag.architecture
+    difficulty: 2
+    level: evaluate
+    time_s: 70
+    stem: |
+      A support bot needs the company's policy documents, which change monthly, and each customer's live order
+      status. What context strategy fits best?
+    options:
+      - text: Retrieval for the policies, an API call for order status
+        correct: true
+        why: Documents suit retrieval; live, per-customer facts need a real-time lookup.
+      - text: Index both in the vector store and refresh it every night
+        why: Order status changes during the day, and per-customer records do not belong in similarity search.
+        misconception: One vector store can serve all context
+      - text: Fine-tune on the policies, and use retrieval for the orders
+        why: Fine-tuning is a poor way to carry changing facts, and order status is still stale in an index.
+        misconception: Fine-tuning is for knowledge
+      - text: Load every policy and recent order into a long context
+        why: Expensive per request, still stale, and may expose other customers' data.
+        misconception: Long context replaces lookups
+    explanation: |
+      Choose the context source per kind of data: retrieval for document knowledge, tool or API lookups for live or
+      per-user records, SQL for structured aggregates.
+
+  - id: D5-110
+    version: 1
+    type: single
+    subtopic: data.sql
+    difficulty: 2
+    level: recall
+    time_s: 40
+    stem: |
+      What does `WHERE discount <> 0` do with rows whose `discount` is NULL?
+    options:
+      - text: Leaves them out, because the comparison is unknown
+        correct: true
+        why: Any comparison with NULL is unknown, and WHERE keeps only rows that are true.
+      - text: Keeps them, because NULL is not equal to zero
+        why: NULL is not "not equal" to anything; the comparison yields unknown.
+        misconception: NULL behaves like a distinct value
+      - text: Raises an error for each row where it is NULL
+        why: SQL evaluates the comparison as unknown without error.
+        misconception: NULL comparisons are errors
+      - text: Keeps them in some databases and not in others
+        why: Three-valued logic in WHERE is standard SQL behavior.
+        misconception: NULL handling in WHERE is vendor-specific
+    explanation: |
+      SQL uses three-valued logic. To include NULLs, write `discount <> 0 OR discount IS NULL`, or use
+      `COALESCE(discount, 0) <> 0` to exclude them explicitly.
+
+  - id: D5-111
+    version: 1
+    type: single
+    subtopic: data.sql
+    tags: [gov.guardrails]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      You let an LLM write SQL against a client's production database for analysts. Which safeguard matters most?
+    options:
+      - text: A read-only role limited to approved tables
+        correct: true
+        why: Enforced by the database, so even a bad or injected query cannot change data or reach other tables.
+      - text: A prompt rule forbidding UPDATE and DELETE statements
+        why: Instructions can be ignored or bypassed; nothing enforces them.
+        misconception: Prompt rules are access control
+      - text: Logging every generated query for later review
+        why: Useful for audit, but it records damage rather than preventing it.
+        misconception: Detection replaces prevention
+      - text: Using the most capable model available for SQL
+        why: A better model makes fewer mistakes but still can be manipulated.
+        misconception: Model quality is a security control
+    explanation: |
+      Text-to-SQL safeguards belong in the database: read-only roles, approved schemas, row limits and timeouts,
+      plus validation of the generated query.
+
+  - id: D5-112
+    version: 1
+    type: single
+    subtopic: data.sql
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      You need every order listed next to its customer's running total, without collapsing rows. Which SQL feature
+      fits?
+    options:
+      - text: "`SUM(...) OVER (PARTITION BY ... ORDER BY ...)`"
+        correct: true
+        why: A window function computes the running sum per customer while keeping each order row.
+      - text: "`GROUP BY customer_id` with `SUM(amount)`"
+        why: Collapses the orders into one row per customer.
+        misconception: Aggregation keeps detail rows
+      - text: "`SELECT DISTINCT` with `SUM(amount)`"
+        why: DISTINCT removes duplicates; it does not compute running totals.
+        misconception: DISTINCT controls aggregation
+      - text: "A `LEFT JOIN` to the customers table"
+        why: Adds customer columns but no running total.
+        misconception: Joins compute cumulative values
+    explanation: |
+      Window functions aggregate over a frame of related rows without collapsing them; running totals use
+      `SUM() OVER (PARTITION BY ... ORDER BY ...)`.
+
+  - id: D5-113
+    version: 1
+    type: single
+    subtopic: data.modeling
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In a star schema, what does the fact table hold?
+    options:
+      - text: Measurable events, with keys to dimensions
+        correct: true
+        why: Facts are the numeric events (sales, calls) that reference dimension tables.
+      - text: Descriptive attributes such as customer names
+        why: Those live in dimension tables.
+        misconception: Facts are descriptive data
+      - text: Raw, uncleaned copies of the source data
+        why: That is a raw or staging layer of a pipeline.
+        misconception: Fact tables are landing zones
+      - text: Pre-aggregated monthly totals for reports
+        why: Facts are usually stored at a fine grain; aggregates are derived from them.
+        misconception: Facts are summaries
+    explanation: |
+      A star schema has a central fact table of measurable events at a defined grain, joined to dimension tables
+      that describe who, what, where and when.
+
+  - id: D5-114
+    version: 1
+    type: single
+    subtopic: data.modeling
+    tags: [rag.ingestion]
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      An upstream team renamed a column and silently broke your ingestion pipeline. Which measure best prevents
+      this from happening again?
+    options:
+      - text: An agreed schema, checked automatically before their changes ship
+        correct: true
+        why: Breaking changes are caught in the producer's pipeline, before consumers are affected.
+      - text: More retries and longer timeouts in every one of your ingestion jobs
+        why: Retrying cannot fix a column that no longer exists.
+        misconception: Resilience patterns fix schema changes
+      - text: A nightly copy of their tables into your own storage
+        why: The copy inherits the renamed column the next night.
+        misconception: Owning a copy isolates you from upstream changes
+      - text: A request that they email you before changing tables
+        why: Relies on memory and goodwill, and nothing enforces it.
+        misconception: Process agreements prevent breakage without checks
+    explanation: |
+      Agree the schema, quality rules and change process between data producers and consumers, and enforce it with
+      automated checks before changes ship.

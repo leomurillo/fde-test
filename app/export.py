@@ -25,6 +25,7 @@ TABLES = {
     "events.jsonl": "SELECT * FROM events ORDER BY server_ts",
     "feedback.jsonl": "SELECT * FROM feedback ORDER BY created_at",
     "item_versions.jsonl": "SELECT * FROM item_versions ORDER BY item_id, version",
+    "plans.jsonl": "SELECT * FROM plans ORDER BY created_at",
 }
 
 

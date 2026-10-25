@@ -23,7 +23,7 @@
     <details class="end-menu">
       <summary class="btn ghost small" aria-haspopup="menu">End test</summary>
       <div class="menu-panel" role="menu">
-        <form method="post" action="/s/{{ session.session_id }}/finish" class="inline-form"{% if unanswered %} onsubmit="return confirm('{{ unanswered }} item{{ '' if unanswered == 1 else 's' }} not answered will score zero. Finish now?')"{% endif %}><button class="btn ghost small" type="submit" role="menuitem">Finish and see results</button></form>
+        <form method="post" action="/s/{{ session.session_id }}/finish" class="inline-form"{% if unanswered %} onsubmit="return confirm('{{ unanswered }} item{{ '' if unanswered == 1 else 's' }} not answered will score zero. Finish now?')"{% endif %}><button class="btn ghost small" type="submit" role="menuitem">{{ 'Finish this part' if session.plan_id else 'Finish and see results' }}</button></form>
         {{ abandon_form(session.session_id, 'Abandon test') }}
       </div>
     </details>
@@ -168,9 +168,10 @@
     <label class="chip small"><input type="radio" name="confidence" value="3"><span>Sure</span></label>
   </div>
   <div class="actions">
+    {% if item.type != 'audio' %}<button type="button" class="btn ghost" id="read-btn" title="Press when you finish your first read of the question and options (R)">Done reading <kbd>R</kbd></button>{% endif %}
     <button type="button" class="btn ghost" id="skip-btn">Skip for now</button>
     <span class="grow"></span>
-    <span class="small muted kbd-hint">{% if item.type in ('single','multi') %}<kbd>1</kbd>–<kbd>{{ item.options|length }}</kbd> select · {% endif %}<kbd>Enter</kbd> submit · <kbd>F</kbd> flag</span>
+    <span class="small muted kbd-hint">{% if item.type in ('single','multi') %}<kbd>1</kbd>–<kbd>{{ item.options|length }}</kbd> select · {% endif %}<kbd>Enter</kbd> submit · <kbd>R</kbd> read · <kbd>F</kbd> flag</span>
     {% if item.type != 'audio' %}<button type="button" class="btn primary" id="submit-btn">Submit</button>{% endif %}
   </div>
   <p class="form-msg small" id="submit-msg" role="status" aria-live="polite"></p>

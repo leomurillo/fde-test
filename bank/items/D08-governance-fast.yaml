@@ -1,0 +1,373 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D8
+items:
+  - id: D8-101
+    version: 1
+    type: single
+    subtopic: gov.identity
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      An agent acts on behalf of a signed-in user. Its effective permissions should be:
+    options:
+      - text: No broader than that user's own
+        correct: true
+        why: Delegated access keeps the agent from doing anything the user could not do directly.
+      - text: Those of an administrative service account
+        why: Lets any user reach data and actions beyond their own rights through the agent.
+        misconception: Agents need admin rights to be useful
+      - text: Whatever its tools happen to require
+        why: Tool needs should be scoped to the user, not the other way round.
+        misconception: Permissions follow tool design
+      - text: Decided by the model for each request
+        why: Authorization must be enforced by systems, never chosen by the model.
+        misconception: The model can be trusted with access decisions
+    explanation: |
+      Prefer delegated (on-behalf-of) identity so an agent never exceeds the user's permissions, and apply least
+      privilege on top.
+
+  - id: D8-102
+    version: 1
+    type: single
+    subtopic: gov.identity
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What are OAuth 2.0 scopes used for?
+    options:
+      - text: Limiting what an access token may do
+        correct: true
+        why: Scopes restrict a token to specific resources and actions the user consented to.
+      - text: Checking the password the user typed
+        why: OAuth delegates authorization; password checks belong to the identity provider's login.
+        misconception: OAuth scopes authenticate users
+      - text: Encrypting traffic between the client and server
+        why: That is TLS.
+        misconception: Scopes are a transport security feature
+      - text: Identifying which server issued a certificate
+        why: That is the certificate chain in TLS or PKI.
+        misconception: Scopes relate to certificates
+    explanation: |
+      OAuth 2.0 issues tokens limited by scopes; request the narrowest scopes an integration needs.
+
+  - id: D8-103
+    version: 1
+    type: single
+    subtopic: gov.identity
+    tags: [deploy.models-network]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A job running in the client's cloud authenticates with a long-lived API key stored in an environment
+      variable. What is the better practice?
+    options:
+      - text: Use the platform's workload identity and short-lived credentials
+        correct: true
+        why: No stored secret to leak; credentials are issued per workload and expire quickly.
+      - text: Keep the key but rotate it once a year
+        why: A long-lived secret still exists and can leak between rotations.
+        misconception: Rotation alone fixes long-lived secrets
+      - text: Commit the key to the repository in encrypted form
+        why: Spreads the secret further and still relies on a long-lived key.
+        misconception: Encrypting a secret in the repo makes it safe
+      - text: Share a single key across every job so that auditing becomes simpler
+        why: Widens the blast radius and makes audit trails less specific.
+        misconception: Fewer keys means better security
+    explanation: |
+      Replace long-lived keys with workload identity (short-lived, automatically issued credentials) and keep any
+      remaining secrets in a secrets manager.
+
+  - id: D8-104
+    version: 1
+    type: single
+    subtopic: gov.identity
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What does attribute-based access control (ABAC) use to decide access?
+    options:
+      - text: Attributes of the user, resource and context
+        correct: true
+        why: Policies combine properties such as department, data sensitivity and time or location.
+      - text: Only the role assigned to the user
+        why: That is role-based access control (RBAC).
+        misconception: ABAC is another name for RBAC
+      - text: A fixed list of allowed IP addresses
+        why: A network control, not an access-control model.
+        misconception: Network allowlists are access control models
+      - text: The order in which requests arrive
+        why: Access decisions do not depend on arrival order.
+        misconception: Access is first-come, first-served
+    explanation: |
+      RBAC grants by role; ABAC evaluates attributes of subject, resource and context, which suits fine-grained rules.
+
+  - id: D8-105
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      An agent's `send_email` tool may only email approved domains. What should enforce this?
+    options:
+      - text: Application code, before the call runs
+        correct: true
+        why: Validating tool parameters in code before any side effect cannot be talked around by the model.
+      - text: The model, following its instructions
+        why: Instructions can be overridden by injected content or mistakes.
+        misconception: Prompt rules are enforcement
+      - text: The mail server, after the message is sent
+        why: Too late; the message is already out.
+        misconception: Downstream checks prevent harm
+      - text: A weekly audit of the sent mail log
+        why: Detects violations after the fact.
+        misconception: Auditing is prevention
+    explanation: |
+      Validate tool parameters in code before any side effect: allowlists, value ranges and recipient checks belong
+      outside the model.
+
+  - id: D8-106
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [llm.failure-modes]
+    difficulty: 2
+    level: analyze
+    time_s: 60
+    stem: |
+      An agent reads arbitrary web pages and can also send emails for the user. What is the main risk, and the fix?
+    options:
+      - text: Injected page instructions; gate or separate the email tool
+        correct: true
+        why: Untrusted content can steer a model that holds a powerful tool; privilege separation or approval breaks the chain.
+      - text: Invented facts in its replies; add citations to every single answer
+        why: A real issue, but not the main risk of combining untrusted input with an email tool.
+        misconception: Hallucination is the top agent risk
+      - text: High token costs; cache the pages that are read most
+        why: Cost is secondary to data exfiltration through email.
+        misconception: Cost is the main risk of browsing agents
+      - text: Slow pages; add timeouts to every page request
+        why: Reliability, not security.
+        misconception: Timeouts are a security control
+    explanation: |
+      Untrusted content plus a side-effecting tool is the classic injection path. Treat retrieved content as untrusted,
+      separate privileges, and require approval for risky actions.
+
+  - id: D8-107
+    version: 1
+    type: single
+    subtopic: gov.guardrails
+    tags: [gov.audit-compliance]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Support transcripts containing card numbers are sent to a third-party LLM for summaries. What is the best
+      control?
+    options:
+      - text: Redact sensitive data before it leaves your systems
+        correct: true
+        why: Data that never leaves cannot be stored, logged or leaked by the third party.
+      - text: Tell the model not to repeat any card numbers
+        why: The numbers have already been sent to the provider.
+        misconception: Output rules protect input data
+      - text: Delete the transcripts after ninety days
+        why: Retention limits do not stop the disclosure that already happened.
+        misconception: Short retention is the same as not sharing
+      - text: Use a larger model that follows rules better
+        why: The issue is sending the data at all.
+        misconception: Model capability is a data-protection control
+    explanation: |
+      Apply PII and payment-data redaction before data crosses a trust boundary, and check provider data-use terms
+      for whatever is sent.
+
+  - id: D8-108
+    version: 1
+    type: single
+    subtopic: gov.approvals
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In an agent deployment, what is a kill switch?
+    options:
+      - text: A way to stop its actions at once
+        correct: true
+        why: Operators can halt an agent immediately when it misbehaves, without a code deploy.
+      - text: A test that fails the build on errors
+        why: A CI control, not a runtime stop.
+        misconception: Build checks stop running agents
+      - text: A prompt line telling it when to stop
+        why: The model can ignore or misread it; a kill switch is enforced outside the model.
+        misconception: Prompts are runtime controls
+      - text: A daily report of what the agent spent
+        why: Reporting, not control.
+        misconception: Visibility is control
+    explanation: |
+      Runtime controls for agents: kill switches, action rate limits and dry-run modes, all enforced outside the model.
+
+  - id: D8-109
+    version: 1
+    type: single
+    subtopic: gov.approvals
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      Before a new agent may edit CRM records, you want to see what it would change without applying anything.
+      What do you use?
+    options:
+      - text: A dry-run mode that logs the proposed changes
+        correct: true
+        why: Shows intended actions on real data with no side effects.
+      - text: A hard limit on the number of writes per minute
+        why: Slows changes down but still applies them.
+        misconception: Rate limits prevent changes
+      - text: A kill switch on the CRM integration
+        why: Stops actions entirely, so there is nothing to inspect.
+        misconception: Stopping is the same as previewing
+      - text: Read-only credentials with logging turned off
+        why: Blocks writes but records nothing about what it would have done.
+        misconception: Read-only access shows intent
+    explanation: |
+      Dry-run modes let you review an agent's proposed actions before granting it the power to apply them.
+
+  - id: D8-110
+    version: 1
+    type: multi
+    subtopic: gov.audit-compliance
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      Which of these belong in the audit record of an action an agent took?
+    options:
+      - text: The user the agent acted on behalf of
+        correct: true
+        why: Establishes accountability for delegated actions.
+      - text: The tool called, with its inputs and result
+        correct: true
+        why: Shows exactly what was done and with what effect.
+      - text: The time the action was taken
+        correct: true
+        why: Needed to reconstruct sequences of events.
+      - text: The password the user signed in with
+        why: Secrets must never be logged.
+        misconception: More detail always improves audits
+      - text: Other users' conversation histories
+        why: Irrelevant to this action and a privacy breach in itself.
+        misconception: Context from all users aids auditing
+    explanation: |
+      Audit trails record who, what, when, on whose behalf, inputs, outputs and tool calls, without secrets or
+      unrelated personal data.
+
+  - id: D8-111
+    version: 1
+    type: single
+    subtopic: gov.audit-compliance
+    tags: [deploy.models-network]
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A European client requires that personal data stay in the EU. Which choice satisfies that requirement?
+    options:
+      - text: Model endpoints and storage in EU regions
+        correct: true
+        why: Residency is about where data is processed and stored.
+      - text: A model that answers in the client's language
+        why: Language support has nothing to do with where data goes.
+        misconception: Localization is residency
+      - text: Encrypting the data before sending it anywhere
+        why: Encryption protects data in transit but does not keep processing inside the EU.
+        misconception: Encryption satisfies residency rules
+      - text: A privacy notice shown in the user interface
+        why: Disclosure does not change where data is processed.
+        misconception: Notices satisfy data-location rules
+    explanation: |
+      Data residency and sensitivity drive the deployment model: region choice for model endpoints, storage, logs and
+      backups, plus the provider's data-use terms.
+
+  - id: D8-112
+    version: 1
+    type: single
+    subtopic: gov.audit-compliance
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Which US law sets rules for protecting patients' health information?
+    options:
+      - text: HIPAA
+        correct: true
+        why: It governs protected health information held by covered entities and their business associates.
+      - text: GDPR
+        why: An EU regulation on personal data in general.
+        misconception: GDPR is the US health law
+      - text: SOC 2
+        why: An audit framework for service organizations, not a law.
+        misconception: SOC 2 is a regulation
+      - text: PCI DSS
+        why: An industry standard for payment card data.
+        misconception: PCI covers health data
+    explanation: |
+      Awareness level: HIPAA (US health data), GDPR (EU personal data), SOC 2 (service-organization controls audit),
+      PCI DSS (card data).
+
+  - id: D8-113
+    version: 1
+    type: single
+    subtopic: gov.responsible-ai
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A loan-review assistant flags applications for human reviewers, who must be able to see why each one was
+      flagged. What helps most?
+    options:
+      - text: Cite the documents and rules behind each flag
+        correct: true
+        why: Reviewers can check the evidence themselves, which is what explainability needs here.
+      - text: Show a confidence score next to each flag
+        why: A number says how sure the system is, not why it flagged the case.
+        misconception: Confidence is an explanation
+      - text: Use a larger model that makes fewer mistakes overall
+        why: Fewer errors still leaves each flag unexplained.
+        misconception: Accuracy replaces transparency
+      - text: Hide flags that have low confidence scores
+        why: Removes information without explaining the remaining flags.
+        misconception: Less output is more transparent
+    explanation: |
+      Explainability through citations: show the sources and rules behind each output so a human can verify it.
+
+  - id: D8-114
+    version: 1
+    type: single
+    subtopic: gov.responsible-ai
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Under the EU AI Act, what mainly determines the obligations for an AI system?
+    options:
+      - text: The risk level of its intended use
+        correct: true
+        why: The Act is risk-tiered, from prohibited practices to high-risk systems to light transparency duties.
+      - text: The number of parameters in its model
+        why: Model size is not what sets most obligations; the use case is.
+        misconception: Regulation targets model size
+      - text: Whether the vendor is based in Europe
+        why: The Act applies to systems placed on or used in the EU market, wherever the vendor is.
+        misconception: Only European vendors are covered
+      - text: How many users the system has
+        why: User count does not define the risk tiers.
+        misconception: Regulation scales with popularity
+    explanation: |
+      Awareness level: the EU AI Act sets obligations by risk tier of the use case (unacceptable, high, limited,
+      minimal), with separate duties for general-purpose models.

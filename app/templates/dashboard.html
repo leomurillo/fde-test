@@ -29,6 +29,14 @@
 </section>
 {% endif %}
 
+{% for p in active_plans if not (resume and resume.plan_id == p.plan_id) %}
+<section class="card resume-card" aria-label="Modeled test in progress">
+  <div class="card-head"><h2>Modeled test in progress</h2></div>
+  <p>{{ p.name }}{% if p.current %} · next: {{ p.current.title }} ({{ p.current.n }} items{% if p.current.time_limit_s %}, {{ p.current.time_limit_s|dur }}{% endif %}){% endif %}</p>
+  <div class="row"><a class="btn primary" href="/m/{{ p.plan_id }}">Open test</a></div>
+</section>
+{% endfor %}
+
 {% set t = prog.totals %}
 <section class="stats" aria-label="Totals">
   <div class="stat"><span class="stat-num">{{ t['items'] }}</span><span class="stat-label">Items in bank</span></div>
@@ -64,7 +72,7 @@
       {% set sm = s.summary %}
       <li>
         <a href="/s/{{ s.session_id }}{% if s.status != 'in_progress' %}/review{% endif %}">
-          <span class="session-title">{{ s.scope.preset or 'Custom scope' }} · {{ sm.n }} items</span>
+          <span class="session-title">{{ s.scope.preset or 'Custom scope' }}{% if s.scope.plan %} · {{ s.scope.plan.title }}{% endif %} · {{ sm.n }} items</span>
           <span class="muted small">{{ s.created_at|dt }} · {{ 'Real-time feedback' if s.mode == 'realtime' else 'Feedback at end' }}</span>
         </a>
         <span class="session-meta">

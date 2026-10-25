@@ -195,12 +195,12 @@ items:
       before tuning downstream components.
 
   - id: D5-007
-    version: 1
+    version: 2
     type: single
     subtopic: rag.retrieval
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 80
     stem: |
       An HR chatbot answers "What is the notice period for resigning?" well. The user then asks "And for
       contractors?" and the assistant retrieves chunks about contractor invoicing. The retriever currently

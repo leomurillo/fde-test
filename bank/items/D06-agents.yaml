@@ -2,13 +2,13 @@ domain: D6
 items:
   # ---------------------------------------------------------------- agents.when
   - id: D6-001
-    version: 1
+    version: 2
     type: single
     subtopic: agents.when
     tags: [data.sql]
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 100
     stem: |
       A distributor's finance team reconciles two ledger tables every night: rows match on invoice number and amount (within a
       one-cent rounding tolerance), about 2 million rows per run. Mismatches are genuine control exceptions that clerks must
@@ -225,12 +225,12 @@ items:
     refs: [https://www.anthropic.com/engineering/building-effective-agents]
 
   - id: D6-008
-    version: 1
+    version: 2
     type: single
     subtopic: agents.when
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 80
     stem: |
       A CFO asks for an LLM to compute VAT on supplier invoices. The rates and rules are set by statute, and the totals must
       match the tax filing to the cent. What is the right role for the model?
@@ -353,12 +353,12 @@ items:
 
   # ------------------------------------------------------------- agents.patterns
   - id: D6-012
-    version: 1
+    version: 2
     type: single
     subtopic: agents.patterns
     difficulty: 1
     level: apply
-    time_s: 70
+    time_s: 90
     stem: |
       An IT helpdesk assistant handles password resets, hardware faults and software-access requests. Each category needs its own
       instructions, tools and escalation rules, and the request text usually makes the category clear. A prototype that gives one
@@ -622,12 +622,12 @@ items:
 
   # ------------------------------------------------------------ agents.tools-mcp
   - id: D6-020
-    version: 1
+    version: 2
     type: single
     subtopic: agents.tools-mcp
     difficulty: 1
     level: apply
-    time_s: 70
+    time_s: 90
     stem: |
       A desktop AI assistant is connected to a GitHub MCP server and a Jira MCP server. A user asks it to open a Jira ticket for
       the newest GitHub issue. Which description of how the MCP roles handle this is accurate?
@@ -890,13 +890,13 @@ items:
 
   # ---------------------------------------------------------------- agents.state
   - id: D6-028
-    version: 1
+    version: 2
     type: single
     subtopic: agents.state
     tags: [llm.fundamentals]
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 80
     stem: |
       A wealth-management assistant starts every session from scratch: clients must restate their risk tolerance and preferred
       reporting format each time. Within one session the assistant remembers everything said. What is the right way to carry
@@ -1111,12 +1111,12 @@ items:
 
   # ---------------------------------------------------------------- agents.multi
   - id: D6-035
-    version: 2
+    version: 3
     type: single
     subtopic: agents.multi
     difficulty: 1
     level: apply
-    time_s: 70
+    time_s: 90
     stem: |
       A team is automating a refactor in which each edit changes the interfaces the next edit depends on, and the work happens
       in one repository where later steps must see exactly what earlier steps did. A colleague proposes a planner agent, three

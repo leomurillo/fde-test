@@ -8,7 +8,7 @@ options can be eliminated without domain knowledge, the item is worthless. Every
 ## The process for every choice item (do it, don't skip steps)
 
 1. **Target.** Pick the subtopic and one specific concept from its "key concepts". Decide the cognitive level
-   (prefer `apply` / `analyze` / `evaluate`; `recall` ≤ 10% of a file).
+   (prefer `apply` / `analyze` / `evaluate`; `recall` ≤ 10% of a file, fast-tier items excepted).
 2. **Scenario.** Write a short, concrete situation an FDE actually meets (client, system, constraint, symptom).
    Two to five sentences. Include the details that make one answer *best* — and nothing that gives it away.
 3. **Correct answer.** Write it, and write `why`.
@@ -40,6 +40,21 @@ options can be eliminated without domain knowledge, the item is worthless. Every
 - Be technically correct as of 2026. When unsure of a fact, don't write the item.
 - English, concise, no filler. Markdown allowed (code spans, short code blocks, lists). Source line wraps render as
   spaces; use a blank line or a trailing `\` when a break must show (see SCHEMA.md).
+
+## Fast-tier items (`time_s` 40, 60 or 70)
+
+Quick-fire multiple-choice sections give well under a minute per question, so they need items that can be read
+in a fraction of the time. They live in `bank/items/<DOMAIN>-<slug>-fast.yaml`, with ids from `-101` up.
+
+- **Reading budget.** Stem + options ≤ 1.5 words per second of `time_s` (60 / 90 / 105 words). At about 240 words
+  a minute, reading then takes under 40% of the time and the rest is for deciding.
+- **40 s: spot the concept.** One-line stem, short options (a term, a definition, one clear action). `recall` is
+  fine here: these items diagnose *which concept* is missing, which a long case study cannot isolate.
+- **60 s: one-step application.** One or two sentences of situation, one decision.
+- **70 s: compact scenario.** Two or three sentences; may be `analyze` / `evaluate`, or a short `multi`.
+- Every other rule above still applies: one defensible answer, distractors built from misconceptions, parity of
+  length and tone (short options make a longer correct answer stand out even more), no absolute-word tells.
+- Long case studies stay in the domain files with honest `time_s` (≥ 75); they train stamina, not speed.
 
 ## Open-text and audio items
 - A realistic prompt with constraints (time pressure, a skeptical stakeholder, conflicting goals).

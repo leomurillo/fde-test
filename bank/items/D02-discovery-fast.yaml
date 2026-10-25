@@ -1,0 +1,348 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D2
+items:
+  - id: D2-101
+    version: 1
+    type: single
+    subtopic: discovery.framing
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      An operations VP asks you for "a chatbot for our warehouse staff". What should you do first?
+    options:
+      - text: Find out what problem the staff actually have
+        correct: true
+        why: The request names a solution; the underlying problem decides whether a chatbot is even the right answer.
+      - text: Build a quick prototype to show what is possible
+        why: Building before understanding the problem risks a polished answer to the wrong question.
+        misconception: A fast demo is the best way to discover requirements
+      - text: Collect the warehouse manuals for indexing
+        why: Assumes a document-question bot is the need before anyone has checked.
+        misconception: Every chatbot request is a retrieval problem
+      - text: Write a requirements specification for the chatbot
+        why: Formalizes the stated request instead of testing it.
+        misconception: Documenting the request is the same as understanding it
+    explanation: |
+      Separate the stated request from the underlying problem. Discovery starts by asking what goes wrong today
+      and for whom, then chooses the solution.
+
+  - id: D2-102
+    version: 1
+    type: single
+    subtopic: discovery.framing
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Why watch people do the work, rather than rely only on interviews about it?
+    options:
+      - text: People leave out habits and workarounds
+        correct: true
+        why: Habitual steps and informal fixes rarely come up in interviews but show up immediately when observed.
+      - text: Interviews take longer than observing the work
+        why: Time is not the point; observation is often slower. It reveals what interviews miss.
+        misconception: Observation is chosen for speed
+      - text: Interview answers cannot be turned into metrics
+        why: Interviews can be quantified; the issue is that they are incomplete, not unmeasurable.
+        misconception: Only observation produces numbers
+      - text: Staff tend to resist answering direct questions
+        why: Most staff answer willingly; they just do not mention what has become automatic.
+        misconception: Interviews fail because people are uncooperative
+    explanation: |
+      What people say they do and what they actually do differ. Watching the workflow surfaces exceptions,
+      workarounds and tacit steps that an automation must handle.
+
+  - id: D2-103
+    version: 1
+    type: single
+    subtopic: discovery.selection
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      Invoices must be routed to a team using a fixed table of vendor codes, with no exceptions. What fits best?
+    options:
+      - text: A lookup in plain code
+        correct: true
+        why: Known inputs and fixed rules need no model; code is cheaper, faster and fully predictable.
+      - text: An LLM classifier with a few examples
+        why: Adds cost and occasional errors to a problem a table lookup solves exactly.
+        misconception: Any routing task benefits from an LLM
+      - text: Retrieval over past routing decisions
+        why: Similarity search approximates a rule that is already known exactly.
+        misconception: Historical examples beat explicit rules
+      - text: A small fine-tuned classification model
+        why: Training a model to imitate a fixed table adds error and maintenance for no gain.
+        misconception: A smaller model is the cheap answer to deterministic rules
+    explanation: |
+      AI is the wrong tool when a deterministic rule, report or form will do. Reserve models for inputs that are
+      genuinely variable or unstructured.
+
+  - id: D2-104
+    version: 1
+    type: single
+    subtopic: discovery.selection
+    difficulty: 2
+    level: evaluate
+    time_s: 60
+    stem: |
+      Use case A promises the larger saving, but its data sits in a system that will take months to get access to.
+      Use case B is smaller, has clean data and an eager sponsor. Which do you start with?
+    options:
+      - text: B, because data access and a sponsor make its value reachable now
+        correct: true
+        why: Value you cannot reach for months is not yet value; B can show results while access to A is pursued.
+      - text: A, because the larger estimated value should set the priority
+        why: Ignores feasibility and data availability, which decide whether the value is ever delivered.
+        misconception: Prioritize by estimated value alone
+      - text: Both at once, so that a blocked one does not stall the team
+        why: Splits a small team and leaves A idle anyway while access is pending.
+        misconception: Parallel work hedges every risk
+      - text: Wait until the client finishes a data-platform migration
+        why: Waits on a large unrelated project when a viable use case is ready now.
+        misconception: Data must be perfect before any AI work starts
+    explanation: |
+      Selection weighs value with feasibility, data availability, risk and sponsorship. A reachable, sponsored win
+      builds the trust and access that larger use cases need.
+
+  - id: D2-105
+    version: 1
+    type: single
+    subtopic: discovery.selection
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Before you build anything, what must exist so that the project's impact can be demonstrated later?
+    options:
+      - text: A measured baseline of the current process
+        correct: true
+        why: Without today's numbers there is nothing to compare the new system against.
+      - text: A signed contract for the production rollout
+        why: Commercial commitment does not tell you whether the system improved anything.
+        misconception: Commercial approval proves impact
+      - text: A chosen model provider and pricing tier
+        why: A technical choice, not a measure of value.
+        misconception: Impact depends on the model chosen up front
+      - text: A complete labeled training dataset
+        why: Most LLM applications need evaluation examples, not a training set, and neither replaces a baseline.
+        misconception: Every AI project starts with training data
+    explanation: |
+      A measurable baseline (time, cost, error rate of the current process) is a precondition for proving value.
+
+  - id: D2-106
+    version: 1
+    type: single
+    subtopic: discovery.environment
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      On your first day at a client you learn the data you need lives in an undocumented legacy database. What
+      should come before designing the pipeline?
+    options:
+      - text: List the data you need, who grants access, and request it now
+        correct: true
+        why: Access approvals often take weeks; starting them on day one keeps them off the critical path.
+      - text: Design the target schema from the vendor's published documentation
+        why: Undocumented, customized legacy systems rarely match the vendor's documentation.
+        misconception: Product documentation describes the client's actual system
+      - text: Build the whole pipeline on synthetic data and connect at the end
+        why: Real data surprises (formats, nulls, volumes) then arrive at the last moment.
+        misconception: Synthetic data is a safe stand-in for the real thing
+      - text: Ask the client to document the schema before you begin
+        why: Puts weeks of client work in front of yours, and the result may still be incomplete.
+        misconception: Documentation must exist before exploration
+    explanation: |
+      Inventory data and access first: what you need, where it lives, who approves access and how long that takes.
+      Then explore the real system directly.
+
+  - id: D2-107
+    version: 1
+    type: single
+    subtopic: discovery.environment
+    difficulty: 2
+    level: analyze
+    time_s: 70
+    stem: |
+      Your prototype worked on a spreadsheet export an analyst gave you. On live data it breaks: date formats
+      differ by region and 15% of records lack a key field. What should you have done differently?
+    options:
+      - text: Profile the real production data before committing to a design
+        correct: true
+        why: Profiling early exposes format variety and missing values while the design can still absorb them.
+      - text: Add instructions about date formats and missing fields to the prompt
+        why: Treats a data-quality problem as a prompting problem, and only after the fact.
+        misconception: Prompting can compensate for unknown data
+      - text: Ask the analyst for a cleaner and more complete export
+        why: A cleaner export hides exactly the mess the live system will send.
+        misconception: Better samples fix production data
+      - text: Add retries and stricter validation to the pipeline
+        why: Retries do not fix bad data, and validation would just reject 15% of records.
+        misconception: Resilience patterns fix data-quality problems
+    explanation: |
+      Prototype against real data early. Hand-picked exports are cleaner than production, so profile the live
+      source (formats, nulls, volumes) before the design hardens.
+
+  - id: D2-108
+    version: 1
+    type: single
+    subtopic: delivery.scoping
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What most clearly distinguishes a pilot from a proof of concept?
+    options:
+      - text: Real users doing real work with real data
+        correct: true
+        why: A pilot tests the system inside the actual workflow; a proof of concept only tests feasibility.
+      - text: A larger model running on more compute
+        why: Infrastructure size does not define the stage.
+        misconception: Stages differ by scale of technology
+      - text: A signed production contract
+        why: Pilots often run before any production contract exists.
+        misconception: A pilot is a commercial commitment
+      - text: A complete feature set, delivered at small scale
+        why: Pilots are usually narrow; completeness is not the distinction.
+        misconception: A pilot is a finished product on a small scale
+    explanation: |
+      A proof of concept shows something can work; a pilot shows it does work for real users, on real data, in the
+      real workflow.
+
+  - id: D2-109
+    version: 1
+    type: single
+    subtopic: delivery.scoping
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Halfway through a pilot with a fixed end date, the sponsor asks you to add three new document types. What
+      is the best response?
+    options:
+      - text: Trade them against lower-value scope, or plan them after the pilot
+        correct: true
+        why: Keeps the date and the agreed value while making the trade-off explicit for the sponsor.
+      - text: Add them and push the end date back by two weeks
+        why: Silently grows scope and time; the success criteria and date the pilot was sold on drift.
+        misconception: Scope changes are absorbed by moving the date
+      - text: Decline all changes until the next contract is signed
+        why: Rigid refusal damages trust when a trade-off was available.
+        misconception: Protecting scope means refusing every request
+      - text: Add them and cut testing to keep the date
+        why: Cuts quality, the part of value that is hardest to see until it fails.
+        misconception: Testing is the safest thing to cut
+    explanation: |
+      Manage scope creep by cutting scope, not value: make the trade explicit, keep the time box, and park extras
+      for a later phase.
+
+  - id: D2-110
+    version: 1
+    type: multi
+    subtopic: delivery.scoping
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      Which of these should be agreed with the client before you start building a pilot?
+    options:
+      - text: Success metrics with target values
+        correct: true
+        why: Agreed targets decide afterwards whether the pilot succeeded, without arguing about it.
+      - text: Acceptance criteria for ending the pilot
+        correct: true
+        why: Defines what "done" means so the pilot cannot drift indefinitely.
+      - text: The model vendor for the production system
+        why: Production choices should follow what the pilot teaches, not precede it.
+        misconception: Production decisions must be locked before learning
+      - text: Final pricing for the production rollout
+        why: A commercial question that depends on pilot results; not needed to start building.
+        misconception: Pilots require production commercials up front
+      - text: The full feature list for version two
+        why: Planning version two before version one is tested wastes effort.
+        misconception: A complete roadmap is a precondition for a pilot
+    explanation: |
+      Agree success metrics and acceptance criteria before building. Production architecture, pricing and later
+      features should be informed by what the pilot shows.
+
+  - id: D2-111
+    version: 1
+    type: single
+    subtopic: delivery.go-live
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      In a shadow-mode rollout, the new system:
+    options:
+      - text: Runs on live inputs, but nobody acts on its outputs
+        correct: true
+        why: Shadow mode compares the new system against reality without any user depending on it.
+      - text: Serves a small share of real users before the rest
+        why: That is a limited cohort or canary, the next step after shadow mode.
+        misconception: Shadow mode and canary release are the same
+      - text: Runs only on historical data
+        why: That is offline evaluation or backtesting, not shadow mode.
+        misconception: Shadow mode is a replay of past data
+      - text: Replaces the old system, keeping instant rollback ready
+        why: That is a full cutover with a safety net, which is riskier than shadowing.
+        misconception: Fast rollback is equivalent to no exposure
+    explanation: |
+      Progressive rollout: shadow mode (live inputs, outputs not used), then a limited cohort, then a percentage
+      ramp, each step with a rollback path.
+
+  - id: D2-112
+    version: 1
+    type: single
+    subtopic: delivery.go-live
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A pilot met every target, but nobody at the client has agreed to own the system after you leave. Which gap
+      matters most before production?
+    options:
+      - text: A named owner with on-call duty and runbooks
+        correct: true
+        why: Without operational ownership the system degrades or stops the first time something breaks.
+      - text: Higher accuracy on the evaluation set before launch
+        why: Accuracy already met target; it is not what blocks a safe go-live.
+        misconception: Quality metrics are the only readiness criterion
+      - text: A larger cohort of pilot users
+        why: More users raises the stakes of having no owner; it does not fix the gap.
+        misconception: Scale proves readiness
+      - text: A move to a more capable model
+        why: Model capability is not the missing piece.
+        misconception: Production readiness is a model question
+    explanation: |
+      Production readiness covers ownership, on-call, runbooks and rollback, not just accuracy. Missing ownership is
+      a common reason pilots never reach production.
+
+  - id: D2-113
+    version: 1
+    type: single
+    subtopic: delivery.go-live
+    difficulty: 2
+    level: evaluate
+    time_s: 70
+    stem: |
+      You are rolling out a claims-summary assistant to 2,000 adjusters. Which plan limits risk best?
+    options:
+      - text: Shadow mode, then a small cohort, then a percentage ramp with rollback
+        correct: true
+        why: Each stage exposes more users only after the previous one shows the system behaves on real work.
+      - text: Release to everyone at once with a feedback button
+        why: Every adjuster is exposed to unknown failure modes at once; feedback arrives after the damage.
+        misconception: Feedback channels substitute for staged exposure
+      - text: Train all adjusters first, then switch everyone over on one day
+        why: Training helps adoption but a big-bang switch still exposes everyone to untested behavior.
+        misconception: Training removes rollout risk
+      - text: Launch first in the region with the most claims, to learn as fast as possible
+        why: Maximizes the blast radius of an early defect.
+        misconception: The busiest segment is the best place to start
+    explanation: |
+      Progressive rollout (shadow, cohort, ramp, with rollback at each step) limits the blast radius of failures you
+      have not seen yet.

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Modeled tests{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Modeled tests</h1>
+    <p class="muted">Load a test you built by hand: fixed items, split into timed parts that run back to back.</p>
+  </div>
+</div>
+
+{% if problems %}
+<div class="notice bad" role="alert">
+  <strong>{{ source_name or 'The file' }} could not be loaded.</strong>
+  <ul class="small">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="grid-2">
+  <section class="card stack">
+    <h2>Load a file</h2>
+    <form method="post" action="/plans/load" enctype="multipart/form-data" class="stack">
+      <label class="field">
+        <span>Test file (YAML or JSON)</span>
+        <input type="file" name="file" accept=".yaml,.yml,.json,text/yaml,application/json" required>
+      </label>
+      <button type="submit" class="btn primary">Load test</button>
+    </form>
+    <p class="small muted">The file stays on your machine: keep it outside the repository (or in <code>private/</code>, which git ignores).
+      The app stores the parsed test in its local database and pins every item's version when you load it.</p>
+    <details>
+      <summary class="small">File format</summary>
+      <pre class="code">name: Practice run
+mode: end              # end: results after the last part · realtime
+parts:
+  - title: Part 1
+    time_limit_min: 8  # or time_limit_s; omit for no limit
+    items: [D4-101, D6-105, D2-103]
+  - title: Part 2
+    time_limit_min: 5
+    items: [D7-102, D9-104@1]   # id@version pins a version</pre>
+      <p class="small muted">Items keep the order you list. Options are shuffled. An item may appear only once in a test.</p>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Loaded tests</h2>
+    {% if plans %}
+    <ul class="session-list">
+      {% for p in plans %}
+      <li>
+        <a href="/m/{{ p.plan_id }}">
+          <span class="session-title">{{ p.name }} · {{ p.parts|length }} part{{ '' if p.parts|length == 1 else 's' }} · {{ p.n_items }} items</span>
+          <span class="muted small">Loaded {{ p.created_at|dt }}{% if p.source_name %} from {{ p.source_name }}{% endif %}</span>
+        </a>
+        <span class="session-meta">
+          {% if p.status == 'in_progress' %}<span class="badge s-seen">{% if p.current %}Next: {{ p.current.title }}{% else %}In progress{% endif %}</span>
+          {% elif p.status == 'abandoned' %}<span class="badge">Abandoned</span>
+          {% else %}<span class="badge s-right">Done</span>{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No modeled tests loaded yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

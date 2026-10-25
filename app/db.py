@@ -142,6 +142,26 @@ MIGRATIONS: list[str] = [
 
     CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT);
     """,
+    # 2 -- reading time ("Done reading" button) and modeled tests loaded from a file (timed parts, back to back).
+    """
+    ALTER TABLE responses ADD COLUMN read_ms INTEGER;
+
+    CREATE TABLE plans(
+        plan_id TEXT PRIMARY KEY,
+        installation_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        name TEXT NOT NULL,
+        mode TEXT NOT NULL,
+        source_name TEXT,
+        spec_json TEXT NOT NULL,           -- the validated file: parts with titles, time limits, pinned items
+        status TEXT NOT NULL DEFAULT 'in_progress',
+        finished_at TEXT
+    );
+
+    ALTER TABLE sessions ADD COLUMN plan_id TEXT;
+    ALTER TABLE sessions ADD COLUMN plan_part INTEGER;
+    CREATE INDEX idx_sessions_plan ON sessions(plan_id);
+    """,
 ]
 
 SCHEMA_VERSION = len(MIGRATIONS)

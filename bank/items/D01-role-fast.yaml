@@ -1,0 +1,220 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D1
+items:
+  - id: D1-101
+    version: 1
+    type: single
+    subtopic: role.adjacent
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Which role typically writes production code that runs in the customer's environment and stays accountable
+      for the result after go-live?
+    options:
+      - text: Forward deployed engineer
+        correct: true
+        why: Building in the customer's real systems and owning the outcome there is what defines the role.
+      - text: Presales solutions engineer
+        why: Builds demos and proofs of value to win the deal; nothing they build is meant to run in production.
+        misconception: Anyone technical who faces the customer does the same job
+      - text: Solutions architect
+        why: Usually designs the target architecture and advises; the build and the outcome sit with others.
+        misconception: Designing the solution means owning its result
+      - text: Customer success manager
+        why: Owns renewal and adoption health, not the code that delivers the outcome.
+        misconception: Accountability for the account equals accountability for the system
+    explanation: |
+      The discriminators between customer-facing technical roles are who writes production code, where it runs,
+      and who owns the outcome. The FDE answers "me, in the customer's environment, me".
+
+  - id: D1-102
+    version: 1
+    type: single
+    subtopic: role.productization
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      A connector you wrote for one customer is now requested, with small variations, by a third customer. What
+      is the usual next step?
+    options:
+      - text: Generalize it into a configurable product component
+        correct: true
+        why: The third repeat is the classic signal that a field customization has become a product need.
+      - text: Copy the code into a new branch for this customer
+        why: Per-customer forks multiply maintenance and stop field work from improving the product.
+        misconception: Forking is the fastest safe way to reuse field code
+      - text: Sell it as a separately billed consulting deliverable
+        why: Keeps the work as services revenue and repeats the effort for every customer.
+        misconception: Repeated custom work is a revenue opportunity, not a product signal
+      - text: Ask the customer's engineers to build their own variant
+        why: Pushes a solved problem back onto the customer and wastes the asset you already have.
+        misconception: Only core features deserve vendor engineering time
+    explanation: |
+      Field-to-product feedback: when the same customization appears repeatedly (a common rule of thumb is the
+      third time), generalize it behind configuration instead of forking per customer.
+
+  - id: D1-103
+    version: 1
+    type: single
+    subtopic: role.economics
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Under which pricing model does the vendor carry most of the risk that delivery takes longer than planned?
+    options:
+      - text: Fixed price for an agreed scope
+        correct: true
+        why: The price does not move, so every extra week of effort is the vendor's cost.
+      - text: Time and materials
+        why: The customer pays for every hour worked, so overruns land on the customer.
+        misconception: Hourly billing protects the customer from overruns
+      - text: Prepaid hours drawn down as used
+        why: Overruns simply consume more hours, which the customer then tops up.
+        misconception: Prepayment shifts delivery risk to the vendor
+      - text: Cost-plus with an agreed margin
+        why: The customer reimburses actual costs plus a fee, so longer delivery costs the customer more.
+        misconception: A fixed margin means a fixed price
+    explanation: |
+      Fixed-price (and outcome-based) contracts move delivery risk to the vendor; time and materials, drawdown and
+      cost-plus leave it with the customer.
+
+  - id: D1-104
+    version: 1
+    type: single
+    subtopic: role.definition
+    difficulty: 2
+    level: recall
+    time_s: 60
+    stem: |
+      Several AI model providers have built forward deployed engineering teams. What problem is that investment
+      mainly meant to solve?
+    options:
+      - text: Model capability is outrunning enterprises' ability to turn it into working systems
+        correct: true
+        why: The gap between what models can do and what customers actually deploy is the bottleneck the role closes.
+      - text: Enterprise models must be fine-tuned per customer before they are useful
+        why: Most deployments succeed with prompting, retrieval and tools; per-customer fine-tuning is the exception.
+        misconception: Enterprise value requires a custom model
+      - text: Sales teams lack the technical depth needed to close enterprise contracts
+        why: That is the presales engineer's job; FDEs are measured on outcomes after the deal, not on closing it.
+        misconception: FDE is a sales-support role
+      - text: Customers want vendor staff to operate the system for them indefinitely
+        why: A good engagement ends with the customer able to run the system; permanent staffing is a services model.
+        misconception: Forward deployment means outsourcing operations
+    explanation: |
+      The role was revived because the deployment gap (integration, data, workflow change, evaluation) and not
+      raw model capability limits enterprise value. FDEs close that gap and feed what they learn back into product.
+
+  - id: D1-105
+    version: 1
+    type: single
+    subtopic: role.economics
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A client asks whether an AI ticket-triage tool costing $300k a year is worth it. Which baseline should the
+      return-on-investment case compare against?
+    options:
+      - text: The fully loaded cost and error rate of today's manual triage
+        correct: true
+        why: Value is measured against the process actually being replaced, including people, delays and mistakes.
+      - text: The price of the cheapest competing AI triage vendor
+        why: That compares vendors, not whether automation pays off at all.
+        misconception: ROI is a price comparison between suppliers
+      - text: The model token cost per ticket at current volume
+        why: Tokens are one input to total cost of ownership, not the benefit side of the case.
+        misconception: Inference cost is the whole economic story
+      - text: Zero, because the tool creates a capability the client lacks
+        why: Tickets are triaged today by someone; ignoring that baseline makes any price look justified.
+        misconception: New technology has no incumbent to beat
+    explanation: |
+      ROI against the real baseline: the cost (and quality) of the human or legacy process the system replaces,
+      set against the system's total cost of ownership.
+
+  - id: D1-106
+    version: 1
+    type: multi
+    subtopic: role.productization
+    difficulty: 2
+    level: analyze
+    time_s: 70
+    stem: |
+      You review a year of field deployments. Which observations suggest the team is drifting into a services
+      business rather than building a product?
+    options:
+      - text: Each new customer needs about as much custom code as the first one did
+        correct: true
+        why: Customization effort per customer should fall over time; flat effort means nothing is being productized.
+      - text: Most customers run on their own fork of the core platform
+        correct: true
+        why: Forks prevent shared improvements and make every upgrade a per-customer project.
+      - text: Field engineers file product requests based on customer work
+        why: That is the healthy feedback loop from field to product.
+        misconception: Product requests from the field signal over-customization
+      - text: New customers are set up mostly from shared templates
+        why: Template-driven setup is evidence of productization, not of services drift.
+        misconception: Configuration is just customization by another name
+      - text: Evaluation sets from one client are reused for similar clients
+        why: Reusable field assets are what make the next deployment cheaper.
+        misconception: Reusing assets across customers is a services pattern
+    explanation: |
+      Productization shows up as falling per-customer effort, configuration instead of custom code, and no forks.
+      Flat custom effort and per-customer forks are the warning signs.
+
+  - id: D1-107
+    version: 1
+    type: single
+    subtopic: role.adjacent
+    difficulty: 2
+    level: apply
+    time_s: 70
+    stem: |
+      A company has both presales engineers and FDEs. A prospect needs a two-day demo on sample data to decide
+      whether to buy; nobody will run it afterwards. Who should own it?
+    options:
+      - text: A presales solutions engineer
+        correct: true
+        why: A throwaway demo to win a deal is exactly presales work.
+      - text: A forward deployed engineer
+        why: FDE time is for production outcomes after the deal; using it on a disposable demo spends the scarcer role.
+        misconception: The most technical role should build every customer-facing artifact
+      - text: The professional services implementation team
+        why: Implementation follows a signed contract; there is nothing to implement yet.
+        misconception: Any build for a customer is an implementation project
+      - text: The customer success manager for the account
+        why: There is no customer yet, and customer success does not build demos.
+        misconception: Customer success owns the relationship from first contact
+    explanation: |
+      Presales wins the deal with demos and proofs of value; FDEs own production outcomes after it. When both roles
+      exist, route disposable pre-sale work to presales.
+
+  - id: D1-108
+    version: 1
+    type: single
+    subtopic: role.economics
+    difficulty: 2
+    level: recall
+    time_s: 40
+    stem: |
+      Why do some software companies accept the lower margins of an FDE-heavy model in their early years?
+    options:
+      - text: Field work reveals what the product must become
+        correct: true
+        why: The margin cost buys direct learning about real deployments that shapes the product.
+      - text: Investors value services revenue above software revenue
+        why: The opposite is usually true; services revenue is valued lower.
+        misconception: Revenue of any kind is valued the same
+      - text: Engineers cost less to deploy than sales staff
+        why: Cost per head is not the rationale, and FDEs are rarely cheaper.
+        misconception: The model is chosen to save cost
+      - text: It locks customers into multi-year services contracts
+        why: The goal is product adoption that does not depend on ongoing services.
+        misconception: Dependence on the vendor's staff is the goal
+    explanation: |
+      FDE-heavy models are a deliberate trade: lower early margins in exchange for learning that turns into product,
+      after which per-customer effort should fall.

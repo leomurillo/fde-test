@@ -67,12 +67,12 @@ items:
     refs: [https://blog.palantir.com/dev-versus-delta-demystifying-engineering-roles-at-palantir-ad44c2a6e87]
 
   - id: D1-003
-    version: 2
+    version: 3
     type: single
     subtopic: role.definition
     difficulty: 1
     level: apply
-    time_s: 60
+    time_s: 90
     stem: |
       The founder of a model-API startup asks why the company should employ engineers who work inside customer
       accounts: "Our API is documented and the model is strong, so customers can integrate it themselves." Which

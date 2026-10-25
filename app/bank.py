@@ -41,6 +41,12 @@ BANNED_OPTION_RE = re.compile(
     re.IGNORECASE,
 )
 ABSOLUTE_RE = re.compile(r"\b(always|never|only|all|none|must|guarantees?)\b", re.IGNORECASE)
+MARKDOWN_NOISE_RE = re.compile(r"[`*_>#|]")
+# Fast tier: choice items timed for a quick-fire section (time_s <= FAST_MAX_S). Reading the stem and options must
+# leave most of the budget for deciding, so they get a word budget of FAST_WORDS_PER_S words per second of time_s
+# (40 s -> 60 words, 60 s -> 90, 70 s -> 105): at about 240 words a minute, reading takes under 40% of the time.
+FAST_MAX_S = 70
+FAST_WORDS_PER_S = 1.5
 
 
 @dataclass
@@ -92,6 +98,16 @@ class Report:
 
     def warn(self, where: str, msg: str) -> None:
         self.warnings.append(f"{where}: {msg}")
+
+
+def item_words(data: dict) -> int:
+    """Words a candidate reads before answering: the stem plus every option (Markdown markers stripped)."""
+    parts = [str(data.get("stem") or "")] + [str(o.get("text", "")) for o in data.get("options") or []]
+    return len(MARKDOWN_NOISE_RE.sub(" ", " ".join(parts)).split())
+
+
+def is_fast(data: dict) -> bool:
+    return data.get("type") in CHOICE_TYPES and isinstance(data.get("time_s"), int) and data["time_s"] <= FAST_MAX_S
 
 
 def content_hash(data: dict) -> str:
@@ -315,6 +331,9 @@ def lint(items: list[Item]) -> list[str]:
                     lines.append(f"  {it.id}: correct option is >30% longer than every distractor")
             if min(lens) * 2.2 < max(lens):
                 lines.append(f"  {it.id}: option lengths vary a lot ({min(lens)}..{max(lens)} chars)")
+            if is_fast(it.data) and item_words(it.data) > FAST_WORDS_PER_S * it.data["time_s"]:
+                lines.append(f"  {it.id}: {item_words(it.data)} words to read is too many for time_s "
+                             f"{it.data['time_s']} (fast tier budget {int(FAST_WORDS_PER_S * it.data['time_s'])})")
             abs_wrong = sum(1 for o in opts if not o.get("correct") and ABSOLUTE_RE.search(str(o["text"])))
             abs_right = sum(1 for o in opts if o.get("correct") and ABSOLUTE_RE.search(str(o["text"])))
             if abs_wrong >= 2 and abs_right == 0:
@@ -322,11 +341,12 @@ def lint(items: list[Item]) -> list[str]:
         rate = longest / len(singles) if singles else 0
         flag = "  <-- too high (target <= 35%)" if rate > 0.35 else ""
         lines.insert(0, f"{fname}: correct-is-longest on {longest}/{len(singles)} single items ({rate:.0%}){flag}")
-    recall = Counter(i.file.name for i in items if i.data.get("level") == "recall")
+    # Fast-tier items are quick concept checks, so recall is expected there; the cap applies to the rest.
+    recall = Counter(i.file.name for i in items if i.data.get("level") == "recall" and not is_fast(i.data))
     for fname, n in sorted(recall.items()):
-        total = len(by_file[fname])
+        total = sum(1 for i in by_file[fname] if not is_fast(i.data))
         if n / total > 0.10:
-            lines.append(f"{fname}: {n}/{total} items are 'recall' (target <= 10%)")
+            lines.append(f"{fname}: {n}/{total} non-fast items are 'recall' (target <= 10%)")
     return lines
 
 
@@ -336,7 +356,9 @@ def stats(items: list[Item], tax: Taxonomy) -> list[str]:
     by_sub = Counter(i.subtopic for i in items)
     tagged = Counter(t for i in items for t in i.tags)
     by_type = Counter(i.type for i in items)
-    out = [f"items: {len(items)}  by type: {dict(sorted(by_type.items()))}"]
+    fast = Counter(i.data["time_s"] for i in items if is_fast(i.data))
+    out = [f"items: {len(items)}  by type: {dict(sorted(by_type.items()))}",
+           f"fast tier (choice, time_s <= {FAST_MAX_S}): {sum(fast.values())}  by time_s: {dict(sorted(fast.items()))}"]
     for d in tax.domains:
         out.append(f"{d.id} {d.name}: {sum(by_sub[s.tag] for s in d.subtopics)} items")
         for s in d.subtopics:

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% from "_macros.html" import feedback_button, copy_button, verdict_badge %}
+{% from "_macros.html" import feedback_button, copy_button, verdict_badge, pace_table %}
 {% block title %}Results{% endblock %}
 {% block content %}
 {% set t = summary.total %}
 <div class="page-head">
   <div>
     <h1>Results</h1>
-    <p class="muted">{{ session.scope.preset or 'Custom scope' }} · {{ t.n }} items · {{ 'Real-time feedback' if session.mode == 'realtime' else 'Feedback at the end' }} · {{ session.created_at|dt }}{% if session.status == 'abandoned' %} · abandoned{% endif %}</p>
+    <p class="muted">{% if plan %}<a href="/m/{{ plan.plan_id }}">{{ plan.name }}</a> · {{ session.scope.plan.title }}{% else %}{{ session.scope.preset or 'Custom scope' }}{% endif %} · {{ t.n }} items · {{ 'Real-time feedback' if session.mode == 'realtime' else 'Feedback at the end' }} · {{ session.created_at|dt }}{% if session.status == 'abandoned' %} · abandoned{% endif %}</p>
   </div>
   <div class="row"><a class="btn" href="/new">New test</a></div>
 </div>
@@ -36,6 +36,13 @@
   </section>
 </div>
 
+{% if pace.n %}
+<section class="card">
+  <h2>Pace</h2>
+  {{ pace_table(pace) }}
+</section>
+{% endif %}
+
 <h2 class="section-title">Items</h2>
 <ol class="review-list">
   {% for card in cards %}
@@ -55,6 +62,7 @@
         </div>
       </div>
       <div class="stem prose">{{ card.item.stem|md }}</div>
+      {% if card.timing %}{% set tm = card.timing %}<p class="small muted timing">Answered in {{ tm.submit_s|dur }} (budget {{ tm.time_s|dur }}){% if tm.read_s is not none %} · first reading {{ tm.read_s|dur }} for {{ tm.words }} words ({{ tm.wpm }} words/min) · deciding {{ tm.decide_s|dur }}{% else %} · {{ tm.words }} words{% endif %}</p>{% endif %}
       {% if card.resp and card.resp.flagged %}<p class="small muted">You flagged this item.</p>{% endif %}
       {% if card.resp and card.resp.confidence %}<p class="small muted">Confidence: {{ {1: 'guess', 2: 'unsure', 3: 'sure'}[card.resp.confidence] }}</p>{% endif %}
       {% if not card.resp %}<p>{{ verdict_badge('unanswered') }}</p>{% else %}{{ card.reveal_html }}{% endif %}

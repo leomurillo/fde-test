@@ -71,6 +71,11 @@ feedback(feedback_id PK, installation_id, created_at, session_id NULL, item_id N
 settings(key PK, value)           -- gemini_model, ui prefs; API key is NOT stored here (see Gemini)
 ```
 
+Migration 2 adds `responses.read_ms` (render to the "Done reading" click, NULL if not used), the `plans` table for
+modeled tests (`plan_id, installation_id, created_at, name, mode, source_name, spec_json, status, finished_at`;
+`spec_json` holds the parts with titles, time limits and pinned `item_id@version`s), and
+`sessions.plan_id` / `sessions.plan_part` linking a part's session to its plan (index `idx_sessions_plan`).
+
 Indexes on `responses(item_id, item_version)`, `responses(session_id)`, `events(session_id)`.
 Migrations are append-only; never edit an applied migration. Responses reference `(item_id, item_version)`
 which always exists in `item_versions` because sync inserts versions before they can be served.
@@ -118,8 +123,17 @@ Version history: **2** matches scope on the primary subtopic only; **1** also pu
   - **End** mode: submit → next item, no reveal. Final page → `/s/{id}/review`.
   - Skipping allowed (records `skipped=1`, score 0, `correct=0`); user can come back to skipped items before finishing.
   - Resume: reopening an in-progress session continues at the first unanswered position.
-- `/s/{id}/review`: score overall/by section/by subtopic, every item with answer, correctness, explanation,
-  time taken, and a feedback button per item.
+- `/s/{id}/review`: score overall/by section/by subtopic, a **Pace** table (median time per answer, answers
+  within each item's `time_s` and within the session's time limit divided by its items, median words read, and,
+  when "Done reading" was used, median first-reading time, reading speed in words per minute and time spent
+  deciding after reading), every item with answer, correctness, explanation, time taken, and a feedback button.
+- `/plans`, `/m/{plan_id}`: **modeled tests** (`plans.py`). A YAML/JSON file uploaded from the user's machine names
+  the items of each part, in order, with an optional time limit per part; the file is validated against the bank
+  (unknown ids, unstored versions, duplicates, bad limits are all listed) and stored with versions pinned. Each part
+  becomes a session only when started, so its clock starts on its first item; sections are the part titles and
+  options are shuffled. Finishing (or running out of time in) a part returns to the plan page, which offers the next
+  part. In `end` mode a part's review stays hidden until every part is done. Abandoning a part abandons the plan. The
+  finished plan page shows per-part time used, score and pace, with links to each part's review.
 - `/progress`: per domain and subtopic: items in bank, seen, never seen, last result right/wrong, accuracy, median time.
   Item browser filterable by status (never seen / last wrong / last right) and domain; each item shows its history
   (dates, versions, results, times). Never-seen items show metadata but **not** stem/answers (keeps them fresh).
@@ -164,10 +178,11 @@ Version history: **2** matches scope on the primary subtopic only; **1** also pu
 
 `static/runner.js` measures with `performance.now()` relative to item render and posts on submit:
 `time_to_first_ms`, `time_to_submit_ms`, `active_ms` (exclude time while `document.hidden` or window blurred),
-`answer_changes`, `focus_losses`, `paste_count`, `runs`, `confidence`. Also batch-posts raw events
+`answer_changes`, `focus_losses`, `paste_count`, `runs`, `confidence`, `read_ms` (render to the optional "Done
+reading" button, key `R`, for measuring first-reading speed). Also batch-posts raw events
 (`/api/events`, every 5 s and on submit/unload via `sendBeacon`): `render`, `select`, `deselect`, `input` (debounced,
 length only — not content), `paste`, `blur`, `focus`, `visibility`, `run_sql`, `run_code`, `audio_start`,
-`audio_stop`, `flag`, `reveal`, `feedback_open`. Server also stamps `presented_at` when it serves the item and
+`audio_stop`, `flag`, `reveal`, `feedback_open`, `read_done`. Server also stamps `presented_at` when it serves the item and
 `submitted_at` on submit, so server-side durations exist even without JS.
 
 ## Feedback
@@ -185,7 +200,7 @@ user's answer and correctness if already revealed). Never blocks the runner (mod
   the All tab) so a reviewer is not shown points that were already addressed.
 - `fde-data-{installation_id}-{date}.zip` — `manifest.json` (installation_id, schema_version, app_version,
   bank_fingerprint, export time), `sessions.jsonl`, `session_items.jsonl`, `responses.jsonl`, `events.jsonl`,
-  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included). This is the future upload format;
+  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included), `plans.jsonl` (modeled tests). This is the future upload format;
   its `feedback.jsonl` always holds every row, resolved or not.
 - Response rows in exports never contain the API key; audio files are excluded by default (checkbox to include).
 

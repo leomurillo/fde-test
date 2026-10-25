@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from . import __version__
 from .assemble import ASSEMBLER_VERSION, SECTION_ORDER, History, PoolItem, Request, assemble
+from .bank import item_words
 from .db import dumps, loads, new_id, now_iso
 from .taxonomy import load_taxonomy
 
@@ -94,23 +95,32 @@ def create_session(conn: sqlite3.Connection, ns: NewSession, installation_id: st
     result = assemble(pool_items(conn), item_history(conn), load_taxonomy(), req)
     if not result.picked:
         raise ValueError(result.note or "No items match this selection.")
-    sid = new_id()
-    ts = now_iso()
     scope = {"preset": ns.preset, "subtopics": list(ns.subtopics), "formats": list(ns.formats), "length": ns.length,
              "priority": ns.priority, "time_limit_s": ns.time_limit_s, "assembled": len(result.picked),
              "note": result.note}
+    sid = insert_session(conn, scope, ns.mode, seed, result.picked, installation_id, bank_fingerprint, ns.client)
+    return sid, result
+
+
+def insert_session(conn: sqlite3.Connection, scope: dict, mode: str, seed: int, picked: list, installation_id: str,
+                   bank_fingerprint: str, client: dict | None, plan_id: str | None = None,
+                   plan_part: int | None = None) -> str:
+    """Write a session and its pinned positions. `picked` holds assemble.Picked-like objects."""
+    sid = new_id()
     conn.execute("""INSERT INTO sessions(session_id, installation_id, created_at, started_at, finished_at, status, mode,
-                    scope_json, seed, app_version, bank_fingerprint, taxonomy_version, assembler_version, client_json)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                 (sid, installation_id, ts, None, None, "in_progress", ns.mode, dumps(scope), seed, __version__,
-                  bank_fingerprint, str(load_taxonomy().version), ASSEMBLER_VERSION, dumps(ns.client or {})))
-    for pos, p in enumerate(result.picked, start=1):
+                    scope_json, seed, app_version, bank_fingerprint, taxonomy_version, assembler_version, client_json,
+                    plan_id, plan_part)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (sid, installation_id, now_iso(), None, None, "in_progress", mode, dumps(scope), seed, __version__,
+                  bank_fingerprint, str(load_taxonomy().version), ASSEMBLER_VERSION, dumps(client or {}),
+                  plan_id, plan_part))
+    for pos, p in enumerate(picked, start=1):
         conn.execute("""INSERT INTO session_items(session_id, position, item_id, item_version, section,
                         presented_order_json, attributed_subtopic) VALUES (?,?,?,?,?,?,?)""",
                      (sid, pos, p.item.item_id, p.item.version, p.section,
                       dumps(p.presented_order) if p.presented_order is not None else None, p.attributed))
     conn.commit()
-    return sid, result
+    return sid
 
 
 def get_session(conn: sqlite3.Connection, sid: str) -> dict | None:
@@ -263,12 +273,48 @@ def session_summary(conn: sqlite3.Connection, sid: str, items: list[dict] | None
         b["accuracy_pct"] = round(100 * b["correct"] / b["graded"], 1) if b["graded"] else None
         return b
 
-    sections = [(s, finish(by_section[s])) for s in SECTION_ORDER if s in by_section]
+    order = SECTION_ORDER + [si["section"] for si in items if si["section"] not in SECTION_ORDER]
+    sections = [(s, finish(by_section[s])) for s in dict.fromkeys(order) if s in by_section]
     subs = []
     for tag, b in sorted(by_sub.items()):
         name = tax.subtopic(tag).name if tax.has_tag(tag) else tag
         subs.append((tag, name, finish(b)))
     return {"total": finish(total), "sections": sections, "subtopics": subs}
+
+
+def timing_rows(conn: sqlite3.Connection, items: list[dict], responses: dict[int, dict]) -> dict[int, dict]:
+    """pos -> reading and answering times for answered items. `read_s` exists only when "Done reading" was used;
+    `wpm` is the words of stem plus options read per minute up to that click."""
+    out = {}
+    for si in items:
+        r = responses.get(si["position"])
+        if r is None or r["skipped"] or r["time_to_submit_ms"] is None:
+            continue
+        snap = snapshot(conn, si["item_id"], si["item_version"])
+        words = item_words(snap)
+        submit_s = r["time_to_submit_ms"] / 1000
+        read_s = r["read_ms"] / 1000 if r.get("read_ms") else None
+        out[si["position"]] = {
+            "words": words, "time_s": snap.get("time_s"), "submit_s": submit_s, "read_s": read_s,
+            "decide_s": max(0.0, submit_s - read_s) if read_s is not None else None,
+            "wpm": round(words / (read_s / 60)) if read_s else None,
+            "over": bool(snap.get("time_s")) and submit_s > snap["time_s"], "correct": r["correct"],
+        }
+    return out
+
+
+def pace_summary(rows: list[dict], slot_s: float | None = None) -> dict:
+    """Medians over timing_rows values. `slot_s` (time limit / items) adds how many answers fit that pace."""
+    def med(key):
+        v = [r[key] for r in rows if r[key] is not None]
+        return statistics.median(v) if v else None
+    read = [r for r in rows if r["read_s"] is not None]
+    return {
+        "n": len(rows), "median_submit_s": med("submit_s"), "median_read_s": med("read_s"),
+        "median_decide_s": med("decide_s"), "median_wpm": med("wpm"), "n_read": len(read),
+        "median_words": med("words"), "within_budget": sum(1 for r in rows if not r["over"]),
+        "slot_s": slot_s, "within_slot": sum(1 for r in rows if r["submit_s"] <= slot_s) if slot_s else None,
+    }
 
 
 def recent_sessions(conn: sqlite3.Connection, limit: int = 10) -> list[dict]:

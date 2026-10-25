@@ -4,12 +4,17 @@ A local practice exam for the **Forward Deployed Engineer** role, modelled on Ca
 It runs as a Python website on your machine and tracks every answer by item version, with telemetry suited to
 a later move to adaptive testing (CAT/IRT).
 
-- **362 items** across 11 weighted domains and 49 subtopics. Every item went through two stages: misconception-first authoring, then an adversarial review whose job was to make sure you can't find the answer by eliminating options.
+- **496 items** across 11 weighted domains and 49 subtopics, including a **fast tier** of 134 short items timed at
+  40, 60 and 70 seconds (concept checks and compact scenarios) next to the longer case studies. Every item went through two stages: misconception-first authoring, then an adversarial review whose job was to make sure you can't find the answer by eliminating options.
 - **Seven formats**, mapped to CandiTech's question types: single choice, multiple select, numeric value,
   open text (AI-graded), SQL, Python code, and spoken answers (CandiTech's "Video" format, recorded with your microphone).
 - **Tests are assembled on demand** from a scope (a preset or any subtopics), a length and a set of formats. Items are drawn in
   proportion to the taxonomy weights; unseen items come first, then the ones you got wrong.
 - **Two modes:** real-time feedback after every item, or exam conditions with a review at the end.
+- **Modeled tests:** load a hand-built test from a file on your machine (fixed items, timed parts run back to
+  back), so a mock of a specific assessment never has to be committed. See [`docs/running.md`](docs/running.md).
+- **Pace:** an optional *Done reading* button (`R`) times your first read of each item; results show reading speed,
+  time spent deciding, and how many answers fit each item's budget and each part's clock.
 - **Progress:** seen, never seen, right and wrong, per item and per subtopic. **Feedback:** a 💬 button on every item, exportable (all notes, or only the open ones) to send back
   for item fixes.
 

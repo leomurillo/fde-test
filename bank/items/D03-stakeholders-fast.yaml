@@ -1,0 +1,294 @@
+# Fast tier (time_s <= 70): short concept checks and compact scenarios for quick-fire multiple-choice sections.
+# Word budget: stem + options <= 1.5 x time_s (see AUTHORING.md "Fast-tier items").
+domain: D3
+items:
+  - id: D3-101
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      You have two minutes with the CFO about a delayed launch. How should you open?
+    options:
+      - text: With the decision you need and your recommendation
+        correct: true
+        why: Executives need the bottom line first; detail follows only if asked.
+      - text: With the technical root cause of the delay, step by step
+        why: Leads with detail the CFO may never need and buries the decision.
+        misconception: Credibility comes from showing technical depth first
+      - text: With a timeline of everything that has happened so far
+        why: Chronology delays the point and uses up the two minutes.
+        misconception: Context must come before the conclusion
+      - text: With every option the team considered
+        why: An unranked list hands the analysis to the CFO instead of a recommendation.
+        misconception: Showing all options is the neutral, safest opening
+    explanation: |
+      Bottom line up front for executives: the decision needed, your recommendation, then the key reason. Depth is
+      for engineers or follow-up questions.
+
+  - id: D3-102
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      What is an architecture decision record mainly for?
+    options:
+      - text: Capturing the reasons behind a choice
+        correct: true
+        why: Future readers learn the context and alternatives, so the decision is not relitigated blindly.
+      - text: Tracking the status of every task across the team
+        why: That is a task tracker or board.
+        misconception: Decision records are project-management artifacts
+      - text: Listing the endpoints and schemas a system exposes
+        why: That is API documentation.
+        misconception: Architecture records describe interfaces
+      - text: Logging who approved the budget for each component
+        why: Approvals belong in governance records, not decision rationale.
+        misconception: A decision record is a sign-off log
+    explanation: |
+      A decision record states the context, the options considered, the choice and its consequences, so later
+      engineers understand the trade-off that was made.
+
+  - id: D3-103
+    version: 1
+    type: single
+    subtopic: comms.tradeoffs
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      A non-technical sponsor asks: "Will the assistant ever give a wrong answer?" What is the best reply?
+    options:
+      - text: Yes, sometimes; here is our measured rate and how errors are caught
+        correct: true
+        why: Honest about probabilistic behavior and gives the evidence and safeguards the sponsor needs.
+      - text: No, because every single answer is grounded in your own company documents
+        why: Grounding reduces errors but does not remove them; this sets a promise the system will break.
+        misconception: Retrieval makes LLM answers error-free
+      - text: Only when users phrase their questions badly or too vaguely
+        why: Shifts blame to users and understates errors that happen on clear questions too.
+        misconception: Errors are a user-input problem
+      - text: It will reach full accuracy once we finish tuning
+        why: No amount of tuning guarantees zero errors from a probabilistic system.
+        misconception: LLM accuracy converges to 100% with effort
+    explanation: |
+      Explain probabilistic behavior plainly: errors happen, here is the measured rate, and here is how they are
+      detected and contained (review steps, citations, fallbacks).
+
+  - id: D3-104
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    difficulty: 1
+    level: apply
+    time_s: 40
+    stem: |
+      The client's security team blocks your deployment without saying why. What is the best first move?
+    options:
+      - text: Meet them to learn their specific concerns
+        correct: true
+        why: You cannot address an objection you have not heard; it also turns a blocker into a partner.
+      - text: Escalate to the executive sponsor right away
+        why: Escalating before talking hardens resistance and costs trust you will need later.
+        misconception: Escalation is the fastest way past a blocker
+      - text: Deploy to a sandbox outside their control
+        why: Bypassing security destroys trust and likely breaks policy.
+        misconception: Working around gatekeepers saves time
+      - text: Send them the vendor's security whitepaper
+        why: Generic material may not answer their actual concern.
+        misconception: Standard documentation answers every security question
+    explanation: |
+      Resistant IT or security teams are won with evidence aimed at their specific concerns. Listen first; escalate
+      only when a real impasse remains.
+
+  - id: D3-105
+    version: 1
+    type: single
+    subtopic: comms.stakeholders
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Two vice presidents give you conflicting priorities for the same project. What should you do?
+    options:
+      - text: Bring it, with options, to the sponsor who owns the decision
+        correct: true
+        why: The person accountable for the outcome should decide, with the trade-offs laid out.
+      - text: Follow the vice president who has the larger team and budget
+        why: Seniority or size is not ownership of this decision, and the other VP is left out.
+        misconception: Defer to the most powerful stakeholder
+      - text: Split the work evenly so that both get progress
+        why: Delivers half of each and satisfies neither; the conflict remains.
+        misconception: Compromise resolves priority conflicts
+      - text: Pick whichever option is technically simpler to build
+        why: Lets engineering convenience make a business decision nobody delegated to you.
+        misconception: The engineer should break ties
+    explanation: |
+      Know who owns which decision (stakeholder mapping). Surface conflicts to the decision owner with options and
+      consequences instead of resolving them silently.
+
+  - id: D3-106
+    version: 1
+    type: single
+    subtopic: adoption.change
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      A tool went live a month ago. Which measure best shows whether it has been adopted?
+    options:
+      - text: Share of target users using it weekly
+        correct: true
+        why: Ongoing use by the intended people in their real work is adoption.
+      - text: Number of user accounts created since launch
+        why: Accounts show access, not use.
+        misconception: Provisioning equals adoption
+      - text: Attendance at the launch training sessions
+        why: Training attendance measures exposure, not behavior change.
+        misconception: Trained users are adopting users
+      - text: System uptime over the first month
+        why: Reliability matters, but an available tool can still go unused.
+        misconception: Go-live health equals adoption
+    explanation: |
+      Go-live is not adoption. Define activation and usage for the target users (who, how often, in which workflow)
+      and measure that.
+
+  - id: D3-107
+    version: 1
+    type: single
+    subtopic: adoption.change
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Claims handlers rarely use a new AI assistant that lives in a separate web app, though they rate it well in
+      demos. What change is most likely to raise usage?
+    options:
+      - text: Put it inside the claims system they already work in
+        correct: true
+        why: Removing the context switch makes the tool part of the workflow rather than an extra step.
+      - text: Run another round of hands-on training sessions for every handler
+        why: They already like it; the barrier is friction, not skill.
+        misconception: Low usage means users need more training
+      - text: Have managers make its use mandatory
+        why: Mandates without fixing friction produce token use and resentment.
+        misconception: Adoption can be ordered
+      - text: Add more features to the separate web app
+        why: More features in the wrong place keep the same switching cost.
+        misconception: Usage follows feature count
+    explanation: |
+      Embed tools in existing workflows. When users like a tool but do not use it, look for friction such as a
+      separate app, extra logins or copy-paste.
+
+  - id: D3-108
+    version: 1
+    type: single
+    subtopic: adoption.change
+    difficulty: 2
+    level: analyze
+    time_s: 70
+    stem: |
+      Staff quietly avoid a new automation tool. In interviews several of them bring up "headcount". What is the
+      most likely root cause, and the response?
+    options:
+      - text: Fear of replacement; involve staff and show how their role changes
+        correct: true
+        why: The headcount remarks point to job anxiety, which is addressed through involvement and a clear role story.
+      - text: Poor usability; redesign the interface with a user researcher
+        why: Nothing in the evidence points to usability; a redesign would not touch the fear.
+        misconception: Every adoption problem is a UX problem
+      - text: Low accuracy; improve the model before pushing usage again
+        why: Accuracy was not raised; the stated concern is about jobs.
+        misconception: Users avoid tools only when they are wrong
+      - text: Low awareness; send more launch announcements to every team
+        why: Staff clearly know about the tool; they are choosing not to use it.
+        misconception: Non-use means people have not heard of it
+    explanation: |
+      Fear of replacement is a common, often unspoken adoption barrier. Address it through incentives, involvement
+      and a clear account of how roles change, not with more training or features.
+
+  - id: D3-109
+    version: 1
+    type: single
+    subtopic: adoption.handoff
+    difficulty: 1
+    level: recall
+    time_s: 40
+    stem: |
+      Which event best shows that a handoff to the client team is really complete?
+    options:
+      - text: Their team fixes an incident without you
+        correct: true
+        why: Operating and troubleshooting independently is the actual exit criterion.
+      - text: The full documentation set has been delivered
+        why: Documents are necessary but do not prove anyone can use them.
+        misconception: Handoff is a document transfer
+      - text: The contract end date has passed
+        why: A calendar date says nothing about the client's capability.
+        misconception: Engagement end equals handoff
+      - text: Every engineer attended the knowledge-transfer sessions
+        why: Attendance is not demonstrated ability.
+        misconception: Training completion proves enablement
+    explanation: |
+      Exit criteria are about capability: the customer can operate, change and troubleshoot the system without you.
+
+  - id: D3-110
+    version: 1
+    type: multi
+    subtopic: adoption.handoff
+    difficulty: 2
+    level: apply
+    time_s: 60
+    stem: |
+      Which items belong in a handoff package so the client can run the system on their own?
+    options:
+      - text: Runbooks for the most common incidents
+        correct: true
+        why: Lets their on-call staff resolve known failures without you.
+      - text: Steps to change a prompt and rerun the evaluation suite
+        correct: true
+        why: Changes are inevitable; the client must be able to make them safely.
+      - text: Credentials and pipelines owned by client accounts
+        correct: true
+        why: Anything tied to your identity stops working, or stays dependent on you, after you leave.
+      - text: A standing weekly call with you for the next year
+        why: Keeps the client dependent on you, the opposite of a handoff.
+        misconception: Ongoing vendor support is part of enablement
+      - text: The feature roadmap for the next release
+        why: Useful context, but it does not help them operate what exists.
+        misconception: Future plans are operational knowledge
+    explanation: |
+      A handoff transfers the ability to operate, change and troubleshoot: runbooks, change procedures with evals,
+      and access that the client owns.
+
+  - id: D3-111
+    version: 1
+    type: single
+    subtopic: adoption.handoff
+    difficulty: 2
+    level: evaluate
+    time_s: 70
+    stem: |
+      Six weeks before you leave, only you can deploy changes, because the pipelines run under your personal cloud
+      account. What do you do?
+    options:
+      - text: Move them to client-owned accounts and have their team deploy
+        correct: true
+        why: Transfers both the access and the practice while you are still there to help.
+      - text: Document your account setup carefully so their team can recreate it later
+        why: Leaves the dependency in place and the risky migration for after you are gone.
+        misconception: Documentation substitutes for transfer
+      - text: Extend the engagement so that you can keep deploying for them
+        why: Deepens the dependency the handoff is meant to remove.
+        misconception: Staying longer is the safe handoff
+      - text: Hand over your account credentials on your last day
+        why: Shares a personal identity, breaks auditability and still makes the switch at the worst moment.
+        misconception: Sharing credentials is a handoff
+    explanation: |
+      Avoid vendor dependency: production access should belong to the customer. Make the switch early and have
+      their team exercise it before you exit.

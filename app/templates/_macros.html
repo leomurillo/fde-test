@@ -73,3 +73,22 @@
 </div>
 {% endif %}
 {%- endmacro %}
+
+{# Reading and answering pace (store.pace_summary). Reading figures need the "Done reading" button. #}
+{% macro pace_table(p) -%}
+<table class="data compact">
+  <tbody>
+    <tr><th scope="row">Median time per answer</th><td class="num">{{ p.median_submit_s|dur if p.median_submit_s is not none else '–' }}</td></tr>
+    <tr><th scope="row">Answers within the item's budget</th><td class="num">{{ p.within_budget }} / {{ p.n }}</td></tr>
+    {% if p.slot_s %}<tr><th scope="row">Answers within the part's pace ({{ p.slot_s|dur }} per item)</th><td class="num">{{ p.within_slot }} / {{ p.n }}</td></tr>{% endif %}
+    <tr><th scope="row">Median words to read (stem + options)</th><td class="num">{{ '%.0f'|format(p.median_words) if p.median_words is not none else '–' }}</td></tr>
+    {% if p.n_read %}
+    <tr><th scope="row">Median first reading <span class="muted small">({{ p.n_read }} item{{ '' if p.n_read == 1 else 's' }} timed)</span></th><td class="num">{{ p.median_read_s|dur }}</td></tr>
+    <tr><th scope="row">Median reading speed</th><td class="num">{{ '%.0f'|format(p.median_wpm) }} words/min</td></tr>
+    <tr><th scope="row">Median time deciding after reading</th><td class="num">{{ p.median_decide_s|dur }}</td></tr>
+    {% else %}
+    <tr><td colspan="2" class="muted small">No reading times: press <strong>Done reading</strong> (<kbd>R</kbd>) after your first read of an item to measure them.</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+{%- endmacro %}
