@@ -43,6 +43,46 @@
 </section>
 {% endif %}
 
+{% if ai %}
+{% set a = ai.assessment %}
+<section class="card stack" id="ai-use">
+  <div class="card-head">
+    <h2>AI use</h2>
+    {% if session.status != 'in_progress' %}
+    <form method="post" action="/s/{{ session.session_id }}/ai-grade"><button class="btn ghost small" type="submit">{{ 'Grade again' if a and a.grader == 'gemini' else 'Grade AI use' }}</button></form>
+    {% endif %}
+  </div>
+  <p class="small muted">{{ ai.usage.prompts }} prompt{{ '' if ai.usage.prompts == 1 else 's' }} on {{ ai.usage.items_with_ai }} item{{ '' if ai.usage.items_with_ai == 1 else 's' }}{% if ai.usage.pasted_prompts %} · {{ ai.usage.pasted_prompts }} with pasted text{% endif %}{% if ai.usage.quoting_prompts %} · {{ ai.usage.quoting_prompts }} repeating the question's wording{% endif %}. A hiring team using an embedded assistant sees this transcript.</p>
+  {% if a and a.grader == 'gemini' %}
+  <div class="stats"><div class="stat"><span class="stat-num">{{ '%g'|format(a.points) }} / {{ '%g'|format(a.max_points) }}</span><span class="stat-label">AI use ({{ '%.0f'|format(100 * a.score) }}%)</span></div></div>
+  <table class="data compact">
+    <thead><tr><th>Criterion</th><th class="num">Points</th><th>Evidence</th></tr></thead>
+    <tbody>{% for c in a.detail.criteria %}<tr><td>{{ c.criterion }}</td><td class="num">{{ '%g'|format(c.points) }} / {{ '%g'|format(c.max_points) }}</td><td class="small">{{ c.justification }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% if a.detail.overall_feedback %}<p>{{ a.detail.overall_feedback }}</p>{% endif %}
+  <p class="small muted">Graded by {{ a.model }} on {{ a.created_at|dt }}.</p>
+  {% elif a %}
+  <p class="muted">{{ a.detail.reason }}</p>
+  {% else %}
+  <p class="muted">Grading in progress or not run yet. Reload in a moment, or use <em>Grade AI use</em>.</p>
+  {% endif %}
+  <details>
+    <summary>Rubric</summary>
+    <ol class="small">{% for r in ai.rubric %}<li><strong>{{ r.criterion }}</strong> ({{ r.points }} points): {{ r.guidance }}</li>{% endfor %}</ol>
+  </details>
+  {% if ai.messages %}
+  <details>
+    <summary>Full transcript ({{ ai.messages|length }} messages)</summary>
+    <ol class="ai-transcript">
+      {% for m in ai.messages %}
+      <li class="ai-msg ai-{{ m.role }}"><span class="ai-where small muted"><a href="#item-{{ m.position }}">Item {{ m.position }}</a> · {{ {'user': 'You', 'model': 'Assistant', 'error': 'Error'}[m.role] }}{% if m.meta.pasted_chars %} · pasted {{ m.meta.pasted_chars }} chars{% endif %}{% if m.meta.quotes_item %} · repeats the question{% endif %}</span>{% if m.role == 'model' %}<div class="prose">{{ m.html }}</div>{% else %}<div class="ai-text">{{ m.text }}</div>{% endif %}</li>
+      {% endfor %}
+    </ol>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
 <h2 class="section-title">Items</h2>
 <ol class="review-list">
   {% for card in cards %}
@@ -66,6 +106,13 @@
       {% if card.resp and card.resp.flagged %}<p class="small muted">You flagged this item.</p>{% endif %}
       {% if card.resp and card.resp.confidence %}<p class="small muted">Confidence: {{ {1: 'guess', 2: 'unsure', 3: 'sure'}[card.resp.confidence] }}</p>{% endif %}
       {% if not card.resp %}<p>{{ verdict_badge('unanswered') }}</p>{% else %}{{ card.reveal_html }}{% endif %}
+      {% set chat = ai.by_pos.get(card.si.position) if ai else none %}
+      {% if chat %}
+      <details class="item-chat">
+        <summary class="small">AI assistant on this item ({{ chat|length }} messages)</summary>
+        <ol class="ai-transcript">{% for m in chat %}<li class="ai-msg ai-{{ m.role }}">{% if m.role == 'model' %}<div class="prose">{{ m.html }}</div>{% else %}<div class="ai-text">{{ m.text }}</div>{% endif %}</li>{% endfor %}</ol>
+      </details>
+      {% endif %}
     </article>
   </li>
   {% endfor %}

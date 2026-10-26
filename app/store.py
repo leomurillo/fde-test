@@ -82,6 +82,7 @@ class NewSession:
     time_limit_s: int | None = None
     seed: int | None = None
     client: dict | None = None
+    ai_assistant: bool = False
 
 
 def preview(conn: sqlite3.Connection, ns: NewSession):
@@ -97,7 +98,7 @@ def create_session(conn: sqlite3.Connection, ns: NewSession, installation_id: st
         raise ValueError(result.note or "No items match this selection.")
     scope = {"preset": ns.preset, "subtopics": list(ns.subtopics), "formats": list(ns.formats), "length": ns.length,
              "priority": ns.priority, "time_limit_s": ns.time_limit_s, "assembled": len(result.picked),
-             "note": result.note}
+             "note": result.note, "ai_assistant": bool(ns.ai_assistant)}
     sid = insert_session(conn, scope, ns.mode, seed, result.picked, installation_id, bank_fingerprint, ns.client)
     return sid, result
 

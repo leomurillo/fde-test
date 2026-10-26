@@ -352,7 +352,8 @@
 
   // ---------------------------------------------------------------- keyboard
   function inEndMenu(el) {
-    return !!(el && el.closest && el.closest(".end-menu"));
+    // the End test menu and the AI assistant sidebar handle their own keys
+    return !!(el && el.closest && el.closest(".end-menu, .ai-panel"));
   }
   function isTyping(el) {
     if (!el) return false;

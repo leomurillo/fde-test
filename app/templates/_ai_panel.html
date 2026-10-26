@@ -1,0 +1,28 @@
+{# AI assistant sidebar (Gemini). The transcript is recorded and assessed with the results. #}
+<aside class="ai-panel" id="ai-panel" aria-label="AI assistant" hidden>
+  <div class="ai-head">
+    <div>
+      <strong>AI assistant</strong> <span class="muted small">Gemini</span>
+      <p class="small muted ai-note">This conversation is recorded and assessed with your results.</p>
+    </div>
+    <button type="button" class="icon-btn" id="ai-close" aria-label="Close the assistant">&times;</button>
+  </div>
+  <ol class="ai-log" id="ai-log" aria-live="polite">
+    {% for m in ai.messages %}
+    <li class="ai-msg ai-{{ m.role }}">
+      {% if m.position and m.position != pos %}<span class="ai-where small muted">Item {{ m.position }}</span>{% endif %}
+      {% if m.role == 'model' %}<div class="prose">{{ m.html }}</div>{% else %}<div class="ai-text">{{ m.text }}</div>{% endif %}
+    </li>
+    {% else %}
+    <li class="ai-empty small muted" id="ai-empty">Ask anything. The assistant does not see the question unless you share it.</li>
+    {% endfor %}
+  </ol>
+  {% if ai.has_key %}
+  <form class="ai-form" id="ai-form" autocomplete="off">
+    <textarea id="ai-input" rows="3" maxlength="8000" placeholder="Message the assistant (Enter sends, Shift+Enter for a new line)"></textarea>
+    <button type="submit" class="btn primary small" id="ai-send">Send</button>
+  </form>
+  {% else %}
+  <p class="notice warn small">Add a Gemini API key in <a href="/settings">Settings</a> to use the assistant.</p>
+  {% endif %}
+</aside>

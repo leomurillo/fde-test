@@ -162,6 +162,37 @@ MIGRATIONS: list[str] = [
     ALTER TABLE sessions ADD COLUMN plan_part INTEGER;
     CREATE INDEX idx_sessions_plan ON sessions(plan_id);
     """,
+    # 3 -- AI assistant sidebar: the full transcript per session, and graded assessments of how the AI was used.
+    """
+    CREATE TABLE ai_messages(
+        message_id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        position INTEGER,                  -- the item on screen when the message was sent
+        item_id TEXT,
+        item_version INTEGER,
+        role TEXT NOT NULL,                -- user | model | error
+        text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        model TEXT,
+        latency_ms INTEGER,
+        meta_json TEXT                     -- user: pasted_chars, quotes_item; model: reply length
+    );
+    CREATE INDEX idx_ai_messages_session ON ai_messages(session_id, created_at);
+
+    CREATE TABLE ai_assessments(
+        assessment_id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        grader TEXT NOT NULL,              -- gemini | none
+        model TEXT,
+        rubric_version INTEGER NOT NULL,
+        points REAL,
+        max_points REAL,
+        score REAL,
+        detail_json TEXT NOT NULL          -- criteria with justifications, overall feedback, message counts
+    );
+    CREATE INDEX idx_ai_assessments_session ON ai_assessments(session_id, created_at);
+    """,
 ]
 
 SCHEMA_VERSION = len(MIGRATIONS)

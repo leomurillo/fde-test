@@ -15,7 +15,7 @@
 {% set nxt = plan.current %}
 <section class="card resume-card stack" aria-label="Next part">
   <h2>{{ 'Continue' if nxt.status == 'in_progress' else 'Next' }}: {{ nxt.title }}</h2>
-  <p>{{ nxt.n }} items{% if nxt.time_limit_s %} in <strong>{{ nxt.time_limit_s|dur }}</strong> (about {{ (nxt.time_limit_s / nxt.n)|dur }} per item){% else %}, no time limit{% endif %}.
+  <p>{% if nxt.ai_assistant %}<strong>AI assistant available</strong> (recorded and assessed). {% endif %}{{ nxt.n }} items{% if nxt.time_limit_s %} in <strong>{{ nxt.time_limit_s|dur }}</strong> (about {{ (nxt.time_limit_s / nxt.n)|dur }} per item){% else %}, no time limit{% endif %}.
     {% if nxt.status == 'not_started' %}The clock starts when the first item opens and does not stop: when it runs out, the part ends and unanswered items score zero.{% endif %}</p>
   {% if plan.mode == 'end' %}<p class="small muted">Answers and explanations are shown after the last part.</p>{% endif %}
   <div class="row">
@@ -28,7 +28,7 @@
 <section class="card">
   <h2>Parts</h2>
   <table class="data compact">
-    <thead><tr><th>Part</th><th class="num">Items</th><th class="num">Time limit</th><th>Status</th>{% if plan.done %}<th class="num">Time used</th><th class="num">Answered</th><th class="num">Correct</th><th class="num">Score</th><th></th>{% endif %}</tr></thead>
+    <thead><tr><th>Part</th><th class="num">Items</th><th class="num">Time limit</th><th>Status</th>{% if plan.done %}<th class="num">Time used</th><th class="num">Answered</th><th class="num">Correct</th><th class="num">Score</th><th class="num">AI use</th><th></th>{% endif %}</tr></thead>
     <tbody>
       {% for p in plan.parts %}
       {% set sm = p.summary %}
@@ -42,6 +42,7 @@
         <td class="num">{{ (sm.answered ~ ' / ' ~ sm.n) if sm else '–' }}</td>
         <td class="num">{{ sm.correct if sm else '–' }}</td>
         <td class="num">{{ ('%.0f%%'|format(sm.score_pct)) if sm else '–' }}</td>
+        <td class="num">{% if p.ai and p.ai.grader == 'gemini' %}{{ '%g'|format(p.ai.points) }} / {{ '%g'|format(p.ai.max_points) }}{% elif p.ai_assistant %}<span class="muted small">{{ 'not graded' if p.ai else 'pending' }}</span>{% else %}–{% endif %}</td>
         <td>{% if p.session_id %}<a href="/s/{{ p.session_id }}/review">Review</a>{% endif %}</td>
         {% endif %}
       </tr>

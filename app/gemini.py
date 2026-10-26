@@ -159,20 +159,16 @@ class GeminiClient:
                 break
         return models
 
-    def _generate(self, model: str, contents: list, schema: dict, system: str | None) -> dict:
-        body: dict = {
-            "contents": contents,
-            "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "responseSchema": schema},
-        }
+    def _generate(self, model: str, contents: list, config: dict, system: str | None) -> dict:
+        body: dict = {"contents": contents, "generationConfig": config}
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}
         return self._request("POST", f"models/{model}:generateContent", body)
 
-    def generate_json(self, parts: list[dict], schema: dict, system: str | None = None) -> tuple[dict, str]:
-        """Return (parsed JSON, model actually used). On 404, switch to the newest stable flash once."""
-        contents = [{"role": "user", "parts": parts}]
+    def _generate_with_fallback(self, contents: list, config: dict, system: str | None) -> dict:
+        """generateContent on the configured model; on 404, switch to the newest stable flash once."""
         try:
-            data = self._generate(self.model, contents, schema, system)
+            return self._generate(self.model, contents, config, system)
         except GeminiError as exc:
             if exc.status != 404:
                 raise
@@ -183,8 +179,19 @@ class GeminiClient:
             self.model = replacement
             if self._on_model_change:
                 self._on_model_change(replacement)
-            data = self._generate(self.model, contents, schema, system)
+            return self._generate(self.model, contents, config, system)
+
+    def generate_json(self, parts: list[dict], schema: dict, system: str | None = None) -> tuple[dict, str]:
+        """Return (parsed JSON, model actually used)."""
+        config = {"temperature": 0, "responseMimeType": "application/json", "responseSchema": schema}
+        data = self._generate_with_fallback([{"role": "user", "parts": parts}], config, system)
         return _parse_json_response(data), self.model
+
+    def generate_text(self, contents: list[dict], system: str | None = None,
+                      temperature: float = 0.7) -> tuple[str, str]:
+        """Multi-turn chat: `contents` alternates user/model turns. Return (reply text, model actually used)."""
+        data = self._generate_with_fallback(contents, {"temperature": temperature}, system)
+        return _response_text(data), self.model
 
 
 def _error_message(resp: httpx.Response) -> str:
@@ -195,13 +202,18 @@ def _error_message(resp: httpx.Response) -> str:
     return f"HTTP {resp.status_code}: {msg}".strip()
 
 
-def _parse_json_response(data: dict) -> dict:
+def _response_text(data: dict) -> str:
     cands = data.get("candidates") or []
     if not cands:
         reason = (data.get("promptFeedback") or {}).get("blockReason", "no candidates")
         raise GeminiError(f"Gemini returned no answer ({reason})")
     parts = (cands[0].get("content") or {}).get("parts") or []
-    text = "".join(p.get("text", "") for p in parts).strip()
+    # thinking models may return thought parts; only the visible answer counts
+    return "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
+
+
+def _parse_json_response(data: dict) -> dict:
+    text = _response_text(data)
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text)
     try:

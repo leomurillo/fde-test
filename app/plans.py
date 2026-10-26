@@ -6,9 +6,11 @@ after bank revisions. YAML or JSON:
 
     name: Practice run 1
     mode: end                  # end (default): no reveals until the whole test is done · realtime
+    ai_assistant: false        # default for every part: the Gemini chat sidebar, recorded and assessed
     parts:
       - title: Part 1
         time_limit_min: 12     # or time_limit_s; omit for an untimed part
+        ai_assistant: true     # overrides the default for this part
         items: [D6-101, D4-120@1, ...]   # id, or id@version to pin an older version
 
 Each part becomes a session when it is started, so its clock starts on its first item.
@@ -55,6 +57,7 @@ def parse_spec(text: str, conn: sqlite3.Connection) -> dict:
     mode = raw.get("mode", "end")
     if mode not in store.MODES:
         problems.append(f"'mode' must be one of {', '.join(store.MODES)}.")
+    ai_default = _flag(raw, "ai_assistant", False, "The test", problems)
     parts_raw = raw.get("parts")
     if not isinstance(parts_raw, list) or not parts_raw:
         raise PlanError(problems + ["'parts' must be a non-empty list."])
@@ -72,6 +75,7 @@ def parse_spec(text: str, conn: sqlite3.Connection) -> dict:
             continue
         title = str(p.get("title") or f"Part {n}").strip()[:80]
         limit_s = _time_limit(p, where, problems)
+        ai = _flag(p, "ai_assistant", ai_default, where, problems)
         refs = p.get("items")
         if not isinstance(refs, list) or not refs:
             problems.append(f"{where}: 'items' must be a non-empty list.")
@@ -96,11 +100,19 @@ def parse_spec(text: str, conn: sqlite3.Connection) -> dict:
                 continue
             seen[item_id] = where
             items.append({"item_id": item_id, "version": version})
-        parts.append({"title": title, "time_limit_s": limit_s, "items": items})
+        parts.append({"title": title, "time_limit_s": limit_s, "ai_assistant": ai, "items": items})
     if problems:
         raise PlanError(problems)
     return {"name": name[:120], "description": str(raw.get("description") or "").strip()[:500], "mode": mode,
             "parts": parts}
+
+
+def _flag(d: dict, key: str, default: bool, where: str, problems: list[str]) -> bool:
+    value = d.get(key, default)
+    if not isinstance(value, bool):
+        problems.append(f"{where}: '{key}' must be true or false.")
+        return default
+    return value
 
 
 def _time_limit(p: dict, where: str, problems: list[str]) -> int | None:
@@ -186,6 +198,7 @@ def start_next_part(conn: sqlite3.Connection, pid: str, installation_id: str, ba
     types = sorted({store.snapshot(conn, r["item_id"], r["version"])["type"] for r in spec_part["items"]})
     scope = {"preset": plan["name"], "subtopics": [], "formats": types, "length": len(picked), "priority": "fixed",
              "time_limit_s": spec_part["time_limit_s"], "assembled": len(picked), "note": None,
+             "ai_assistant": bool(spec_part.get("ai_assistant")),
              "plan": {"name": plan["name"], "part": part["index"], "parts": len(plan["spec"]["parts"]),
                       "title": spec_part["title"]}}
     return store.insert_session(conn, scope, plan["mode"], seed, picked, installation_id, bank_fingerprint, client,
@@ -201,6 +214,7 @@ def plan_state(conn: sqlite3.Connection, plan: dict) -> dict:
         s = sessions.get(i)
         status = s["status"] if s else "not_started"
         part = {"index": i, "title": sp["title"], "n": len(sp["items"]), "time_limit_s": sp["time_limit_s"],
+                "ai_assistant": bool(sp.get("ai_assistant")),
                 "status": status, "session_id": s["session_id"] if s else None, "summary": None, "used_s": None}
         if s:
             part["summary"] = store.session_summary(conn, s["session_id"])["total"]

@@ -76,6 +76,11 @@ modeled tests (`plan_id, installation_id, created_at, name, mode, source_name, s
 `spec_json` holds the parts with titles, time limits and pinned `item_id@version`s), and
 `sessions.plan_id` / `sessions.plan_part` linking a part's session to its plan (index `idx_sessions_plan`).
 
+Migration 3 adds `ai_messages` (the assistant transcript: session, position, item id and version, role
+user | model | error, text, time, model, latency, and `meta_json` with `pasted_chars` and `quotes_item`) and
+`ai_assessments` (session, grader, model, rubric version, points, max points, score, `detail_json`; the latest row
+per session is current).
+
 Indexes on `responses(item_id, item_version)`, `responses(session_id)`, `events(session_id)`.
 Migrations are append-only; never edit an applied migration. Responses reference `(item_id, item_version)`
 which always exists in `item_versions` because sync inserts versions before they can be served.
@@ -127,6 +132,12 @@ Version history: **2** matches scope on the primary subtopic only; **1** also pu
   within each item's `time_s` and within the session's time limit divided by its items, median words read, and,
   when "Done reading" was used, median first-reading time, reading speed in words per minute and time spent
   deciding after reading), every item with answer, correctness, explanation, time taken, and a feedback button.
+- **AI assistant** (`assistant.py`), enabled by `scope.ai_assistant` (New test checkbox, or `ai_assistant` per part
+  in a modeled-test file): a sidebar on the runner posts to `/api/s/{id}/ai/chat`, which stores the message with the
+  current position, sends the session's history to Gemini under a neutral general-purpose system prompt, and stores
+  the reply (or the error). Finishing the session (button or time-out) grades AI use in the background against
+  `AI_RUBRIC` (4 x 3 points); `/s/{id}/ai-grade` re-grades. The judge sees each item, its answer key, the final answer
+  and the conversation held on it. Results show the score, evidence per criterion, feedback and the transcript.
 - `/plans`, `/m/{plan_id}`: **modeled tests** (`plans.py`). A YAML/JSON file uploaded from the user's machine names
   the items of each part, in order, with an optional time limit per part; the file is validated against the bank
   (unknown ids, unstored versions, duplicates, bad limits are all listed) and stored with versions pinned. Each part
@@ -200,7 +211,8 @@ user's answer and correctness if already revealed). Never blocks the runner (mod
   the All tab) so a reviewer is not shown points that were already addressed.
 - `fde-data-{installation_id}-{date}.zip` — `manifest.json` (installation_id, schema_version, app_version,
   bank_fingerprint, export time), `sessions.jsonl`, `session_items.jsonl`, `responses.jsonl`, `events.jsonl`,
-  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included), `plans.jsonl` (modeled tests). This is the future upload format;
+  `feedback.jsonl`, `item_versions.jsonl` (metadata + hash; content included), `plans.jsonl` (modeled tests),
+  `ai_messages.jsonl` and `ai_assessments.jsonl` (assistant transcripts and AI-use grades). This is the future upload format;
   its `feedback.jsonl` always holds every row, resolved or not.
 - Response rows in exports never contain the API key; audio files are excluded by default (checkbox to include).
 

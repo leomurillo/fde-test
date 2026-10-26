@@ -20,6 +20,7 @@
     {% endif %}
     {{ copy_button(session.session_id, pos) }}
     {{ feedback_button(si.item_id, si.item_version, session.session_id, pos) }}
+    {% if ai %}<button type="button" class="btn small" id="ai-toggle" aria-controls="ai-panel" aria-expanded="false" title="Open the AI assistant">AI assistant</button>{% endif %}
     <details class="end-menu">
       <summary class="btn ghost small" aria-haspopup="menu">End test</summary>
       <div class="menu-panel" role="menu">
@@ -180,8 +181,10 @@
 
 <section id="reveal" class="reveal-wrap" aria-live="polite">{% if reveal_html %}{{ reveal_html }}{% endif %}</section>
 
+{% if ai %}{% include "_ai_panel.html" %}{% endif %}
+
 <div class="next-bar" id="next-bar" {% if not resp %}hidden{% endif %}>
   <a class="btn primary" id="next-btn" href="/s/{{ session.session_id }}">Next <kbd>Enter</kbd></a>
 </div>
 {% endblock %}
-{% block scripts %}<script src="/static/runner.js?v={{ app_version }}"></script>{% endblock %}
+{% block scripts %}<script src="/static/runner.js?v={{ app_version }}"></script>{% if ai %}<script src="/static/assistant.js?v={{ app_version }}"></script>{% endif %}{% endblock %}

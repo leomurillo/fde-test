@@ -49,6 +49,25 @@ options. It is optional and only measures: the results page then shows your medi
 reading speed (words of stem and options per minute), and how long you spent deciding after reading, next to how
 many answers fit each item's budget. Use it to tell slow reading apart from slow deciding.
 
+## AI assistant sidebar
+
+Some assessments embed a chat assistant and hand the transcript to the hiring team, who judge how you worked with
+AI. To practise that, tick **AI assistant** on **New test** (or set `ai_assistant: true` in a modeled-test file,
+for the whole test or per part). The runner then has an **AI assistant** button that opens a Gemini chat beside the
+item, using the same key as AI grading.
+
+- The assistant is a plain general-purpose chat: it is not told it sits inside a test, and it does not see the
+  question unless you type or paste it. One conversation runs through the whole test (or part).
+- Every message is stored with the item that was on screen, whether you pasted text, and whether the message repeats
+  the question's wording. `Enter` sends, `Shift+Enter` adds a line; runner shortcuts are off while you type there.
+- When the test (or part) finishes, Gemini grades **AI use** from the transcript, your final answers and the answer
+  keys, on four criteria worth 3 points each: prompting and context, critical evaluation of AI output, ownership of
+  the final answer, and efficient, well-placed use. Each score comes with the exchange that justifies it.
+- The results page shows the AI-use score, the evidence, one concrete improvement, the rubric and the full
+  transcript; each item card also shows the conversation held on that item. *Grade again* re-runs the grading. In a
+  modeled test, the test page shows each part's AI-use score.
+- Without a key the assistant cannot answer, and an unused assistant is reported as "available but not used".
+
 ## Modeled tests (loaded from a file)
 
 **Modeled tests** in the top bar loads a test you built by hand: a fixed list of items per part, each part with its
@@ -59,12 +78,14 @@ committed to this public repository: keep it outside the clone, or in `private/`
 name: Practice run
 mode: end              # end (default): results after the last part · realtime: reveal after every item
 description: optional note shown on the test page
+ai_assistant: false    # default for every part: the Gemini chat sidebar (see above)
 parts:
   - title: Part 1
     time_limit_min: 8  # or time_limit_s; leave out for an untimed part
     items: [D4-101, D6-105, D2-103]
   - title: Part 2
     time_limit_min: 5
+    ai_assistant: true          # this part only
     items: [D7-102, D9-104@1]   # id@version pins a specific version
 ```
 
@@ -132,7 +153,8 @@ From **Export** (or **Feedback**):
   by URL: `/export/feedback.jsonl?show=open`). The box starts ticked on the Open tab and on Export, and unticked on
   the All tab. Mark a note resolved on the Feedback page once its item is fixed.
 - `fde-data-{installation_id}-{date}.zip`: `manifest.json` plus `sessions`, `session_items`, `responses`,
-  `events`, `feedback`, `item_versions` and `plans` (modeled tests) as JSONL. Columns stored as JSON (`*_json`) appear decoded
+  `events`, `feedback`, `item_versions`, `plans` (modeled tests), `ai_messages` (assistant transcripts) and
+  `ai_assessments` (AI-use grades) as JSONL. Columns stored as JSON (`*_json`) appear decoded
   under the name without the suffix. Audio files are excluded unless you tick the checkbox. This is the
   format meant for pooling data from many installations later (`app.export.read_export` reads it back).
   It always holds every feedback note, resolved or not.

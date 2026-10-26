@@ -13,6 +13,8 @@ a later move to adaptive testing (CAT/IRT).
 - **Two modes:** real-time feedback after every item, or exam conditions with a review at the end.
 - **Modeled tests:** load a hand-built test from a file on your machine (fixed items, timed parts run back to
   back), so a mock of a specific assessment never has to be committed. See [`docs/running.md`](docs/running.md).
+- **AI assistant sidebar:** an optional Gemini chat (your own key) next to every item, like the embedded assistant
+  some assessments offer. The transcript is recorded, and how you used AI is graded against a rubric in your results.
 - **Pace:** an optional *Done reading* button (`R`) times your first read of each item; results show reading speed,
   time spent deciding, and how many answers fit each item's budget and each part's clock.
 - **Progress:** seen, never seen, right and wrong, per item and per subtopic. **Feedback:** a 💬 button on every item, exportable (all notes, or only the open ones) to send back

@@ -19,9 +19,10 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import __version__, plans, store, views
+from . import __version__, assistant, plans, store, views
 from .assemble import ALL_TYPES, PRIORITIES, SECTION_ORDER
 from .bank import BANK_DIR
 from .db import connect, default_data_dir, dumps, get_setting, ms_between, new_id, now_iso, open_db, parse_iso, set_setting
@@ -46,7 +47,7 @@ TELEMETRY_INT_FIELDS = ("time_to_first_ms", "time_to_submit_ms", "active_ms", "a
                         "paste_count", "runs", "read_ms")
 EVENT_TYPES = {"render", "select", "deselect", "input", "paste", "blur", "focus", "visibility", "run_sql", "run_code",
                "audio_start", "audio_stop", "flag", "reveal", "feedback_open", "skip", "submit", "confidence",
-               "audio_prep", "audio_fallback", "timeout", "unload", "read_done"}
+               "audio_prep", "audio_fallback", "timeout", "unload", "read_done", "ai_panel"}
 
 
 # ---------------------------------------------------------------- context
@@ -114,6 +115,16 @@ class AppContext:
                 apply_outcome(c, rid, outcome, keep=resp["detail"])
         except Exception:
             log.exception("background grading failed for %s", rid)
+
+    def grade_ai_later(self, sid: str) -> None:
+        """Background grading of a finished session's AI-assistant use. Never raises."""
+        try:
+            with self.conn() as c:
+                s = store.get_session(c, sid)
+                if s and assistant.enabled(s):
+                    assistant.grade(c, self.gemini_client(c), sid)
+        except Exception:
+            log.exception("AI-use grading failed for %s", sid)
 
     def _audio_bytes(self, resp: dict) -> tuple[bytes | None, str | None]:
         a = resp["response"]
@@ -304,6 +315,7 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             length=length, formats=[f for f in as_list(data.get("formats")) if f in ALL_TYPES],
             priority=priority, mode=mode, preset=data.get("preset") or None, time_limit_s=time_limit_s,
             seed=seed, client=client if isinstance(client, dict) else {},
+            ai_assistant=str(data.get("ai_assistant") or "").lower() in ("1", "on", "true", "yes"),
         )
 
     @app.post("/api/preview")
@@ -340,14 +352,27 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             pos = store.resume_position(items, store.latest_responses(c, sid))
         return RedirectResponse(f"/s/{sid}/item/{pos}" if pos else f"/s/{sid}/end", status_code=303)
 
+    def ai_panel(c, s: dict) -> dict | None:
+        """Sidebar data for a session with the assistant enabled: the transcript so far, rendered."""
+        if not assistant.enabled(s):
+            return None
+        msgs = [{**m, "html": Markup(render_md(m["text"])) if m["role"] == "model" else None}
+                for m in assistant.messages(c, s["session_id"])]
+        return {"messages": msgs, "has_key": bool(resolve_api_key(ctx.data_dir)[0])}
+
+    def finish_and_grade(c, s: dict, background: BackgroundTasks) -> None:
+        store.finish_session(c, s["session_id"])
+        if assistant.enabled(s):
+            background.add_task(ctx.grade_ai_later, s["session_id"])
+
     @app.get("/s/{sid}/item/{pos}", response_class=HTMLResponse)
-    def item_page(request: Request, sid: str, pos: int):
+    def item_page(request: Request, sid: str, pos: int, background: BackgroundTasks):
         with ctx.conn() as c:
             s = need_session(c, sid)
             if s["status"] != "in_progress":
                 return RedirectResponse(f"/s/{sid}/review", status_code=303)
             if time_expired(s):
-                store.finish_session(c, sid)
+                finish_and_grade(c, s, background)
                 return RedirectResponse(after_finish_url(s), status_code=303)
             items = store.session_items(c, sid)
             if not 1 <= pos <= len(items):
@@ -377,6 +402,7 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                         store.add_server_event(c, sid, pos, si, "audio_attempt_interrupted", {"token": att["token"]})
             states = store.position_states(items, responses)
             stale = store.stale_unopened_count(c, sid)
+            ai = ai_panel(c, s)
         unanswered = sum(1 for st in states.values() if st != "answered")
         strip = [{"pos": x["position"], "state": states[x["position"]], "section": x["section"]} for x in items]
         sections =[sec for sec in SECTION_ORDER if any(x["section"] == sec for x in items)]
@@ -386,10 +412,11 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             "maxChars": pub.get("max_chars"), "prepS": pub.get("prep_s"), "maxS": pub.get("max_s"),
             "startedAt": s["started_at"], "timeLimitS": (s["scope"] or {}).get("time_limit_s"),
             "itemId": si["item_id"], "itemVersion": si["item_version"], "attemptUsed": attempt_used,
+            "ai": bool(ai),
         }
         return page(request, "runner.html", nav="run", session=s, si=si, item=pub, pos=pos, total=len(items),
                     strip=strip, sections=sections, resp=resp if answered else None, reveal_html=reveal_html,
-                    config=config, attempt_used=attempt_used, stale=stale, unanswered=unanswered)
+                    config=config, attempt_used=attempt_used, stale=stale, unanswered=unanswered, ai=ai)
 
     def _telemetry(payload: dict) -> dict:
         tel = payload.get("telemetry") or {}
@@ -677,11 +704,51 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                     answered=sum(1 for st in states.values() if st == "answered"), total=len(items))
 
     @app.post("/s/{sid}/finish")
-    def finish(sid: str):
+    def finish(sid: str, background: BackgroundTasks):
         with ctx.conn() as c:
             s = need_session(c, sid)
-            store.finish_session(c, sid)
+            if s["status"] == "in_progress":
+                finish_and_grade(c, s, background)
         return RedirectResponse(after_finish_url(s), status_code=303)
+
+    # ------------------------------------------------------------ AI assistant
+
+    @app.post("/api/s/{sid}/ai/chat")
+    async def api_ai_chat(request: Request, sid: str):
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(400, "Expected JSON")
+        text = str(body.get("text") or "").strip()
+        if not text:
+            raise HTTPException(400, "Type a message first.")
+        if len(text) > assistant.MAX_MESSAGE_CHARS:
+            raise HTTPException(413, f"Messages are limited to {assistant.MAX_MESSAGE_CHARS} characters.")
+        pos = _int_or_none(body.get("position"))
+        pasted = _int_or_none(body.get("pasted_chars")) or 0
+
+        def turn():
+            with ctx.conn() as c:
+                s, si = _load_for_submit(c, sid, pos or 0)
+                if not assistant.enabled(s):
+                    raise HTTPException(403, "The AI assistant is not enabled for this test.")
+                if time_expired(s):
+                    raise HTTPException(409, "Time is up for this test.")
+                return assistant.chat(c, ctx.gemini_client(c), sid, si, text, pasted)
+
+        # the Gemini call can take many seconds: keep it off the event loop so the runner stays responsive
+        user, reply = await run_in_threadpool(turn)
+        return {"ok": reply["role"] != "error", "user_id": user["message_id"], "role": reply["role"],
+                "html": render_md(reply["text"]) if reply["role"] == "model" else None, "text": reply["text"]}
+
+    @app.post("/s/{sid}/ai-grade")
+    def ai_regrade(sid: str):
+        with ctx.conn() as c:
+            s = need_session(c, sid)
+            if s["status"] == "in_progress" or not assistant.enabled(s):
+                raise HTTPException(409, "AI use is graded once the test is finished.")
+            assistant.grade(c, ctx.gemini_client(c), sid)
+        return RedirectResponse(f"/s/{sid}/review#ai-use", status_code=303)
 
     @app.post("/s/{sid}/abandon")
     def abandon(sid: str):
@@ -750,6 +817,7 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                     timing = list(store.timing_rows(c, items, store.latest_responses(c, part["session_id"])).values())
                     slot = part["time_limit_s"] / part["n"] if part["time_limit_s"] else None
                     parts_pace[part["index"]] = store.pace_summary(timing, slot)
+                    part["ai"] = assistant.latest_assessment(c, part["session_id"]) if part["ai_assistant"] else None
                     rows += timing
                 pace = store.pace_summary(rows)
         return page(request, "plan.html", nav="plans", plan=state, pace=pace, parts_pace=parts_pace)
@@ -796,6 +864,14 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
             timing = store.timing_rows(c, items, responses)
             limit = (s["scope"] or {}).get("time_limit_s")
             pace = store.pace_summary(list(timing.values()), limit / len(items) if limit and items else None)
+            ai = None
+            if assistant.enabled(s):
+                msgs = ai_panel(c, s)["messages"]
+                ai = {"messages": msgs, "assessment": assistant.latest_assessment(c, sid),
+                      "usage": assistant.usage_stats(msgs), "rubric": assistant.AI_RUBRIC,
+                      "by_pos": {}}
+                for m in msgs:
+                    ai["by_pos"].setdefault(m["position"], []).append(m)
             cards = []
             for si in items:
                 item = store.snapshot(c, si["item_id"], si["item_version"])
@@ -804,7 +880,7 @@ def create_app(data_dir: Path | str | None = None, bank_dir: Path | str | None =
                               "timing": timing.get(si["position"]),
                               "reveal_html": Markup(render_reveal(request, c, si, resp, s))})
         return page(request, "review.html", nav="run", session=s, summary=summary, cards=cards, pace=pace,
-                    plan=plan)
+                    plan=plan, ai=ai)
 
     @app.get("/api/s/{sid}/item/{pos}/copy")
     def api_copy(sid: str, pos: int):
